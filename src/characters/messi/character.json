@@ -1,0 +1,8 @@
+{
+  "id": "messi",
+  "name": "Messi",
+  "description": "Modele 3D · sans animation",
+  "format": "glb",
+  "file": "characters/messi/model.glb",
+  "rotation": 0
+}

@@ -1,0 +1,5 @@
+Nom dans le projet : Samba
+Modele original : Samba Dancing, exemple Three.js, origine Mixamo.
+Source : https://threejs.org/examples/models/fbx/Samba%20Dancing.fbx
+Ce fichier documente la provenance ; il ne remplace pas la licence.
+Conditions du fournisseur : https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html

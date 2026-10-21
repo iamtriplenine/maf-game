@@ -1,0 +1,8 @@
+{
+  "id": "loki",
+  "name": "Loki",
+  "description": "Soldat · repos, marche et course",
+  "format": "glb",
+  "file": "characters/loki/model.glb",
+  "rotation": 3.141592653589793
+}

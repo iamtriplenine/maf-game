@@ -1,0 +1,5 @@
+Nom dans le projet : Loki
+Modele original : Soldier, exemple Three.js, origine Mixamo.
+Source : https://threejs.org/examples/models/gltf/Soldier.glb
+Ce fichier documente la provenance ; il ne remplace pas la licence.
+Conditions du fournisseur : https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html
