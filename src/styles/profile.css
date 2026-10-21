@@ -138,3 +138,8 @@
   letter-spacing: .22em;
 }
 .code-count { padding-right: 14px; color: var(--text-faint); font-size: 12px; }
+
+/* Glisser pour tourner le personnage */
+.profile .profile__canvas { cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.profile .profile__canvas:active { cursor: grabbing; }
+.profile .profile__title { pointer-events: none; }

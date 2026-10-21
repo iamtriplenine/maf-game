@@ -1,5 +1,5 @@
-import { Suspense, useEffect, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
 import Loki from "../characters/loki/Loki";
 
 const noop = () => {};
@@ -28,11 +28,61 @@ function useAccent() {
   return accent;
 }
 
-export default function ProfileStage() {
-  const accent = useAccent();
+const BASE_ANGLE = Math.PI - 0.3;
+
+// Glisser horizontalement = tourner le personnage (360 degres, rien d'autre).
+function useDragRotation() {
+  const angle = useRef(0);
+  const lastX = useRef(null);
+
+  const end = () => {
+    lastX.current = null;
+  };
+
+  const handlers = {
+    onPointerDown: (event) => {
+      lastX.current = event.clientX;
+      event.currentTarget.setPointerCapture(event.pointerId);
+    },
+    onPointerMove: (event) => {
+      if (lastX.current === null) return;
+      angle.current += (event.clientX - lastX.current) * 0.012;
+      lastX.current = event.clientX;
+    },
+    onPointerUp: end,
+    onPointerCancel: end,
+  };
+
+  return { angle, handlers };
+}
+
+// Fait pivoter le personnage en douceur ; l'animation de marche continue.
+function Turntable({ angle, children, ...props }) {
+  const ref = useRef();
+
+  useEffect(() => {
+    if (ref.current) ref.current.rotation.y = BASE_ANGLE + angle.current;
+  }, [angle]);
+
+  useFrame((_, delta) => {
+    if (!ref.current) return;
+    const smooth = 1 - Math.exp(-delta * 12);
+    const target = BASE_ANGLE + angle.current;
+    ref.current.rotation.y += (target - ref.current.rotation.y) * smooth;
+  });
 
   return (
-    <div className="profile__canvas">
+    <group ref={ref} {...props}>
+      {children}
+    </group>
+  );
+}
+export default function ProfileStage() {
+  const accent = useAccent();
+  const drag = useDragRotation();
+
+  return (
+    <div className="profile__canvas" {...drag.handlers}>
       <Canvas
         dpr={[1, 1.75]}
         camera={{ position: [0, 0.85, 5.9], fov: 30 }}
@@ -44,14 +94,14 @@ export default function ProfileStage() {
         <directionalLight position={[-3, 2, -2]} intensity={3.2} color={accent} />
 
         <Suspense fallback={null}>
-          <group rotation={[0, Math.PI - 0.3, 0]} position={[0, -0.05, 0]}>
+          <Turntable angle={drag.angle} position={[0, -0.05, 0]}>
             <Loki
               animation="Walk"
               paused={false}
               speed={1}
               onAnimations={noop}
             />
-          </group>
+          </Turntable>
         </Suspense>
       </Canvas>
     </div>

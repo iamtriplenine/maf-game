@@ -1,0 +1,13 @@
+﻿LOKI : TOURNER A 360 DEGRES
+===========================
+Depuis la racine du projet (maf-game) :
+
+  powershell -ExecutionPolicy Bypass -File .\rotation-setup\tourner-loki.ps1
+
+Resultat : on glisse le doigt / la souris horizontalement sur la scene,
+Loki tourne sur lui-meme (tours complets possibles) pendant qu'il continue de marcher.
+Aucun autre mouvement (pas de zoom, pas d'inclinaison).
+
+Reglage de la vitesse de rotation : le chiffre 0.012 dans src/components/ProfileStage.jsx
+(plus grand = tourne plus vite).
+Sauvegarde creee : ProfileStage.jsx.avant-rotation.bak
