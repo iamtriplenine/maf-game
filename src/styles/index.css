@@ -1,0 +1,5 @@
+/* Point d'entree du design : importe dans main.jsx */
+@import "./tokens.css";
+@import "./base.css";
+@import "./components.css";
+@import "./bridge.css";

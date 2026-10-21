@@ -1,0 +1,25 @@
+﻿PAGE PROFIL - MAF GAME
+======================
+
+UTILISATION (PowerShell, depuis la racine du projet) :
+
+  cd C:\Users\hp\Documents\999\maf-game
+  powershell -ExecutionPolicy Bypass -File .\profil-setup\lancer-tout.ps1
+  npm run dev
+
+(Le dossier "profil-setup" doit etre dans maf-game : fais "Extract Here" du zip dans maf-game.)
+
+CE QUI CHANGE
+  - La page d'accueil devient la page profil (Loki qui marche, Login / Sign Up, panneau en bas).
+  - L'ancienne page de test 3D est conservee dans src/pages/Studio.jsx,
+    accessible par le bouton "Studio 3D" en haut a gauche (adresse #studio).
+  - src/App.jsx est remplace (ancienne version sauvee dans src/App.avant-profil.bak).
+
+COMPTES
+  Pour l'instant les comptes sont stockes dans le navigateur (src/api/accounts.js).
+  Quand le backend existera, seul ce fichier est a remplacer.
+
+REGLAGES RAPIDES
+  Nom affiche : APP_NAME en haut de src/pages/ProfilePage.jsx
+  Animation   : animation="Walk" dans src/components/ProfileStage.jsx
+  Position / taille de Loki : camera et <group ...> dans ProfileStage.jsx

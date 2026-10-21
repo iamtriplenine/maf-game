@@ -1,0 +1,16 @@
+﻿AJUSTEMENT PAGE PROFIL
+======================
+Depuis la racine du projet (maf-game) :
+
+  powershell -ExecutionPolicy Bypass -File .\ajustement-setup\ajuster-profil.ps1
+
+Ce que ca change :
+  - la page prend tout l'ecran (ordinateur et telephone), plus de colonne etroite
+  - le personnage reste centre ; le bloc du bas est plus haut et semi-transparent
+  - src/styles/profile.css est remplace ; ProfileStage.jsx : 2 lignes (camera)
+
+Reglages (dans src/styles/profile.css, en haut) :
+  --panel-h   hauteur du bloc du bas (ex : 34vh -> 40vh pour le monter plus)
+Reglages camera (src/components/ProfileStage.jsx) :
+  position: [0, 0.85, 5.9]  -> plus grand 2e/3e chiffre = personnage plus petit
+  camera.lookAt(0, 0.47, 0) -> baisser le 2e chiffre = personnage plus haut

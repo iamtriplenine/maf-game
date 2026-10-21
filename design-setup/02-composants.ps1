@@ -1,0 +1,285 @@
+﻿# 02 - Composants : boutons, cartes, chips, onglets, tailles, champ, prix
+$ErrorActionPreference = 'Stop'
+$root = (Get-Location).Path
+if (-not (Test-Path "$root\package.json") -or -not (Test-Path "$root\src")) {
+  Write-Host "ERREUR : lance ce script depuis le dossier du projet (celui qui contient package.json et src)." -ForegroundColor Red
+  exit 1
+}
+function Write-File($rel, $content) {
+  $p = Join-Path $root $rel
+  $d = Split-Path $p
+  if (-not (Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
+  [IO.File]::WriteAllText($p, $content, (New-Object Text.UTF8Encoding($false)))
+  Write-Host "  + $rel" -ForegroundColor Green
+}
+
+Write-File 'src\styles\components.css' @'
+/* ============ MAF GAME - COMPOSANTS ============
+   Classes reutilisables. Aucune couleur en dur : tout vient de tokens.css */
+
+/* ---------- Verre depoli ---------- */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
+  backdrop-filter: blur(var(--blur)) saturate(140%);
+}
+.glass--strong { background: var(--glass-strong); }
+
+/* ---------- Boutons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 26px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  color: var(--text);
+  font: 600 14px/1 var(--font-ui);
+  letter-spacing: .3px;
+  text-decoration: none;
+  -webkit-backdrop-filter: blur(var(--blur));
+  backdrop-filter: blur(var(--blur));
+  transition: transform var(--t) var(--ease), box-shadow var(--t) var(--ease),
+    background var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.btn:hover { transform: translateY(-2px); border-color: var(--accent); }
+.btn:active { transform: scale(.97); }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+
+.btn--primary {
+  background: var(--accent-grad);
+  color: var(--on-accent);
+  border-color: transparent;
+  box-shadow: var(--accent-glow);
+}
+.btn--primary:hover { box-shadow: 0 14px 38px var(--accent-soft), var(--accent-glow); }
+.btn--glass { background: var(--glass); }
+.btn--outline { background: transparent; border-color: var(--text); }
+.btn--ghost { background: transparent; border-color: transparent; }
+.btn--sm { min-height: 40px; padding: 0 16px; font-size: 13px; border-radius: var(--r-md); }
+.btn--lg { min-height: 60px; padding: 0 32px; font-size: 15px; }
+.btn--block { display: flex; width: 100%; }
+.btn--round { width: 48px; min-height: 48px; padding: 0; border-radius: 50%; }
+
+/* Bouton "Buy Now" : pilule + pastille fleche */
+.btn-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 56px;
+  padding: 5px 5px 5px 26px;
+  border: 1.5px solid var(--text);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text);
+  font: 600 15px/1 var(--font-ui);
+  transition: transform var(--t) var(--ease);
+}
+.btn-cta:hover { transform: translateY(-2px); }
+.btn-cta:active { transform: scale(.97); }
+.btn-cta__dot {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  color: var(--on-accent);
+  box-shadow: var(--accent-glow);
+}
+
+/* ---------- Cartes ---------- */
+.card {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(var(--blur));
+  backdrop-filter: blur(var(--blur));
+}
+
+/* Grande carte image (ex : "The Winter Puffer").
+   Mettre l'image avec style="--hero-img:url(/images/x.jpg)" */
+.card--hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 240px;
+  padding: 20px;
+  border: 0;
+  color: #fff;
+  background: var(--hero-img, none) center / cover no-repeat, var(--hero-grad);
+}
+.card--hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 35%, var(--overlay) 100%);
+}
+.card--hero > * { position: relative; }
+.card__top {
+  position: absolute !important;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card__title { margin: 0; font: 400 22px/1.15 var(--font-tech); }
+
+/* ---------- Pastilles / chips ---------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--glass);
+  color: var(--text);
+  font: 500 12px/1 var(--font-ui);
+  -webkit-backdrop-filter: blur(var(--blur));
+  backdrop-filter: blur(var(--blur));
+}
+.chip--active, .chip[aria-pressed="true"] {
+  background: var(--accent-grad);
+  color: var(--on-accent);
+  border-color: transparent;
+}
+.chip--round { width: 40px; min-height: 40px; padding: 0; justify-content: center; border-radius: 50%; }
+
+.orb {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  box-shadow: var(--accent-glow);
+}
+
+/* ---------- Onglets (New Releases / Most Viewed) ---------- */
+.tabs { display: flex; gap: 22px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  position: relative;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font: 500 13px/1 var(--font-ui);
+  white-space: nowrap;
+}
+.tab.is-active, .tab[aria-selected="true"] { color: var(--text); }
+.tab.is-active::after, .tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent-grad);
+}
+
+/* ---------- Selecteur de tailles / options (40 42 44 46) ---------- */
+.sizes { display: flex; gap: 10px; flex-wrap: wrap; }
+.size {
+  min-width: 54px;
+  height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--glass);
+  color: var(--text);
+  font: 600 14px/1 var(--font-ui);
+  -webkit-backdrop-filter: blur(var(--blur));
+  backdrop-filter: blur(var(--blur));
+  transition: background var(--t) var(--ease), transform var(--t) var(--ease);
+}
+.size:hover { transform: translateY(-2px); }
+.size.is-active, .size[aria-pressed="true"] {
+  background: var(--accent-grad);
+  color: var(--on-accent);
+  border-color: transparent;
+  box-shadow: var(--accent-glow);
+}
+
+/* ---------- Champ (Try This Wear + fleche) ---------- */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(var(--blur));
+  backdrop-filter: blur(var(--blur));
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  outline: none;
+}
+.field input:focus-visible { outline: none; }
+.field input::placeholder { color: var(--text-faint); }
+
+/* ---------- Prix + barre d'achat ---------- */
+.buy-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.price__label { display: block; margin-bottom: 4px; color: var(--text-dim); font-size: 12px; }
+.price__value { font: 600 26px/1 var(--font-tech); }
+
+/* ---------- Structure d'ecran ---------- */
+.app-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; }
+
+/* Conteneur facon "ecran de telephone" */
+.screen {
+  width: min(100%, 420px);
+  margin-inline: auto;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: linear-gradient(180deg, var(--surface), var(--bg-2));
+}
+
+.row { display: flex; align-items: center; gap: var(--s-3); }
+.stack { display: flex; flex-direction: column; gap: var(--s-3); }
+.grow { flex: 1; }
+
+/* ---------- Selecteur de theme ---------- */
+.theme-toggle {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--glass);
+}
+.theme-toggle button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  transition: transform var(--t) var(--ease);
+}
+.theme-toggle button:hover { transform: scale(1.1); }
+.theme-toggle button[data-t="ciel"] { background: linear-gradient(135deg, #8fe3ff, #0a7fd6); }
+.theme-toggle button[data-t="rose"] { background: linear-gradient(135deg, #ff9ccf, #cc0a6c); }
+.theme-toggle button[aria-pressed="true"] { border-color: var(--text); }
+'@
+
+Write-Host "02 termine." -ForegroundColor Cyan

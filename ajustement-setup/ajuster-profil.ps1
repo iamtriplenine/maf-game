@@ -1,0 +1,175 @@
+﻿# Ajustement page profil : plein ecran responsive + bloc du bas remonte
+$ErrorActionPreference = 'Stop'
+$root = (Get-Location).Path
+if (-not (Test-Path "$root\package.json") -or -not (Test-Path "$root\src")) {
+  Write-Host "ERREUR : lance ce script depuis le dossier du projet (celui qui contient package.json et src)." -ForegroundColor Red
+  exit 1
+}
+function Write-File($rel, $content) {
+  $p = Join-Path $root $rel
+  [IO.File]::WriteAllText($p, $content, (New-Object Text.UTF8Encoding($false)))
+  Write-Host "  + $rel" -ForegroundColor Green
+}
+
+# 1) Styles de la page profil (remplace profil.css, fichier genere precedemment)
+Write-File 'src\styles\profile.css' @'
+/* ============ PAGE PROFIL (plein ecran, responsive) ============ */
+
+.profile {
+  --pad: clamp(16px, 4vw, 48px);
+  --actions-h: 86px;
+  --panel-h: max(200px, 34vh);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+@supports (height: 1dvh) {
+  .profile { --panel-h: max(200px, 34dvh); }
+}
+
+.profile .profile__bar {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(14px, env(safe-area-inset-top)) var(--pad) 0;
+}
+
+/* Scene : occupe tout l'ecran, le personnage reste centre */
+.profile .profile__stage {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 50% at 50% 34%, var(--accent-soft), transparent 70%),
+    linear-gradient(180deg, transparent 40%, var(--glow-1));
+}
+.profile .profile__canvas { position: absolute; inset: 0; }
+
+/* Le titre reste juste au-dessus des boutons */
+.profile .profile__title {
+  position: absolute;
+  z-index: 2;
+  left: var(--pad);
+  bottom: calc(var(--panel-h) + var(--actions-h) + 14px);
+  margin: 0;
+  font-size: clamp(26px, 5vw, 44px);
+  text-shadow: 0 2px 20px rgba(0, 0, 0, .45);
+}
+.profile .profile__title span {
+  display: block;
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+
+/* Login / Sign Up (ou ID / + Recharger) */
+.profile .profile__actions {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  height: var(--actions-h);
+  margin-top: auto;
+  padding: 0 var(--pad) 12px;
+}
+.profile .profile__btn {
+  flex-direction: column;
+  gap: 6px;
+  min-height: 74px;
+  border-radius: var(--r-xl);
+  font-size: 15px;
+}
+.profile .profile__btn small {
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: .16em;
+}
+
+/* Panneau du bas : monte plus haut, semi-transparent, colle au bas de l'ecran */
+.profile .profile__panel {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 0 0 var(--panel-h);
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px var(--pad) max(20px, env(safe-area-inset-bottom));
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.profile .profile__panel .chip { align-self: flex-start; }
+.profile .profile__hint { margin: 0; color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+.orb--sm { width: 10px; height: 10px; box-shadow: none; }
+
+/* Fenetre qui monte du bas */
+.sheet { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+.sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, .55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.sheet__body {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  padding: 22px 22px max(24px, env(safe-area-inset-bottom));
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  background: linear-gradient(180deg, var(--surface), var(--bg-2));
+  animation: sheet-up .28s var(--ease);
+}
+@keyframes sheet-up {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.sheet__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.sheet__title { margin: 0; font: 400 16px/1.2 var(--font-tech); letter-spacing: .06em; text-transform: uppercase; }
+.sheet__text { margin: 0 0 16px; color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+.sheet__text strong { color: var(--text); letter-spacing: .06em; }
+.sheet__error { min-height: 1.2em; margin: 10px 0; color: #ff9d8a; font-size: 13px; }
+
+.field .code-input {
+  font: 600 20px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .22em;
+}
+.code-count { padding-right: 14px; color: var(--text-faint); font-size: 12px; }
+'@
+
+
+# 2) Cadrage de la camera : le personnage monte pour rester visible au-dessus du bloc du bas
+$stage = Join-Path $root 'src\components\ProfileStage.jsx'
+$txt = [IO.File]::ReadAllText($stage)
+$a1 = 'camera={{ position: [0, 1.15, 4.3], fov: 30 }}'
+$b1 = 'camera={{ position: [0, 0.85, 5.9], fov: 30 }}'
+$a2 = 'camera.lookAt(0, 0.95, 0)'
+$b2 = 'camera.lookAt(0, 0.47, 0)'
+if ($txt.Contains($b1)) {
+  Write-Host "  = ProfileStage.jsx deja ajuste" -ForegroundColor DarkGray
+} elseif ($txt.Contains($a1) -and $txt.Contains($a2)) {
+  Copy-Item $stage "$stage.bak" -Force
+  [IO.File]::WriteAllText($stage, $txt.Replace($a1, $b1).Replace($a2, $b2), (New-Object Text.UTF8Encoding($false)))
+  Write-Host "  ~ src\components\ProfileStage.jsx" -ForegroundColor Green
+} else {
+  Write-Host "  ! ProfileStage.jsx : repere non trouve (voir LISEZ-MOI)" -ForegroundColor Yellow
+}
+Write-Host "Termine. Si npm run dev tourne deja, la page se met a jour toute seule." -ForegroundColor Cyan
