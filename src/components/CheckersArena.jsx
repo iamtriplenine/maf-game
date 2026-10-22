@@ -13,12 +13,13 @@ const secondsLeft = (deadline, serverNow, receivedAt, clock) => deadline == null
 const isSamePrefix = (whole, prefix) => prefix.every((v, i) => whole[i] === v);
 
 export default function CheckersArena({ room, match, busy = false, onStart, onMove, onForfeit,
-  onExit, onBack, onDrawOffer, onDrawRespond, error = '' }) {
+  onExit, onBack, onDrawOffer, onDrawCancel, onDrawRespond, error = '' }) {
   const [from, setFrom] = useState(null);
   const [path, setPath] = useState([]);
   const [clock, setClock] = useState(Date.now);
   const [receivedAt, setReceivedAt] = useState(Date.now);
   const [confirmForfeit, setConfirmForfeit] = useState(false);
+  const [confirmDrawOffer, setConfirmDrawOffer] = useState(false);
   const status = room?.status;
   const solo = room?.id === 0;
   const viewer = match?.viewer || (room?.is_host ? 'host' : 'guest');
@@ -40,6 +41,7 @@ export default function CheckersArena({ room, match, busy = false, onStart, onMo
   useEffect(() => { setReceivedAt(Date.now()); }, [match?.serverNow]);
   useEffect(() => { setFrom(null); setPath([]); }, [match?.ply, match?.toMove]);
   useEffect(() => { setConfirmForfeit(false); }, [finished]);
+  useEffect(() => { setConfirmDrawOffer(false); }, [match?.drawOffer, finished]);
 
   function pick(i) {
     if (!myTurn) return;
@@ -156,9 +158,21 @@ export default function CheckersArena({ room, match, busy = false, onStart, onMo
           <button type="button" disabled={busy} onClick={() => onDrawRespond(true)}>Accepter</button>
           <button type="button" disabled={busy} onClick={() => onDrawRespond(false)}>Refuser</button>
         </div>}
+        {!solo && myDraw && !finished && <div className="checkers-offer checkers-offer--pending" role="status">
+          <strong>Match nul propose. En attente de la reponse de ton adversaire.</strong>
+          <span>Tu peux annuler cette proposition tant qu'elle n'a pas ete acceptee.</span>
+        </div>}
         {!finished && <div className="checkers-actions">
-          {!solo && <button type="button" disabled={busy || myDraw || offeredByRival} onClick={onDrawOffer}>{myDraw ? 'Nulle proposee' : 'Proposer nulle'}</button>}
-          <button type="button" disabled={busy} onClick={() => setConfirmForfeit(v => !v)}>Abandonner</button>
+          {!solo && !offeredByRival && (myDraw
+            ? <button type="button" className="checkers-cancel-draw" disabled={busy} onClick={() => { setConfirmDrawOffer(false); onDrawCancel?.(); }}>Annuler ma proposition</button>
+            : <button type="button" disabled={busy} onClick={() => { setConfirmForfeit(false); setConfirmDrawOffer(true); }}>Proposer nul</button>)}
+          <button type="button" disabled={busy} onClick={() => { setConfirmDrawOffer(false); setConfirmForfeit(v => !v); }}>Abandonner</button>
+        </div>}
+        {confirmDrawOffer && !finished && !myDraw && !offeredByRival && <div className="checkers-offer checkers-offer--draw-confirm" role="group" aria-label="Confirmer la proposition de match nul">
+          <strong>Proposer un match nul a ton adversaire ?</strong>
+          <span>La partie ne sera nulle que si ton adversaire accepte. Les mises seront alors remboursees.</span>
+          <button type="button" disabled={busy} onClick={() => { setConfirmDrawOffer(false); onDrawOffer?.(); }}>Oui, proposer nul</button>
+          <button type="button" disabled={busy} onClick={() => setConfirmDrawOffer(false)}>Non, continuer</button>
         </div>}
         {confirmForfeit && !finished && <div className="checkers-offer">
           <strong>{solo ? 'Terminer cet entrainement ?' : 'Abandonner donne la victoire a ton adversaire et lui verse la cagnotte.'}</strong>

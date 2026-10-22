@@ -14,3 +14,12 @@
 @media(prefers-reduced-motion:reduce){.checkers-overlay *{animation:none!important;transition:none!important}}
 
 .checkers-error{margin:0;border:1px solid #ef6872;background:#54232c;color:#ffdadb;border-radius:10px;padding:9px 12px;text-align:center;font-size:12px}
+
+/* Proposition de nul : annulation et confirmation distinctes de l'abandon. */
+.checkers-actions .checkers-cancel-draw{border-color:#e5b759;background:#4e361a;color:#ffe5a7;}
+.checkers-offer--pending{border-color:#e5b759;background:#29291e;color:#f7e7c3;}
+.checkers-offer--pending span{font-size:12px;color:#e5cc9a;}
+.checkers-offer--draw-confirm{border:2px solid #e4b24a;background:#353020;color:#fff0cc;padding:14px;box-shadow:0 0 20px #e5ac3630;}
+.checkers-offer--draw-confirm strong{flex-basis:100%;font-size:15px;}
+.checkers-offer--draw-confirm span{flex-basis:100%;line-height:1.5;font-size:13px;color:#ecd9b0;}
+.checkers-offer--draw-confirm button:first-of-type{background:#ba822a;border-color:#f5c66a;color:#fff;}

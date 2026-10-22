@@ -57,5 +57,7 @@ export const moveCheckers = (id, move) =>
   walletRequest(`/api/rooms/${id}/match/move`, { method: 'POST', body: move });
 export const offerCheckersDraw = id =>
   walletRequest(`/api/rooms/${id}/match/draw/offer`, { method: 'POST' });
+export const cancelCheckersDraw = id =>
+  walletRequest(`/api/rooms/${id}/match/draw/cancel`, { method: 'POST' });
 export const respondCheckersDraw = (id, accept) =>
   walletRequest(`/api/rooms/${id}/match/draw/respond`, { method: 'POST', body: { accept } });
