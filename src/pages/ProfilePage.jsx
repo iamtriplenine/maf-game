@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
+import ProfileIdentity from "../components/ProfileIdentity";
 import Sheet from "../components/Sheet";
 import AccountHistory from "../components/AccountHistory";
 import WithdrawalForm from "../components/WithdrawalForm";
@@ -19,6 +20,7 @@ import { clearAdminAccess } from "../api/accounts";
 import { WalletBalances, CouponForm, RechargeForm } from "../components/WalletForms";
 import { IconVoucher } from "../components/Icons";
 import "../styles/profile.css";
+import "../styles/profile-identity.css";
 import "../styles/chat.css";
 
 const CHAT_KEY = "maf-chat-on";
@@ -107,6 +109,7 @@ export default function ProfilePage({ onOpenStudio }) {
       <main className="profile">
         <div className="profile__bar">
           <WalletBalances user={session} />
+          <ProfileIdentity pseudo={session?.pseudo} />
         </div>
 
         <section className="profile__stage" aria-label="Personnage">
