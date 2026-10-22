@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { IconGamepad } from '../components/Icons';
+import { PenaltyArena, SoloPenalty } from '../components/PenaltyArena';
 import { useSession } from '../auth/useSession';
 import * as roomsApi from '../api/rooms';
 import '../styles/game-rooms.css';
 
 const money = (value) => `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`;
 const gameName = () => 'Tir au but';
-const statusLabel = { open: 'Ouvert', pending: 'Demande en cours', ready: 'Deux joueurs confirmes' };
+const statusLabel = { open: 'Ouvert', pending: 'Demande en cours', ready: 'Pret a jouer', playing: 'Match en cours', finished: 'Termine' };
 
 export default function GamePage() {
   const { session } = useSession();
@@ -14,6 +15,8 @@ export default function GamePage() {
   const [rooms, setRooms] = useState([]);
   const [mine, setMine] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [match, setMatch] = useState(null);
+  const [results, setResults] = useState([]);
   const selectedId = useRef(null);
   const [code, setCode] = useState('');
   const [shots, setShots] = useState(3);
@@ -28,6 +31,7 @@ export default function GamePage() {
   const chooseRoom = (room) => {
     selectedId.current = room?.id ?? null;
     setSelected(room);
+    setMatch(null);
     setError('');
     setNotice('');
   };
@@ -37,11 +41,12 @@ export default function GamePage() {
     fetching.current = true;
     if (!quiet) setLoading(true);
     try {
-      const [publicRooms, myActiveRoom] = await Promise.all([
-        roomsApi.listRooms(), roomsApi.myRoom(),
+      const [publicRooms, myActiveRoom, recent] = await Promise.all([
+        roomsApi.listRooms(), roomsApi.myRoom(), roomsApi.recentResults(),
       ]);
       setRooms(publicRooms);
       setMine(myActiveRoom);
+      setResults(recent);
       if (selectedId.current) {
         let detail;
         try { detail = await roomsApi.roomById(selectedId.current); }
@@ -52,6 +57,13 @@ export default function GamePage() {
         if (selectedId.current) {
           selectedId.current = detail?.id ?? null;
           setSelected(detail);
+          if (detail && ['ready', 'playing', 'finished'].includes(detail.status)
+            && (session?.id === detail.host.id || session?.id === detail.guest?.id)) {
+            try {
+              const state = await roomsApi.getMatch(detail.id);
+              if (selectedId.current === detail.id) setMatch(state.match);
+            } catch (err) { if (err.status !== 404) throw err; }
+          } else setMatch(null);
         }
       }
       setError('');
@@ -68,11 +80,13 @@ export default function GamePage() {
     // Quand on change de compte, ne pas conserver les informations de l'ancien.
     selectedId.current = null;
     setSelected(null);
+    setMatch(null);
+    setResults([]);
     setMine(null);
     setRooms([]);
     const tick = () => { if (alive && !document.hidden) void refresh({ quiet: true }); };
     void refresh();
-    const interval = window.setInterval(tick, 7000);
+    const interval = window.setInterval(tick, 3000);
     const onVisible = () => { if (!document.hidden) void refresh({ quiet: true }); };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
@@ -94,6 +108,24 @@ export default function GamePage() {
       await refresh({ quiet: true });
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
+  };
+
+  const matchAction = async (run) => {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const data = await run();
+      selectedId.current = data.room.id;
+      setSelected(data.room);
+      setMatch(data.match);
+      void refresh({ quiet: true });
+    } catch (err) {
+      setError(err.message);
+      // Recharger en cas de concurrence (l'autre joueur a deja resolu le tir).
+      void refresh({ quiet: true });
+    } finally { setBusy(false); }
   };
 
   const findCode = async (event) => {
@@ -173,8 +205,8 @@ export default function GamePage() {
           </div>
           <p className="game-hub__muted">2 joueurs maximum par salon. Le createur choisit le jeu, les tirs et la mise.</p>
           <div className="game-hub__test" role="note">
-            <strong>Mode test des salons</strong>
-            <span>Les mises sont indiquees pour preparer les matchs. Aucun F CFA n'est preleve ou verse dans cette etape.</span>
+            <strong>Mode demonstration sans argent reel</strong>
+            <span>Les matchs sont jouables. Les mises et gains restent fictifs : aucun F CFA n'est preleve ou verse.</span>
           </div>
 
           {error && <p role="alert" className="game-hub__error">{error}</p>}
@@ -198,7 +230,7 @@ export default function GamePage() {
               </div>
               <div className="game-hub__facts">
                 <span>⚽ {gameName()}</span><span>{selected.shots} tirs / joueur</span>
-                <span>Mise : {money(selected.stake)}</span><span>Gain prevu : {money(selected.stake * 2)} (non actif)</span>
+                <span>Mise test : {money(selected.stake)}</span><span>Gain fictif : {money(selected.stake * 2)} (non actif)</span>
               </div>
               <div className="game-hub__players">
                 <div><small>CREATEUR</small><strong>{selected.host.pseudo}</strong><span>ID {selected.host.id}</span></div>
@@ -215,17 +247,23 @@ export default function GamePage() {
                     onClick={() => void action(() => roomsApi.declineRoom(selected.id), 'Demande refusee. Salon de nouveau ouvert.')}>Refuser</button>
                 </>}
                 {isGuest && selected.status === 'pending' && <p>Demande envoyee. Le createur doit accepter ton entree.</p>}
-                {selected.status === 'ready' && <p>Les deux joueurs sont confirmes ! Le match de tir au but sera activé a l'etape 2.</p>}
+                {selected.status === 'ready' && <p>Les deux joueurs sont confirmes. Le createur peut lancer le match ci-dessous.</p>}
                 {canJoin && <button className="btn btn--primary btn--sm" type="button" disabled={busy}
                   onClick={() => void action(() => roomsApi.joinRoom(selected.id), 'Demande envoyee au createur.')}>Demander a rejoindre</button>}
                 {!session && selected.status === 'open' && <p>Connecte-toi depuis le Profil pour rejoindre.</p>}
                 {otherRoom && !isParticipant && <p>Tu dois quitter ton salon actuel avant d'en rejoindre un autre.</p>}
                 {selected.status === 'pending' && !isParticipant && <p>Ce salon attend deja la reponse a une demande.</p>}
-                {isParticipant && <button type="button" className="btn btn--sm btn--outline" disabled={busy}
+                {isParticipant && ['open', 'pending', 'ready'].includes(selected.status) && <button type="button" className="btn btn--sm btn--outline" disabled={busy}
                   onClick={() => void action(() => roomsApi.leaveRoom(selected.id), 'Tu as quitte le salon.')}>
                   {isHost ? 'Fermer le salon' : selected.status === 'pending' ? 'Annuler ma demande' : 'Quitter le salon'}
                 </button>}
               </div>
+              {isParticipant && ['ready', 'playing', 'finished'].includes(selected.status) && <PenaltyArena
+                room={selected} match={match} busy={busy}
+                onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
+                onChoose={(direction) => void matchAction(() => roomsApi.chooseDirection(selected.id, direction))}
+                onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}
+                onBack={() => chooseRoom(null)} />}
             </article>
           )}
 
@@ -279,21 +317,31 @@ export default function GamePage() {
               <span className="game-hub__room-bottom">⚽ {room.shots} tirs · {money(room.stake)}<span>Voir →</span></span>
             </button>)}
           </div>
+          {!!results.length && <section className="game-hub__results" aria-label="Mes derniers resultats">
+            <h2>Mes derniers matchs</h2>
+            {results.slice(0, 5).map((room) => <button className="game-hub__result" type="button" key={room.id}
+              onClick={() => void openRoom(room)}>
+              <span>⚽ Salon #{room.code} · {room.shots} tirs</span>
+              <strong>{room.result.winner === (session?.id === room.host.id ? 'host' : 'guest') ? '🏆 Victoire' : 'Defaite'} · {room.result.scores?.host ?? 0} - {room.result.scores?.guest ?? 0}</strong>
+              <span>Voir →</span>
+            </button>)}
+          </section>}
         </section>
       ) : (
         <section id="game-panel-jeux" role="tabpanel" aria-labelledby="game-tab-jeux" className="game-hub__content">
-          <div className="game-hub__line"><h2>Les jeux</h2><span className="game-hub__count">1 en preparation</span></div>
-          <p className="game-hub__muted">Ici, tu pourras lancer les jeux pour t'entrainer en solo ou les tester avant d'entrer dans un salon.</p>
+          <div className="game-hub__line"><h2>Les jeux</h2><span className="game-hub__count">1 disponible</span></div>
+          <p className="game-hub__muted">Entraine-toi contre le robot avant de defier un autre joueur dans un salon.</p>
           <article className="game-hub__featured">
             <span className="game-hub__ball" aria-hidden="true">⚽</span>
             <div><span className="game-hub__eyebrow">PREMIER JEU</span>
               <h3>Tir au but</h3>
               <p>Face a face tireur / gardien. Vise a gauche, au milieu ou a droite. Change de role apres chaque tir et compte tes buts.</p>
               <div className="game-hub__tags"><span>3 tirs</span><span>5 tirs</span><span>10 tirs</span><span>2 joueurs</span></div>
-              <p className="game-hub__muted">Jeu et entrainement solo prevus pour l'etape 2. Les salons peuvent deja etre crees.</p>
+              <p className="game-hub__muted">Choisis le nombre de tirs et joue immediatement contre un gardien virtuel. Aucun argent en jeu.</p>
               <button type="button" className="btn btn--primary btn--sm" onClick={() => setTab('salon')}>Voir les salons</button>
             </div>
           </article>
+          <SoloPenalty />
         </section>
       )}
     </main>

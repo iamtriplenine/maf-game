@@ -1,0 +1,55 @@
+/* Terrain stylise, leger, sans dependance 3D. */
+.penalty { border:1px solid var(--border); border-radius:22px; padding:clamp(12px,3vw,24px); background:var(--glass); display:grid; gap:16px; min-width:0; }
+.penalty__top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+.penalty__top h3 { margin:4px 0; font:700 clamp(20px,4vw,27px)/1.2 var(--font-tech); }
+.penalty__phase { padding:7px 11px; border:1px solid var(--border); background:var(--bg-2); border-radius:100px; font-size:11px; font-weight:800; color:var(--accent-2); }
+.penalty__scoreboard { display:flex; justify-content:center; align-items:center; gap:clamp(15px,5vw,50px); text-align:center; padding:4px 0; }
+.penalty__team { display:grid; gap:5px; min-width:80px; max-width:43%; }
+.penalty__team span { font-size:13px; font-weight:650; overflow-wrap:anywhere; }
+.penalty__team strong { font:800 clamp(38px,9vw,60px)/1 var(--font-tech); }
+.penalty__dash { font-size:26px; color:var(--text-dim); }
+.penalty__extra { margin:0; text-align:center; color:#ffe1a6; font-size:13px; font-weight:700; }
+.penalty__stadium { height:clamp(210px,36vw,325px); position:relative; overflow:hidden; border-radius:18px; background:linear-gradient(#102d31 0%,#186252 47%,#178057 48%,#095b40 80%); isolation:isolate; }
+.penalty__stadium:before { content:''; position:absolute; inset:0; opacity:.24; background:repeating-linear-gradient(0deg,transparent 0 45px,#a3e7b5 45px 90px); }
+.penalty__stadium-glow { position:absolute; width:75%; height:60%; left:12.5%; top:-30%; border-radius:50%; background:#d5fff4; filter:blur(75px); opacity:.18; }
+.penalty__goal { position:absolute; top:12%; left:14%; width:72%; height:49%; border:clamp(5px,1vw,9px) solid #f5f8fa; border-radius:5px 5px 0 0; box-shadow:0 3px 12px #08352d,inset 0 1px 20px #031b1a88; transform:perspective(550px) rotateX(4deg); }
+.penalty__net { position:absolute; inset:0; opacity:.62; background:repeating-linear-gradient(90deg,transparent 0 22px,#d3fbe8a8 23px 24px),repeating-linear-gradient(0deg,transparent 0 18px,#d3fbe8a8 19px 20px); }
+.penalty__keeper { position:absolute; bottom:2%; left:50%; transform:translateX(-50%); font-size:clamp(26px,7vw,45px); filter:drop-shadow(0 3px 4px #031b1abb); }
+.penalty__keeper--left { left:19%; } .penalty__keeper--right { left:81%; }
+.penalty__goal-ball { position:absolute; top:30%; left:50%; transform:translateX(-50%); font-size:clamp(25px,6vw,40px); filter:drop-shadow(0 3px 4px #0006); animation: penalty-enter .35s ease-out both; }
+.penalty__goal-ball--left { left:18%; } .penalty__goal-ball--right { left:82%; }
+@keyframes penalty-enter { from { opacity:.3; scale:.6; translate:0 30px; } to { opacity:1; scale:1; translate:0 0; } }
+.penalty__pitch { position:absolute; bottom:-18%; left:18%; width:64%; height:57%; border:2px solid #d4ffdc88; border-top:0; transform:perspective(240px) rotateX(47deg); }
+.penalty__penalty-area { position:absolute; left:17%; bottom:0; height:100%; width:66%; border:2px solid #d4ffdc55; border-top:0; }
+.penalty__spot { position:absolute; left:50%; bottom:12%; font-size:33px; transform:translateX(-50%); }
+.penalty__outcome { position:absolute; left:50%; top:12%; transform:translateX(-50%) rotate(-7deg); font-size:clamp(22px,7vw,45px); white-space:nowrap; font-weight:1000; text-shadow:0 4px 10px #000a; z-index:4; }
+.penalty__outcome--goal { color:#72ffa3; } .penalty__outcome--miss { color:#ff969d; }
+.penalty__interaction { display:grid; justify-items:center; gap:12px; text-align:center; }
+.penalty__interaction p { margin:0; font-size:13px; color:var(--text-dim); line-height:1.6; }
+.penalty__role { padding:7px 15px; border-radius:100px; font-size:11px; font-weight:900; letter-spacing:.15em; }
+.penalty__role--shot { background:#00cc8640; color:#8afacc; } .penalty__role--save { background:#6b94ff40; color:#b0ccff; }
+.penalty__directions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; width:min(100%,540px); }
+.penalty__direction { display:grid; justify-items:center; gap:5px; padding:12px 6px; border-radius:13px; border:1px solid var(--border); color:var(--text); background:var(--bg-2); font-size:13px; font-weight:700; }
+.penalty__direction span { font-size:29px; line-height:1.2; }
+.penalty__direction:not(:disabled):active { transform:scale(.95); }
+.penalty__direction:not(:disabled):hover, .penalty__direction--chosen { border-color:var(--accent); background:var(--accent-soft); }
+.penalty__direction:disabled { opacity:.65; }
+.penalty__waiting { color:var(--accent-2) !important; }
+.penalty__finish { padding:12px; border-radius:15px; border:1px solid var(--border); background:var(--glass-strong); }
+.penalty__finish>strong { font-size:22px; }
+.penalty__no-money { font-size:11px !important; }
+.penalty__history { display:grid; gap:10px; }
+.penalty__history h4 { margin:0; font-size:14px; }
+.penalty__dots { display:flex; flex-wrap:wrap; gap:7px; }
+.penalty__dot { display:grid; justify-items:center; gap:4px; min-width:34px; padding:6px 8px; border-radius:9px; font-variant-numeric:tabular-nums; }
+.penalty__dot span { font-size:10px; } .penalty__dot strong { font-size:16px; }
+.penalty__dot--goal { background:#00cc6633; color:#6ff5ad; border:1px solid #00cc6670; }
+.penalty__dot--miss { background:#f3454b22; color:#ff999a; border:1px solid #f3454b80; }
+.penalty__last { margin:0; color:var(--text-dim); font-size:12px; line-height:1.55; }
+.penalty__forfeit { justify-self:center; padding:6px 10px; border:0; background:transparent; color:#ffb0b0; text-decoration:underline; font-size:12px; }
+.penalty__disclaimer { margin:0; text-align:center; color:var(--text-dim); font-size:11px; }
+.penalty-solo { display:grid; gap:15px; }
+.penalty-solo__options { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:13px; }
+.penalty-solo__options button { padding:9px 14px; border:1px solid var(--border); background:var(--glass); color:var(--text); border-radius:100px; }
+.penalty-solo__options button.active { border-color:var(--accent); background:var(--accent-soft); }
+@media(max-width:400px) { .penalty__stadium { height:210px; } .penalty__goal { left:9%; width:82%; } .penalty__phase { font-size:10px; } }

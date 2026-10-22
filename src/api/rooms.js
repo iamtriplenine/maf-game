@@ -1,4 +1,4 @@
-// Salons publics MARV GAME — etape 1 (mise affichee, aucun debit).
+// Salons et matchs de tir au but MARV GAME (argent simule uniquement).
 import { API_URL } from './config';
 import { currentSession, walletRequest } from './accounts';
 
@@ -37,3 +37,14 @@ export const declineRoom = async (id) =>
   (await walletRequest(`/api/rooms/${id}/decline`, { method: 'POST' })).room;
 export const leaveRoom = async (id) =>
   (await walletRequest(`/api/rooms/${id}/leave`, { method: 'POST' })).room;
+
+export const getMatch = async (id) =>
+  walletRequest(`/api/rooms/${id}/match`);
+export const startMatch = async (id) =>
+  walletRequest(`/api/rooms/${id}/match/start`, { method: 'POST' });
+export const chooseDirection = async (id, direction) =>
+  walletRequest(`/api/rooms/${id}/match/choose`, { method: 'POST', body: { direction } });
+export const forfeitMatch = async (id) =>
+  walletRequest(`/api/rooms/${id}/match/forfeit`, { method: 'POST' });
+export const recentResults = async () => currentSession()
+  ? (await walletRequest('/api/rooms/results/recent')).rooms || [] : [];
