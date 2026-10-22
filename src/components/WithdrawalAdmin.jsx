@@ -27,7 +27,8 @@ function Detail({ transaction:t,onBack,onDone,onBusy }) {
         <div className="admin-info"><dt>Joueur</dt><dd>{t.pseudo} · #{t.user_id}</dd></div>
         <div className="admin-info"><dt>Numéro de paiement définitif</dt><dd>{t.phone}</dd></div>
         <div className="admin-info"><dt>Solde débité</dt><dd>{money(t.total_amount ?? t.amount)} {t.currency === 'V' ? 'V' : 'F CFA'} · {t.currency === 'V' ? 'Bonus (1 V = 1 F CFA)' : 'Argent réel'}</dd></div>
-        <div className="admin-info"><dt>Frais de retrait</dt><dd>{money(t.fee_amount || 0)} {t.currency === 'V' ? 'V' : 'F CFA'}</dd></div>
+        <div className="admin-info"><dt>Frais service 1 %</dt><dd>{money(t.fee_amount || 0)} {t.currency === 'V' ? 'V' : 'F CFA'}</dd></div>
+        <div className="admin-info"><dt>Commission propriétaire 18 %</dt><dd>{money(t.owner_fee_amount || 0)} {t.currency === 'V' ? 'V' : 'F CFA'} · créditée après validation</dd></div>
         <div className="admin-info"><dt>Demande</dt><dd>{date(t.created_at)}</dd></div>
         <div className="admin-info"><dt>Identifiant</dt><dd>{t.id}</dd></div>
         <div className="admin-info"><dt>Décision</dt><dd>{date(t.decided_at)}</dd></div>

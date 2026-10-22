@@ -14,6 +14,7 @@ import { useChat } from "../chat/useChat";
 import { useSession } from "../auth/useSession";
 import AuthForm from "../components/AuthForm";
 import AdminPanel from "../components/AdminPanel";
+import OwnerCommissionSummary from "../components/OwnerCommissionSummary";
 import { wakeServer, saveSkin } from "../api/accounts";
 import { DEFAULT_SKIN, SKINS, validSkin } from "../characters/skins";
 import { clearAdminAccess } from "../api/accounts";
@@ -206,6 +207,12 @@ export default function ProfilePage({ onOpenStudio }) {
               <IconHistory />
               <span>Historique</span>
             </button>
+            {session?.pseudo === '999' && (
+              <button type="button" className="menu-btn" onClick={() => setSheet('owner-commissions')}>
+                <span aria-hidden="true" style={{fontSize:22}}>◈</span>
+                <span>Mes commissions</span>
+              </button>
+            )}
             {session && (
               <button
                 type="button"
@@ -334,6 +341,9 @@ export default function ProfilePage({ onOpenStudio }) {
         {session && <CouponForm onUser={updateUser} onAdmin={() => setSheet("admin")} />}
       </Sheet>
       {sheet === "admin" && session && <AdminPanel key={session.id} onClose={close} />}
+      <Sheet open={sheet === "owner-commissions"} title="Mes commissions" onClose={close}>
+        {session?.pseudo === '999' && <OwnerCommissionSummary key={session.id} />}
+      </Sheet>
       <Sheet open={sheet === "history"} title="Historique" onClose={close}>
         {session && <AccountHistory key={session.id} />}
       </Sheet>
