@@ -143,3 +143,98 @@
 .profile .profile__canvas { cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .profile .profile__canvas:active { cursor: grabbing; }
 .profile .profile__title { pointer-events: none; }
+
+/* ---- Comptes : pseudo + code, animation d'attente ---- */
+.sheet .field + .field { margin-top: 10px; }
+.sheet .field input { padding: 10px 0; }
+.field .pseudo-input { font: 600 17px/1 var(--font-ui); letter-spacing: .04em; }
+
+.spinner {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 3px solid var(--glass-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: maf-spin .8s linear infinite;
+}
+.spinner--sm { width: 16px; height: 16px; border-width: 2px; margin-right: 8px; }
+@keyframes maf-spin { to { transform: rotate(360deg); } }
+
+.wake {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--glass);
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.wake > div { flex: 1; min-width: 0; }
+.wake strong { display: block; margin-bottom: 2px; color: var(--text); font-size: 13px; }
+.wake__bar { height: 3px; margin-top: 8px; overflow: hidden; border-radius: 3px; background: var(--glass-strong); }
+.wake__bar i { display: block; width: 40%; height: 100%; border-radius: 3px; background: var(--accent-grad); animation: maf-slide 1.4s ease-in-out infinite; }
+@keyframes maf-slide { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+@media (prefers-reduced-motion: reduce) { .spinner, .wake__bar i { animation-duration: 3s; } }
+
+/* ---- Menu du bas (boutons du jeu) + icones ---- */
+.profile .profile__bar { justify-content: flex-end; }
+.theme-icon { width: 44px; min-height: 44px; color: var(--accent-2); }
+
+.profile .profile__panel { gap: 16px; }
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 12px;
+}
+.menu-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 84px;
+  padding: 10px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--glass-strong);
+  color: var(--text);
+  font: 600 12px/1.2 var(--font-ui);
+  letter-spacing: .3px;
+  transition: transform var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.menu-btn svg { color: var(--accent-2); }
+.menu-btn:hover { transform: translateY(-2px); border-color: var(--accent); }
+.menu-btn:active { transform: scale(.97); }
+.menu-btn--danger svg { color: #ff9d8a; }
+.menu-btn--danger:hover { border-color: #ff9d8a; }
+
+.confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Portefeuille F CFA + bonus V et formulaires de recharge */
+.profile .profile__bar { justify-content: flex-start; pointer-events: none; }
+.wallet-balances { display: grid; gap: 8px; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--glass); backdrop-filter: blur(14px); }
+.wallet-balance { display: flex; align-items: center; gap: 10px; color: var(--accent-2); }
+.wallet-balance span { display: grid; gap: 3px; }
+.wallet-balance small { color: var(--text-dim); font-size: 10px; }
+.wallet-balance strong { color: var(--text); font-size: 21px; font-variant-numeric: tabular-nums; }
+.wallet-balance--bonus strong { font-size: 16px; }
+.profile__theme { margin-top: auto; align-self: flex-end; }
+.sheet__body { max-height: 90vh; max-height: 90dvh; overflow-y: auto; overscroll-behavior: contain; }
+.wallet-form { display: grid; gap: 14px; }
+.wallet-label { display: grid; gap: 8px; font-size: 13px; color: var(--text-dim); }
+.wallet-label input { width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--glass-strong); color: var(--text); font: inherit; }
+.wallet-label input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wallet-check { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.5; }
+.wallet-check input { width: 18px; height: 18px; flex-shrink: 0; }
+.wallet-notice { margin: 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--glass); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.wallet-proof { width: 100%; max-height: 220px; object-fit: contain; border-radius: var(--r-md); }
+.wallet-history { display: grid; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; }
+.wallet-history h3 { margin: 0; font-size: 13px; }
+.wallet-history button { display: grid; gap: 5px; text-align: left; padding: 12px; border: 1px solid var(--border); border-radius: var(--r-md); color: var(--text); background: var(--glass); font: inherit; cursor: pointer; }
+.wallet-history span, .wallet-history small { font-size: 12px; color: var(--text-dim); }
+.wallet-form .sheet__text, .wallet-form .sheet__error { margin: 0; }

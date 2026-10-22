@@ -1,0 +1,65 @@
+// Icones SVG du jeu (une seule couleur : celle du texte, via currentColor).
+// Utilisation : <IconCube /> ou <IconCube size={28} />
+function Svg({ size = 22, children }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {children}
+    </svg>
+  );
+}
+
+export const IconCube = (props) => (
+  <Svg {...props}>
+    <path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7z" />
+    <path d="M3.5 7 12 11.5 20.5 7M12 11.5v10" />
+  </Svg>
+);
+
+export const IconLogout = (props) => (
+  <Svg {...props}>
+    <path d="M9 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2H9" />
+    <path d="m16 8 4 4-4 4M20 12H9.5" />
+  </Svg>
+);
+
+export const IconLogin = (props) => (
+  <Svg {...props}>
+    <path d="M15 4.5h2.5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H15" />
+    <path d="m10 8 4 4-4 4M14 12H4" />
+  </Svg>
+);
+
+export const IconUserPlus = (props) => (
+  <Svg {...props}>
+    <circle cx="9.5" cy="8" r="3.5" />
+    <path d="M3 19.5c.6-3.3 3.1-5 6.5-5s5.9 1.7 6.5 5" />
+    <path d="M19 8v6M16 11h6" />
+  </Svg>
+);
+
+export const IconPlus = (props) => (
+  <Svg {...props}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 8v8M8 12h8" />
+  </Svg>
+);
+
+export const IconPalette = (props) => (
+  <Svg {...props}>
+    <path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z" />
+    <circle cx="7.5" cy="11" r="1" fill="currentColor" />
+    <circle cx="10" cy="7" r="1" fill="currentColor" />
+    <circle cx="14.5" cy="7" r="1" fill="currentColor" />
+  </Svg>
+);

@@ -1,0 +1,15 @@
+MAF FRONT : connexion / inscription (pseudo + code a 10 chiffres) + animation d'attente
+=====================================================================================
+1. Dezippe ce dossier (maf-front-patch) A LA RACINE de maf-game (a cote de package.json).
+2. Dans PowerShell, depuis la racine de maf-game :
+
+   powershell -ExecutionPolicy Bypass -File .\maf-front-patch\appliquer-front.ps1
+
+   Le script te demande l'adresse de ton serveur Render (ex : https://maf-backend.onrender.com).
+   Elle est enregistree dans src/api/config.js (modifiable a la main plus tard).
+   Tu peux aussi la donner direct :  ... appliquer-front.ps1 -Api https://maf-backend.onrender.com
+
+3. Teste (npm run dev), puis git push.
+
+Sauvegardes creees : *.avant-comptes.bak (ProfilePage.jsx, accounts.js, useSession.js, profile.css).
+Le script peut etre relance sans danger (il saute ce qui est deja fait).

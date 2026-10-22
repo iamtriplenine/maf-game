@@ -1,0 +1,158 @@
+import { useEffect, useState } from "react";
+import ProfileStage from "../components/ProfileStage";
+import Sheet from "../components/Sheet";
+import ThemeToggle from "../components/ThemeToggle";
+import { useSession } from "../auth/useSession";
+import AuthForm from "../components/AuthForm";
+import { wakeServer } from "../api/accounts";
+import "../styles/profile.css";
+
+// Nom affiche sur la page (une ligne par element)
+const APP_NAME = ["MARV", "GAME"];
+
+export default function ProfilePage({ onOpenStudio }) {
+  const { session, login, register, logout } = useSession();
+  const [sheet, setSheet] = useState(null); // login | signup | account | recharge
+  const close = () => setSheet(null);
+  useEffect(() => {
+    wakeServer();
+  }, []);
+
+  return (
+    <>
+      <main className="profile">
+        <div className="profile__bar">
+          <button
+            type="button"
+            className="btn btn--sm btn--glass"
+            onClick={onOpenStudio}
+          >
+            Studio 3D
+          </button>
+          <ThemeToggle />
+        </div>
+
+        <section className="profile__stage" aria-label="Personnage">
+          <ProfileStage />
+          <h1 className="profile__title title-tech">
+            {APP_NAME[0]}
+            <span>{APP_NAME[1]}</span>
+          </h1>
+        </section>
+
+        <div className="profile__actions">
+          {session ? (
+            <>
+              <button
+                type="button"
+                className="btn btn--glass profile__btn"
+                onClick={() => setSheet("account")}
+              >
+                <small>PSEUDO</small>
+                {session.pseudo}
+              </button>
+              <button
+                type="button"
+                className="btn btn--primary profile__btn"
+                onClick={() => setSheet("recharge")}
+              >
+                + Recharger
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn btn--glass profile__btn"
+                onClick={() => setSheet("login")}
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                className="btn btn--primary profile__btn"
+                onClick={() => setSheet("signup")}
+              >
+                Sign Up
+              </button>
+            </>
+          )}
+        </div>
+
+        <section className="profile__panel">
+          <span className="chip">
+            <span className="orb orb--sm" />
+            {session ? "Connecte" : "Invite"}
+          </span>
+          {session ? (
+            <div className="buy-bar">
+              <div>
+                <span className="price__label">Solde</span>
+                <span className="price__value">{session.balance}</span>
+              </div>
+            </div>
+          ) : (
+            <p className="profile__hint">
+              Connecte-toi avec ton pseudo et ton code pour retrouver ton compte.
+            </p>
+          )}
+        </section>
+      </main>
+
+      <Sheet open={sheet === "login"} title="Login" onClose={close}>
+        <AuthForm
+          mode="login"
+          onSubmit={async (pseudo, code) => {
+            await login(pseudo, code);
+            close();
+          }}
+        />
+      </Sheet>
+
+      <Sheet open={sheet === "signup"} title="Sign Up" onClose={close}>
+        <AuthForm
+          mode="signup"
+          onSubmit={async (pseudo, code) => {
+            await register(pseudo, code);
+            close();
+          }}
+        />
+      </Sheet>
+
+      <Sheet open={sheet === "account"} title="Mon compte" onClose={close}>
+        {session && (
+          <>
+            <p className="sheet__text">
+              Pseudo : <strong>{session.pseudo}</strong>
+              <br />
+              Solde : <strong>{session.balance}</strong>
+            </p>
+            <button
+              type="button"
+              className="btn btn--glass btn--block"
+              onClick={() => {
+                logout();
+                close();
+              }}
+            >
+              Se deconnecter
+            </button>
+          </>
+        )}
+      </Sheet>
+
+      <Sheet open={sheet === "recharge"} title="Recharger" onClose={close}>
+        <p className="sheet__text">
+          La recharge via Wave arrive bientot.
+        </p>
+        <button
+          type="button"
+          className="btn btn--primary btn--block"
+          onClick={close}
+        >
+          Compris
+        </button>
+      </Sheet>
+    </>
+  );
+}

@@ -1,92 +1,50 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
 import Sheet from "../components/Sheet";
 import ThemeToggle from "../components/ThemeToggle";
+import { IconCube, IconLogin, IconLogout, IconPlus, IconUserPlus } from "../components/Icons";
 import { useSession } from "../auth/useSession";
-import { CODE_LENGTH } from "../api/accounts";
+import AuthForm from "../components/AuthForm";
+import { wakeServer } from "../api/accounts";
+import { walletRequest } from "../api/accounts";
+import { WalletBalances, CouponForm, RechargeForm } from "../components/WalletForms";
+import { IconVoucher } from "../components/Icons";
 import "../styles/profile.css";
 
 // Nom affiche sur la page (une ligne par element)
 const APP_NAME = ["MARV", "GAME"];
 
-const formatId = (id) => id.replace(/(\d{4})(\d{3})(\d{3})/, "$1 $2 $3");
-
-function CodeForm({ mode, onSubmit }) {
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const isSignup = mode === "signup";
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      await onSubmit(code);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <p className="sheet__text">
-        {isSignup
-          ? "Choisis ton code a 10 chiffres. Ce sera ton identifiant : il n'y a pas de mot de passe, garde-le bien."
-          : "Entre ton code a 10 chiffres pour te connecter."}
-      </p>
-
-      <label className="field">
-        <input
-          className="code-input"
-          name="code"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="0000000000"
-          maxLength={CODE_LENGTH}
-          value={code}
-          onChange={(event) =>
-            setCode(event.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH))
-          }
-          autoFocus
-        />
-        <span className="code-count">
-          {code.length}/{CODE_LENGTH}
-        </span>
-      </label>
-
-      <p className="sheet__error" role="alert">{error}</p>
-
-      <button
-        type="submit"
-        className="btn btn--primary btn--block"
-        disabled={busy || code.length !== CODE_LENGTH}
-      >
-        {isSignup ? "Creer mon compte" : "Me connecter"}
-      </button>
-    </form>
-  );
-}
-
 export default function ProfilePage({ onOpenStudio }) {
-  const { session, login, register, logout } = useSession();
+  const { session, login, register, logout, updateUser } = useSession();
   const [sheet, setSheet] = useState(null); // login | signup | account | recharge
   const close = () => setSheet(null);
+  useEffect(() => {
+    wakeServer();
+  }, []);
+
+  useEffect(() => {
+    if (!session?.id) return undefined;
+    let alive = true, running = false;
+    async function refresh() {
+      if (running) return;
+      running = true;
+      try {
+        const { user } = await walletRequest("/api/wallet");
+        if (alive) updateUser(user);
+      } catch { /* Le formulaire affiche les erreurs ; conserver les derniers soldes. */ }
+      finally { running = false; }
+    }
+    refresh();
+    const timer = setInterval(refresh, 15000);
+    window.addEventListener("focus", refresh);
+    return () => { alive = false; clearInterval(timer); window.removeEventListener("focus", refresh); };
+  }, [session?.id, updateUser]);
 
   return (
     <>
       <main className="profile">
         <div className="profile__bar">
-          <button
-            type="button"
-            className="btn btn--sm btn--glass"
-            onClick={onOpenStudio}
-          >
-            Studio 3D
-          </button>
-          <ThemeToggle />
+          <WalletBalances user={session} />
         </div>
 
         <section className="profile__stage" aria-label="Personnage">
@@ -103,17 +61,18 @@ export default function ProfilePage({ onOpenStudio }) {
               <button
                 type="button"
                 className="btn btn--glass profile__btn"
-                onClick={() => setSheet("account")}
+                onClick={() => setSheet("coupons")}
               >
-                <small>ID</small>
-                {formatId(session.id)}
+                <IconVoucher />
+                Coupons
               </button>
               <button
                 type="button"
                 className="btn btn--primary profile__btn"
                 onClick={() => setSheet("recharge")}
               >
-                + Recharger
+                <IconPlus />
+                Recharger
               </button>
             </>
           ) : (
@@ -123,6 +82,7 @@ export default function ProfilePage({ onOpenStudio }) {
                 className="btn btn--glass profile__btn"
                 onClick={() => setSheet("login")}
               >
+                <IconLogin />
                 Login
               </button>
               <button
@@ -130,47 +90,54 @@ export default function ProfilePage({ onOpenStudio }) {
                 className="btn btn--primary profile__btn"
                 onClick={() => setSheet("signup")}
               >
+                <IconUserPlus />
                 Sign Up
               </button>
             </>
           )}
         </div>
 
-        <section className="profile__panel">
-          <span className="chip">
-            <span className="orb orb--sm" />
-            {session ? "Connecte" : "Invite"}
-          </span>
-          {session ? (
-            <div className="buy-bar">
-              <div>
-                <span className="price__label">Solde</span>
-                <span className="price__value">{session.balance}</span>
-              </div>
-            </div>
-          ) : (
+        <section className="profile__panel" aria-label="Menu">
+          {!session && (
             <p className="profile__hint">
-              Connecte-toi avec ton code a 10 chiffres pour retrouver ton compte.
+              Connecte-toi avec ton pseudo et ton code pour retrouver ton compte.
             </p>
           )}
+          <div className="menu-grid">
+            <button type="button" className="menu-btn" onClick={onOpenStudio}>
+              <IconCube />
+              <span>Studio 3D</span>
+            </button>
+            {session && (
+              <button
+                type="button"
+                className="menu-btn menu-btn--danger"
+                onClick={() => setSheet("logout")}
+              >
+                <IconLogout />
+                <span>Deconnexion</span>
+              </button>
+            )}
+          </div>
+          <div className="profile__theme"><ThemeToggle /></div>
         </section>
       </main>
 
       <Sheet open={sheet === "login"} title="Login" onClose={close}>
-        <CodeForm
+        <AuthForm
           mode="login"
-          onSubmit={async (code) => {
-            await login(code);
+          onSubmit={async (pseudo, code) => {
+            await login(pseudo, code);
             close();
           }}
         />
       </Sheet>
 
       <Sheet open={sheet === "signup"} title="Sign Up" onClose={close}>
-        <CodeForm
+        <AuthForm
           mode="signup"
-          onSubmit={async (code) => {
-            await register(code);
+          onSubmit={async (pseudo, code) => {
+            await register(pseudo, code);
             close();
           }}
         />
@@ -180,17 +147,14 @@ export default function ProfilePage({ onOpenStudio }) {
         {session && (
           <>
             <p className="sheet__text">
-              Identifiant : <strong>{formatId(session.id)}</strong>
+              Pseudo : <strong>{session.pseudo}</strong>
               <br />
               Solde : <strong>{session.balance}</strong>
             </p>
             <button
               type="button"
               className="btn btn--glass btn--block"
-              onClick={() => {
-                logout();
-                close();
-              }}
+              onClick={() => setSheet("logout")}
             >
               Se deconnecter
             </button>
@@ -198,17 +162,32 @@ export default function ProfilePage({ onOpenStudio }) {
         )}
       </Sheet>
 
-      <Sheet open={sheet === "recharge"} title="Recharger" onClose={close}>
+      <Sheet open={sheet === "logout"} title="Deconnexion" onClose={close}>
         <p className="sheet__text">
-          La recharge sera disponible quand le backend sera en place.
+          Tu veux vraiment te deconnecter de ton compte ? Pour te reconnecter, il faudra ton pseudo et ton code a 10 chiffres.
         </p>
-        <button
-          type="button"
-          className="btn btn--primary btn--block"
-          onClick={close}
-        >
-          Compris
-        </button>
+        <div className="confirm-actions">
+          <button type="button" className="btn btn--glass" onClick={close}>
+            Annuler
+          </button>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => {
+              logout();
+              close();
+            }}
+          >
+            Oui, me deconnecter
+          </button>
+        </div>
+      </Sheet>
+
+      <Sheet open={sheet === "coupons"} title="Coupons" onClose={close}>
+        {session && <CouponForm onUser={updateUser} />}
+      </Sheet>
+      <Sheet open={sheet === "recharge"} title="Recharger" onClose={close}>
+        {session && <RechargeForm user={session} onUser={updateUser} />}
       </Sheet>
     </>
   );

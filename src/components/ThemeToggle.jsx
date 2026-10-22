@@ -1,22 +1,21 @@
 import { useTheme } from "../theme/useTheme";
+import { IconPalette } from "./Icons";
 
-const LABELS = { ciel: "Theme bleu ciel", rose: "Theme rose pur" };
+const NAMES = { ciel: "bleu ciel", rose: "rose pur" };
 
+// Une seule icone : chaque clic passe au theme suivant (bleu ciel <-> rose).
 export default function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  const { theme, toggle } = useTheme();
 
   return (
-    <div className="theme-toggle" role="group" aria-label="Choisir le theme">
-      {Object.keys(LABELS).map((name) => (
-        <button
-          key={name}
-          type="button"
-          data-t={name}
-          aria-label={LABELS[name]}
-          aria-pressed={theme === name}
-          onClick={() => setTheme(name)}
-        />
-      ))}
-    </div>
+    <button
+      type="button"
+      className="btn btn--round btn--glass theme-icon"
+      aria-label={`Changer de theme (actuel : ${NAMES[theme]})`}
+      title="Changer de theme"
+      onClick={toggle}
+    >
+      <IconPalette size={22} />
+    </button>
   );
 }

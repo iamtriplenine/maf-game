@@ -1,0 +1,11 @@
+MAF FRONT : menu du bas, icones SVG, theme en une icone
+=======================================================
+1. Dezippe ce dossier (maf-menu-patch) A LA RACINE de maf-game (a cote de package.json).
+2. Dans PowerShell, depuis la racine de maf-game :
+
+   powershell -ExecutionPolicy Bypass -File .\maf-menu-patch\appliquer-menu.ps1
+
+3. Teste (npm run dev), puis git push.
+
+Sauvegardes : *.avant-menu.bak. Le script peut etre relance sans danger.
+Les icones sont toutes dans src/components/Icons.jsx (pour en ajouter : copier une icone et changer le dessin).

@@ -1,0 +1,37 @@
+
+/* ---- Comptes : pseudo + code, animation d'attente ---- */
+.sheet .field + .field { margin-top: 10px; }
+.sheet .field input { padding: 10px 0; }
+.field .pseudo-input { font: 600 17px/1 var(--font-ui); letter-spacing: .04em; }
+
+.spinner {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 3px solid var(--glass-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: maf-spin .8s linear infinite;
+}
+.spinner--sm { width: 16px; height: 16px; border-width: 2px; margin-right: 8px; }
+@keyframes maf-spin { to { transform: rotate(360deg); } }
+
+.wake {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--glass);
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.wake > div { flex: 1; min-width: 0; }
+.wake strong { display: block; margin-bottom: 2px; color: var(--text); font-size: 13px; }
+.wake__bar { height: 3px; margin-top: 8px; overflow: hidden; border-radius: 3px; background: var(--glass-strong); }
+.wake__bar i { display: block; width: 40%; height: 100%; border-radius: 3px; background: var(--accent-grad); animation: maf-slide 1.4s ease-in-out infinite; }
+@keyframes maf-slide { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+@media (prefers-reduced-motion: reduce) { .spinner, .wake__bar i { animation-duration: 3s; } }
