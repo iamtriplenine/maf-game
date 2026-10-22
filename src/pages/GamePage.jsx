@@ -311,7 +311,7 @@ export default function GamePage() {
                 </button>}
               </div>
               {isParticipant && ['ready', 'playing', 'finished'].includes(selected.status) && <PenaltyArena
-                room={selected} match={match} busy={busy}
+                room={selected} match={match} busy={busy} error={error} onExit={() => chooseRoom(null)}
                 onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
                 onChoose={(direction) => void matchAction(() => roomsApi.chooseDirection(selected.id, direction))}
                 onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import '../styles/penalty-arena.css';
 
 const SIDES = [
@@ -88,27 +89,32 @@ function Scene({ last }) {
 // Une ligne de ronds par joueur : vert = but marque, rouge = rate / arrete.
 function ScoreTrack({ name, side, history, total, score, turnSide, finished, mine }) {
   const shots = (history || []).filter((h) => h.shooter === side);
+  const count = Math.max(total, shots.length);
+  // Au-dela de dix tirs, montrer la serie courante sans agrandir l'ecran.
+  const start = count > 10 ? Math.min(Math.floor(shots.length / 10) * 10, Math.floor((count - 1) / 10) * 10) : 0;
   return (
     <div className={`penalty__track${mine ? ' penalty__track--mine' : ''}`}>
       <div className="penalty__track-head">
-        <span className="penalty__track-name">{name}</span>
+        <span className="penalty__track-name" title={name}>{mine ? "Toi" : name}</span>
         <strong className="penalty__track-score">{score}</strong>
       </div>
       <div className="penalty__rounds" role="img"
         aria-label={`${name} : ${shots.filter((s) => s.goal).length} but(s) sur ${shots.length} tir(s)`}>
-        {Array.from({ length: Math.max(total, shots.length) }).map((_, i) => {
+        {Array.from({ length: Math.min(10, count - start) }).map((_, index) => {
+          const i = start + index;
           const done = shots[i];
           const state = done ? (done.goal ? 'goal' : 'miss')
             : (!finished && turnSide === side && i === shots.length ? 'next' : 'idle');
           return <span key={i} className={`penalty__round penalty__round--${state}`} />;
         })}
       </div>
+      {count > 10 && <small className="penalty__series">{start + 1}–{Math.min(start + 10, count)} / {count}</small>}
     </div>
   );
 }
 
 // Vue partagee par les matchs en ligne et l'entrainement solo.
-export function PenaltyArena({ room = null, match, busy = false, onChoose, onStart, onForfeit, onBack }) {
+export function PenaltyArena({ room = null, match, busy = false, onChoose, onStart, onForfeit, onBack, onExit, error = '' }) {
   const isSolo = !room;
   const status = room?.status || (match?.finished ? 'finished' : 'playing');
   const viewer = match?.viewer || 'host';
@@ -122,8 +128,6 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
   const isWinner = match?.winner === viewer;
   const awaiting = !!match?.myChoice;
   const finished = !!match?.finished || status === 'finished';
-  const myLastShot = last && last.shooter === viewer;
-  const displayRole = role === 'shooter' ? 'TIREUR' : 'GARDIEN';
   const total = match?.totalPerPlayer || room?.shots || 3;
   // Apres chaque tir : on voit le resultat, compte a rebours 5 -> 0, puis le ballon revient au point de penalty.
   const lastNumber = last?.number ?? 0;
@@ -148,87 +152,95 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
     if (alertNow && typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([160, 80, 160]);
   }, [alertNow, match?.turn]);
 
-  return (
-    <section className="penalty" aria-label={isSolo ? 'Entrainement tir au but' : 'Match tir au but'}>
-      <div className="penalty__top">
-        <div>
-          <span className="game-hub__eyebrow">{isSolo ? 'MODE ENTRAINEMENT' : `SALON #${room.code}`}</span>
-          <h3>⚽ Tir au but</h3>
-        </div>
-        <span className="penalty__phase">{finished ? 'MATCH TERMINE' : status === 'ready' ? 'PRET A JOUER' : `TIR ${Math.floor((match?.turn || 0) / 2) + 1} / ${total}`}</span>
-      </div>
-
-      {alertNow && (
-        <div className="penalty__alert" role="alert">
-          <strong>⚡ {role === 'keeper' ? 'Ton adversaire a tiré !' : 'Ton adversaire est prêt dans les buts !'}</strong>
-          <span>À toi de jouer maintenant</span>
-        </div>
-      )}
-
+  const immersive = status === 'playing' || finished;
+  const arenaRef = useRef(null);
+  useEffect(() => {
+    if (!immersive) return undefined;
+    const root = document.getElementById('root');
+    const previousFocus = document.activeElement;
+    const oldInert = root?.inert;
+    const scroll = window.scrollY;
+    const old = { position:document.body.style.position,top:document.body.style.top,width:document.body.style.width,overflow:document.body.style.overflow };
+    document.body.classList.add('penalty-open');
+    Object.assign(document.body.style,{position:'fixed',top:`-${scroll}px`,width:'100%',overflow:'hidden'});
+    if (root) root.inert = true;
+    const resize = () => {
+      arenaRef.current?.style.setProperty('--match-height',`${window.visualViewport?.height || window.innerHeight}px`);
+    };
+    resize();
+    window.addEventListener('resize',resize);
+    window.visualViewport?.addEventListener('resize',resize);
+    arenaRef.current?.focus();
+    return () => {
+      window.removeEventListener('resize',resize);
+      window.visualViewport?.removeEventListener('resize',resize);
+      document.body.classList.remove('penalty-open');
+      Object.assign(document.body.style,old);
+      if (root) root.inert = oldInert;
+      window.scrollTo(0,scroll);
+      if (previousFocus?.isConnected) previousFocus.focus({preventScroll:true});
+    };
+  },[immersive]);
+  function keys(e) {
+    if (!immersive) return;
+    if (e.key === 'Escape' && !busy && onExit) { e.preventDefault(); onExit(); }
+    if (e.key !== 'Tab') return;
+    const buttons = [...arenaRef.current.querySelectorAll('button:not(:disabled)')];
+    const first = buttons[0], end = buttons.at(-1);
+    if (!first) { e.preventDefault(); return; }
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === arenaRef.current)) { e.preventDefault(); end.focus(); }
+    else if (!e.shiftKey && (document.activeElement === end || document.activeElement === arenaRef.current)) { e.preventDefault(); first.focus(); }
+  }
+  const content = (
+    <section ref={arenaRef} tabIndex={immersive ? -1 : undefined} className={`penalty${immersive ? ' penalty--immersive' : ''}`}
+      role={immersive ? 'dialog' : undefined} aria-modal={immersive ? true : undefined}
+      aria-label={isSolo ? 'Entraînement tir au but' : 'Match tir au but'} onKeyDown={keys}
+      onTouchStart={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()}>
+      <header className="penalty__top">
+        <div><h3>Tir au but</h3><small>{isSolo ? 'Entraînement' : `#${room.code} · Mise ${fmt(room.stake)}`}</small></div>
+        <span className="penalty__phase">{finished ? 'Terminé' : status === 'ready' ? 'Prêt' : `Tir ${Math.floor((match?.turn || 0) / 2) + 1}/${total}`}</span>
+        {immersive && onExit && <button type="button" className="penalty__exit" disabled={busy} onClick={onExit} title={isSolo ? 'Quitter l’entraînement' : 'Revenir aux salons sans abandonner le match'}>Sortir ×</button>}
+      </header>
       <div className="penalty__scoreboard" aria-live="polite">
-        <ScoreTrack mine name={ownName || 'Moi'} side={viewer} history={match?.history} total={total}
-          score={ownScore} turnSide={match?.shooter} finished={finished} />
-        <ScoreTrack name={rivalName || 'Adversaire'} side={rivalSide} history={match?.history} total={total}
-          score={rivalScore} turnSide={match?.shooter} finished={finished} />
-        <p className="penalty__legend"><i className="penalty__round penalty__round--goal" /> but marqué
-          <i className="penalty__round penalty__round--miss" /> tir raté / arrêté</p>
+        <ScoreTrack mine name={ownName || 'Moi'} side={viewer} history={match?.history} total={total} score={ownScore} turnSide={match?.shooter} finished={finished}/>
+        <ScoreTrack name={rivalName || 'Adversaire'} side={rivalSide} history={match?.history} total={total} score={rivalScore} turnSide={match?.shooter} finished={finished}/>
+        {match?.overtime > 0 && !finished && <p className="penalty__extra">Prolongation {match.overtime} · 3 tirs supplémentaires</p>}
       </div>
-      {match?.overtime > 0 && !finished && <p className="penalty__extra">Égalité ! Prolongation n° {match.overtime} : 3 tirs de plus par joueur.</p>}
-
       <div className="penalty__stadium" aria-label="Vue du terrain et du but">
-        <Scene last={showLast ? last : null} />
-        {cool > 0 && <div className="penalty__count" role="status" aria-live="polite">Prochain tir dans <strong>{cool}</strong></div>}
-        {showLast && <span key={last.number} className={`penalty__outcome ${last.goal ? 'penalty__outcome--goal' : 'penalty__outcome--miss'}`}>
-          {last.goal ? 'BUT !' : 'ARRÊT !'}
-        </span>}
+        <Scene last={showLast ? last : null}/>
+        {cool > 0 && <div className="penalty__count" role="status">Prochain tir dans <strong>{cool}</strong></div>}
+        {showLast && <span key={last.number} className={`penalty__outcome ${last.goal ? 'penalty__outcome--goal' : 'penalty__outcome--miss'}`}>{last.goal ? 'BUT !' : 'ARRÊT !'}</span>}
       </div>
-
-      {status === 'ready' && (
-        <div className="penalty__interaction">
-          <p>Deux joueurs confirmés. {room.escrow > 0 ? `Cagnotte retenue : ${fmt(room.escrow)}. ` : ''}Chaque tir se résout quand le tireur et le gardien ont choisi.</p>
-          {room.is_host ? <button type="button" className="btn btn--primary" disabled={busy} onClick={onStart}>Lancer le match</button>
-            : <p className="penalty__waiting">En attente du lancement par {room.host.pseudo}…</p>}
-        </div>
-      )}
-      {status === 'playing' && match && !finished && cool > 0 && (
-        <div className="penalty__interaction">
-          <p className="penalty__wait" role="status">Résultat du tir… le ballon revient au milieu dans {cool} s.</p>
-        </div>
-      )}
-      {status === 'playing' && match && !finished && cool === 0 && (
-        <div className="penalty__interaction">
-          <span className={`penalty__role ${role === 'shooter' ? 'penalty__role--shot' : 'penalty__role--save'}`}>{displayRole}</span>
-          <p>{role === 'shooter' ? 'Choisis où tirer le ballon.' : 'Choisis où ton gardien va plonger.'}</p>
+      <div className="penalty__interaction">
+        {status === 'ready' && <>
+          <p>{room.escrow > 0 ? `Cagnotte : ${fmt(room.escrow)}. ` : ''}Les deux joueurs sont prêts.</p>
+          {room.is_host ? <button type="button" className="penalty__primary" disabled={busy} onClick={onStart}>Lancer le match</button> : <p className="penalty__wait">En attente de {room.host.pseudo}…</p>}
+        </>}
+        {status === 'playing' && !finished && <>
+          <p className="penalty__instruction">{!match ? 'Chargement du match…' : role === 'shooter' ? 'Tireur · Où tires-tu ?' : 'Gardien · Où plonges-tu ?'}</p>
           <div className="penalty__directions" role="group" aria-label={role === 'shooter' ? 'Direction du tir' : 'Direction du gardien'}>
-            {SIDES.map((side) => <button key={side.id} type="button"
-              className={`penalty__direction ${match.myChoice === side.id ? 'penalty__direction--chosen' : ''}`}
-              disabled={busy || awaiting} onClick={() => onChoose(side.id)}>
-              <span>{role === 'keeper' && side.id === 'left' ? '↙' : role === 'keeper' && side.id === 'right' ? '↘' : side.icon}</span>
-              {side.title}
-            </button>)}
+            {SIDES.map(side => <button key={side.id} type="button" className={`penalty__direction ${match?.myChoice === side.id ? 'penalty__direction--chosen' : ''}`}
+              disabled={busy || awaiting || cool > 0 || !match} onClick={() => onChoose(side.id)}><span aria-hidden="true">{side.icon}</span>{side.title}</button>)}
           </div>
-          {awaiting && <p role="status" className="penalty__wait">Choix enregistré ({directionName(match.myChoice)}). En attente de l'adversaire…</p>}
-        </div>
-      )}
-      {finished && (
-        <div className="penalty__interaction penalty__finish" role="status">
-          <strong>{isWinner ? '🏆 Victoire !' : 'Fin du match — Défaite'}</strong>
-          <p>{isWinner ? 'Bien joué ! Tu remportes cette partie.' : 'Une revanche sera possible dans un nouveau salon.'}</p>
-          <p className="penalty__no-money">{!room ? 'Entraînement : aucune mise en jeu.'
-            : isWinner ? `${fmt(room.payout > 0 ? room.payout : room.stake * 2)} versés sur ton compte.`
-              : `Ta mise de ${fmt(room.stake)} est perdue.`}</p>
-          {onBack && <button className="btn btn--primary btn--sm" type="button" onClick={onBack}>{isSolo ? 'Rejouer' : 'Retour aux salons'}</button>}
-        </div>
-      )}
-      {last && (
-        <p className="penalty__last">Dernier tir : {myLastShot ? ownName : rivalName} a visé {directionName(last.shot)}, le gardien a plongé {directionName(last.save)}. <strong>{last.goal ? 'But marqué (vert).' : 'Tir arrêté (rouge).'}</strong></p>
-      )}
-      {room && !finished && status === 'playing' && onForfeit && <button type="button" className="penalty__forfeit" disabled={busy}
-        onClick={() => { if (window.confirm('Abandonner le match ? Ton adversaire sera déclaré gagnant et recevra la cagnotte.')) onForfeit(); }}>Abandonner le match</button>}
-      <p className="penalty__disclaimer">{!room ? 'Entraînement : aucune mise en jeu.'
-        : finished ? 'Match terminé.' : `Mise de ${fmt(room.stake)} par joueur, retenue pendant le match.`}</p>
+          <div className={`penalty__signal${alertNow ? ' penalty__signal--alert' : ''}`} role={alertNow ? 'alert' : 'status'}>
+            {alertNow ? '⚡ Ton adversaire a joué · À toi !' : cool > 0 ? `Prochain tir dans ${cool} s` : busy ? 'Envoi du choix…' : awaiting ? `Choix ${directionName(match.myChoice)} enregistré · Adversaire attendu` : 'Choisis ta direction'}
+          </div>
+        </>}
+        {finished && <div className="penalty__finish" role="status">
+          <strong>{isWinner ? '🏆 Victoire !' : 'Match terminé · Défaite'}</strong>
+          <p>{isSolo ? 'Entraînement · aucune mise' : isWinner ? `${fmt(room.payout > 0 ? room.payout : room.stake * 2)} gagnés` : `Mise perdue : ${fmt(room.stake)}`}</p>
+          {onBack && <button type="button" className="penalty__primary" onClick={onBack}>{isSolo ? 'Rejouer' : 'Retour aux salons'}</button>}
+        </div>}
+        {error && <p className="penalty__error" role="alert">{error}</p>}
+      </div>
+      <footer className="penalty__footer">
+        <span className="penalty__legend"><i className="penalty__round penalty__round--goal"/> But <i className="penalty__round penalty__round--miss"/> Raté</span>
+        {room && !finished && status === 'playing' && onForfeit && <button type="button" className="penalty__forfeit" disabled={busy}
+          onClick={() => { if (window.confirm('Abandonner le match ? Ton adversaire recevra la cagnotte.')) onForfeit(); }}>Abandonner</button>}
+      </footer>
     </section>
   );
+  return immersive ? createPortal(content,document.body) : content;
 }
 
 const newSoloState = (shots) => ({
@@ -256,6 +268,7 @@ function resolveSolo(old, direction) {
   };
 }
 export function SoloPenalty() {
+  const [started, setStarted] = useState(false);
   const [shots, setShots] = useState(3);
   const [state, setState] = useState(() => newSoloState(3));
   const [sessionNumber, setSessionNumber] = useState(1);
@@ -267,8 +280,9 @@ export function SoloPenalty() {
         {[3, 5, 10].map((count) => <button key={count} type="button" className={shots === count ? 'active' : ''}
           onClick={() => reset(count)}>{count} tirs</button>)}
       </div>
-      <PenaltyArena key={sessionNumber} match={state} onChoose={(side) => setState((s) => s.finished ? s : resolveSolo(s, side))}
-        onBack={() => reset()} />
+      {!started && <button type="button" className="penalty__primary" onClick={() => { reset(); setStarted(true); }}>Lancer l’entraînement</button>}
+      {started && <PenaltyArena key={sessionNumber} match={state} onChoose={(side) => setState((s) => s.finished ? s : resolveSolo(s, side))}
+        onBack={() => reset()} onExit={() => setStarted(false)} />}
     </div>
   );
 }
