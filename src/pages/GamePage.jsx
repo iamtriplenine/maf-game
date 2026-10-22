@@ -261,6 +261,8 @@ export default function GamePage() {
     if (touch) swipe.current = { x: touch.clientX, y: touch.clientY };
   };
   const endSwipe = (event) => {
+    // MAF_SWIPE_TABS_ONLY_V1 : ne jamais changer d'onglet pendant un duel.
+    if (selected?.status === 'playing' && match) { swipe.current = null; return; }
     const touch = event.changedTouches?.[0];
     const start = swipe.current;
     swipe.current = null;
@@ -279,13 +281,15 @@ export default function GamePage() {
   const canJoin = selected?.status === 'open' && session && !isParticipant && !otherRoom;
 
   return (
-    <main className="game-page game-hub" onTouchStart={startSwipe} onTouchEnd={endSwipe}>
+    <main className="game-page game-hub">
       <header className="game-page__head">
         <h1 className="title-tech"><IconGamepad size={30} /> GAME</h1>
         <p>Explore les jeux, cree un salon et trouve ton adversaire.</p>
       </header>
 
-      <div className="game-hub__tabs" role="tablist" aria-label="Sections de Game">
+      <div className="game-hub__tabs" role="tablist" aria-label="Sections de Game"
+        onTouchStart={startSwipe} onTouchEnd={endSwipe}
+        onTouchCancel={() => { swipe.current = null; }}>
         <button id="game-tab-jeux" type="button" role="tab" aria-controls="game-panel-jeux"
           aria-selected={tab === 'jeux'} className={tab === 'jeux' ? 'is-current' : ''}
           onClick={() => setTab('jeux')}>Game</button>
