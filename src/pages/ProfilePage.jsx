@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
 import Sheet from "../components/Sheet";
+import AccountHistory from "../components/AccountHistory";
 import WithdrawalForm from "../components/WithdrawalForm";
-import { IconWithdraw } from "../components/Icons";
+import { IconWithdraw, IconHistory } from "../components/Icons";
 import { IconChat, IconCube, IconLogin, IconLogout, IconPalette, IconPlus, IconUserPlus } from "../components/Icons";
 import ChatFeed from "../components/ChatFeed";
 import ChatComposer from "../components/ChatComposer";
@@ -198,6 +199,10 @@ export default function ProfilePage({ onOpenStudio }) {
               <IconWithdraw />
               <span>Retrait</span>
             </button>
+            <button type="button" className="menu-btn" onClick={() => setSheet(session ? "history" : "login")}>
+              <IconHistory />
+              <span>Historique</span>
+            </button>
             {session && (
               <button
                 type="button"
@@ -326,6 +331,9 @@ export default function ProfilePage({ onOpenStudio }) {
         {session && <CouponForm onUser={updateUser} onAdmin={() => setSheet("admin")} />}
       </Sheet>
       {sheet === "admin" && session && <AdminPanel key={session.id} onClose={close} />}
+      <Sheet open={sheet === "history"} title="Historique" onClose={close}>
+        {session && <AccountHistory key={session.id} />}
+      </Sheet>
       <Sheet open={sheet === "withdrawal"} title="Retrait" onClose={close}>
         {session && <WithdrawalForm key={session.id} user={session} onUser={updateUser} onRecharge={() => setSheet("recharge")} />}
       </Sheet>

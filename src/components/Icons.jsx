@@ -106,3 +106,7 @@ export const IconSend = (props) => (
 export const IconWithdraw = (props) => (
   <Svg {...props}><path d="M4 4h16v6H4zM7 16h10M12 10v11m-4-4 4 4 4-4" /></Svg>
 );
+
+export const IconHistory = (props) => (
+  <Svg {...props}><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7M12 7v5l3 2" /></Svg>
+);
