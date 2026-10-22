@@ -3,6 +3,7 @@ import { adminRequest } from '../api/accounts';
 import HourglassLoader from './HourglassLoader';
 import AdminChat from './AdminChat';
 import WithdrawalAdmin from './WithdrawalAdmin';
+import AdminCoupons from './AdminCoupons';
 import '../styles/admin.css';
 
 const money=value=>new Intl.NumberFormat('fr-CI').format(value || 0);
@@ -107,7 +108,7 @@ export default function AdminPanel({onClose}) {
   },[acting,onClose]);
   useEffect(()=>{
     let alive=true;
-    if(tab==='chat' || tab==='withdrawals') return undefined; // l'onglet Messages charge ses propres donnees
+    if(tab==='chat' || tab==='withdrawals' || tab==='coupons') return undefined; // l'onglet Messages charge ses propres donnees
     const query=tab==='deposits' ? `/transactions?kind=deposit&limit=${PAGE}&offset=${offset}${filter?'&status='+filter:''}` : `/users?limit=${PAGE}&offset=${offset}&q=${encodeURIComponent(search)}`;
     Promise.all([adminRequest(query),adminRequest('/summary')]).then(([data,stats])=>{
       if(!alive)return;
@@ -122,9 +123,9 @@ export default function AdminPanel({onClose}) {
     <header className="admin-header"><div><p className="admin-eyebrow">VIVA CENTER</p><h1 id="admin-title">Administration</h1></div><button type="button" className="admin-btn" disabled={acting} onClick={onClose}>Fermer ✕</button></header>
     <main className="admin-main">
       <div className="admin-stats"><div><span>Utilisateurs</span><strong>{summary?money(summary.users):'—'}</strong></div><div><span>Dépôts à vérifier</span><strong>{summary?money(pending?.count):'—'}</strong></div><div><span>Dépôts confirmés · F CFA</span><strong>{summary?money(approved?.amount):'—'}</strong></div></div>
-      <nav className="admin-tabs" aria-label="Sections du panel"><button type="button" aria-pressed={tab==='deposits'} disabled={acting} onClick={()=>changeTab('deposits')}>Dépôts</button><button type="button" aria-pressed={tab==='withdrawals'} disabled={acting} onClick={()=>changeTab('withdrawals')}>Retraits</button><button type="button" aria-pressed={tab==='users'} disabled={acting} onClick={()=>changeTab('users')}>Utilisateurs</button><button type="button" aria-pressed={tab==='chat'} disabled={acting} onClick={()=>changeTab('chat')}>Messages</button></nav>
+      <nav className="admin-tabs" aria-label="Sections du panel"><button type="button" aria-pressed={tab==='deposits'} disabled={acting} onClick={()=>changeTab('deposits')}>Dépôts</button><button type="button" aria-pressed={tab==='withdrawals'} disabled={acting} onClick={()=>changeTab('withdrawals')}>Retraits</button><button type="button" aria-pressed={tab==='coupons'} disabled={acting} onClick={()=>changeTab('coupons')}>Coupons</button><button type="button" aria-pressed={tab==='users'} disabled={acting} onClick={()=>changeTab('users')}>Utilisateurs</button><button type="button" aria-pressed={tab==='chat'} disabled={acting} onClick={()=>changeTab('chat')}>Messages</button></nav>
       {flash && <p className="admin-success" role="status">{flash}</p>}
-      {tab==='withdrawals' ? <WithdrawalAdmin onBusy={setActing}/> : tab==='chat' ? <AdminChat onBusy={setActing}/> : selected ? <DepositDetail key={selected.id} transaction={selected} onBusy={setActing} onBack={()=>setSelected(null)} onDone={message=>{setFlash(message);setSelected(null);setRevision(n=>n+1);}}/> : <>
+      {tab==='coupons' ? <AdminCoupons onBusy={setActing}/> : tab==='withdrawals' ? <WithdrawalAdmin onBusy={setActing}/> : tab==='chat' ? <AdminChat onBusy={setActing}/> : selected ? <DepositDetail key={selected.id} transaction={selected} onBusy={setActing} onBack={()=>setSelected(null)} onDone={message=>{setFlash(message);setSelected(null);setRevision(n=>n+1);}}/> : <>
         <div className="admin-toolbar">
           {tab==='deposits' ? <label>État du dépôt<select value={filter} onChange={e=>{setFilter(e.target.value);setOffset(0);}}><option value="pending">À vérifier</option><option value="awaiting_payment">Capture attendue</option><option value="approved">Confirmés</option><option value="rejected">Refusés</option><option value="">Tous les dépôts</option></select></label> : <form onSubmit={e=>{e.preventDefault();setSearch(draft.trim());setOffset(0);}} className="admin-search"><label>Rechercher un utilisateur<input placeholder="Pseudo, numéro ou identifiant" value={draft} maxLength={80} onChange={e=>setDraft(e.target.value)}/></label><button className="admin-btn" type="submit">Rechercher</button></form>}
           <button className="admin-btn" type="button" disabled={loading} onClick={()=>setRevision(n=>n+1)}>Actualiser</button>
