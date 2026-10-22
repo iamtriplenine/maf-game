@@ -1,8 +1,8 @@
 {
   "id": "bailarina",
   "name": "Bailarina",
-  "description": "Modele 3D · sans animation",
+  "description": "Modele 3D · defile",
   "format": "glb",
   "file": "characters/bailarina/model.glb",
-  "rotation": -1.5707963267948966
+  "rotation": 0
 }

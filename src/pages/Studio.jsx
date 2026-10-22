@@ -5,11 +5,10 @@ import ThemeToggle from "../components/ThemeToggle";
 import loki from "../characters/loki/character.json";
 import samba from "../characters/samba/character.json";
 import bailarina from "../characters/bailarina/character.json";
-import catwalk from "../characters/catwalk/character.json";
 import "../App.css";
 
-const characters = [loki, samba, messi, bailarina, catwalk];
-const statics = ["messi", "bailarina"];
+const characters = [loki, samba, messi, bailarina];
+const statics = ["messi"];
 
 export default function Studio({ onBack }) {
   const [selectedId, setSelectedId] = useState("samba");
@@ -45,6 +44,14 @@ export default function Studio({ onBack }) {
             <span>{character.description}</span>
             <span className="card-action">Ouvrir le personnage ↗</span>
           </button>
+        ))}
+
+        {[5].map((number) => (
+          <div className="character-card empty" key={number}>
+            <span className="card-number">0{number}</span>
+            <strong>A ajouter</strong>
+            <span>Emplacement disponible</span>
+          </div>
         ))}
       </section>
 

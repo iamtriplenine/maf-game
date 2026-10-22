@@ -1,3 +1,5 @@
 Nom dans le projet : Bailarina
 Modele fourni par l utilisateur (fichier bailarina_sexy.glb, export Sketchfab).
-Modele statique : pas de squelette, pas d animation.
+Squelette (noms Mixamo) et poids de peau ajoutes pour le projet.
+Animation "Defile" : Catwalk Walk Turn 180 Wide, origine Mixamo, mise sur place.
+Conditions du fournisseur : https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html

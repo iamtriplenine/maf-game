@@ -1,4 +1,0 @@
-Nom dans le projet : Catwalk
-Modele fourni par l utilisateur (fichier Catwalk_Walk_Turn_180_Wide.fbx), origine Mixamo.
-Animation : Catwalk Walk Turn 180 Wide (mise sur place dans le Studio).
-Conditions du fournisseur : https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html
