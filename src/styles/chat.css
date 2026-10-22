@@ -20,14 +20,20 @@
   bottom: calc(var(--panel-h) + var(--actions-h) + 14px + var(--title-h) + 12px);
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   gap: 6px;
   padding: 0 var(--pad);
-  overflow: hidden;
-  pointer-events: none; /* le personnage reste manipulable derriere */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  /* Le fond de la zone laisse passer le doigt vers le personnage ;
+     seules les bulles (voir .chat-msg) captent le defilement. */
+  pointer-events: none;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 28%);
   mask-image: linear-gradient(to bottom, transparent 0, #000 28%);
 }
+
+.profile .chat-feed::-webkit-scrollbar { display: none; }
+.profile .chat-feed > :first-child { margin-top: auto; } /* messages colles en bas */
 
 .chat-feed__empty {
   align-self: center;
@@ -44,10 +50,11 @@
   flex-direction: column;
   align-items: flex-start;
   align-self: flex-start;
+  flex: none;
   max-width: min(64%, 290px);
-  opacity: var(--o, 1);
+  pointer-events: auto; /* un doigt sur une bulle = on defile le chat */
+  touch-action: pan-y;
   animation: chat-in .38s var(--ease) both;
-  transition: opacity .4s var(--ease);
 }
 .chat-msg--me { align-items: flex-end; align-self: flex-end; }
 
@@ -82,7 +89,7 @@
 /* Un nouveau message pousse les autres vers le haut en douceur */
 @keyframes chat-in {
   from { max-height: 0; opacity: 0; transform: translateY(14px) scale(.92); }
-  to { max-height: 220px; opacity: var(--o, 1); transform: none; }
+  to { max-height: 220px; opacity: 1; transform: none; }
 }
 
 /* ---- Ecrire : pilule a droite du titre ---- */
