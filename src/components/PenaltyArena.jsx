@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import '../styles/penalty-arena.css';
+import { winModeIsEnabled, onWinModeChange } from '../utils/winMode';
 
 const SIDES = [
   { id: 'left', title: 'Gauche', icon: '↖' },
@@ -16,7 +17,7 @@ const TARGETS = { left: { x: 112, y: 108 }, center: { x: 200, y: 92 }, right: { 
 const BALL_SPOT = { x: 200, y: 238 };
 
 // Terrain dessine en SVG : but avec poteaux, filet, gardien en grand, ballon.
-function Scene({ last }) {
+function Scene({ last, preview = null }) {
   const target = TARGETS[last?.shot || 'center'];
   const save = last?.save || 'idle';
   const stripes = [0, 1, 2, 3, 4, 5];
@@ -74,6 +75,12 @@ function Scene({ last }) {
       <rect x="54" y="38" width="10" height="136" rx="3" fill="#f6fafc" />
       <rect x="336" y="38" width="10" height="136" rx="3" fill="#f6fafc" />
       <rect x="54" y="36" width="292" height="10" rx="3" fill="#f6fafc" />
+      {/* Marqueur vert de direction, visible uniquement dans le mode autorise. */}
+      {preview && TARGETS[preview] && <g aria-hidden="true" className="penalty__win-marker">
+        <circle cx={TARGETS[preview].x} cy={TARGETS[preview].y} r="17" fill="#36ee72" opacity=".17" />
+        <circle cx={TARGETS[preview].x} cy={TARGETS[preview].y} r="9" fill="none" stroke="#b3ffb1" strokeWidth="2.5" />
+        <circle cx={TARGETS[preview].x} cy={TARGETS[preview].y} r="4.5" fill="#00f55d" stroke="#fff" strokeWidth="1" />
+      </g>}
       {/* Ballon */}
       <g key={last ? `b${last.number}` : 'b0'} className={last ? 'penalty__ball-fly' : 'penalty__ball-rest'}
         style={{ '--tx': `${target.x - BALL_SPOT.x}px`, '--ty': `${target.y - BALL_SPOT.y}px` }}>
@@ -115,6 +122,10 @@ function ScoreTrack({ name, side, history, total, score, turnSide, finished, min
 
 // Vue partagee par les matchs en ligne et l'entrainement solo.
 export function PenaltyArena({ room = null, match, busy = false, onChoose, onStart, onForfeit, onBack, onExit, error = '' }) {
+  const [winEnabled, setWinEnabled] = useState(winModeIsEnabled);
+  useEffect(() => onWinModeChange(() => setWinEnabled(winModeIsEnabled())), []);
+  const preAim = winEnabled && match?.winModeAvailable && !match?.finished && room?.status === 'playing'
+    ? match.winModeOtherChoice : null;
   const isSolo = !room;
   const status = room?.status || (match?.finished ? 'finished' : 'playing');
   const viewer = match?.viewer || 'host';
@@ -216,7 +227,7 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
         {match?.overtime > 0 && !finished && <p className="penalty__extra">Prolongation {match.overtime} · 3 tirs supplémentaires</p>}
       </div>
       <div className="penalty__stadium" aria-label="Vue du terrain et du but">
-        <Scene last={showLast ? last : null}/>
+        <Scene last={showLast ? last : null} preview={preAim}/>
         {cool > 0 && <div className="penalty__count" role="status">Prochain tir dans <strong>{cool}</strong></div>}
         {showLast && <span key={last.number} className={`penalty__outcome ${last.goal ? 'penalty__outcome--goal' : 'penalty__outcome--miss'}`}>{last.goal ? 'BUT !' : 'ARRÊT !'}</span>}
       </div>

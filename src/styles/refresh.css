@@ -30,3 +30,8 @@
 
 /* Above the immersive match; portal keeps refresh accessible outside the inert app. */
 .refresh-control { z-index: 17000; }
+
+/* Couleur du Mode Win sur la boule originale. */
+.refresh-control__button.is-win { --accent:#15984f; --accent-2:#8dffad; color:#71ff9e; }
+.refresh-control__button.is-win .refresh-orb { --orb-light:#8dffad; --orb-dark:#0b9347; box-shadow:0 0 22px #19db6a99,inset 0 7px 14px #a5ffd64d,inset 0 -8px 12px #12633a88; }
+.refresh-control__button.is-win .refresh-orb__rim { stroke:#8dffad; }

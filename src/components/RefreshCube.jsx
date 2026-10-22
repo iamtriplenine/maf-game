@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { refreshData } from '../api/refresh';
+import { currentSession } from '../api/accounts';
+import { winModeIsEnabled, setWinModeActive, onWinModeChange } from '../utils/winMode';
 import '../styles/refresh.css';
 
 const KEY = 'maf-refresh-position';
@@ -20,6 +22,9 @@ export default function RefreshCube() {
   const [now, setNow] = useState(Date.now);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [winEnabled, setWinEnabled] = useState(winModeIsEnabled);
+  const [owner, setOwner] = useState(() => currentSession()?.pseudo === '999');
+  const holdTimer = useRef(null), suppressClick = useRef(false);
   const lock = useRef(false), drag = useRef(null), moved = useRef(false), mounted = useRef(false);
   const remaining = Math.max(0, Math.ceil((until - now) / 1000));
   const refresh = useCallback(async (manual = false) => {
@@ -62,7 +67,15 @@ export default function RefreshCube() {
     const timer = setTimeout(() => setMessage(''), 5000);
     return () => clearTimeout(timer);
   }, [message]);
+  useEffect(() => {
+    const sync = () => { setOwner(currentSession()?.pseudo === '999'); setWinEnabled(winModeIsEnabled()); };
+    window.addEventListener('maf:session', sync);
+    const off = onWinModeChange(sync);
+    return () => { window.removeEventListener('maf:session', sync); off(); clearTimeout(holdTimer.current); };
+  }, []);
+  const cancelHold = () => { clearTimeout(holdTimer.current); holdTimer.current = null; };
   function click(event) {
+    if (suppressClick.current) { suppressClick.current = false; return; }
     if (event.detail !== 0 && moved.current) return;
     setPulse(value => value + 1);
     const next = Date.now() + 60000;
@@ -71,17 +84,29 @@ export default function RefreshCube() {
   }
   function end(event) {
     if (drag.current?.id !== event.pointerId) return;
+    cancelHold();
     drag.current = null;
     save(KEY, position);
   }
   return createPortal(<div className="refresh-control" style={{ left: position.x, top: position.y }}>
-    <button type="button" className={`refresh-control__button ${busy ? 'is-busy' : ''}`}
+    <button type="button" className={`refresh-control__button ${busy ? 'is-busy' : ''} ${owner && winEnabled ? 'is-win' : ''}`}
       aria-label="Actualiser les données" aria-busy={busy}
       title="Actualiser · Fais glisser pour déplacer · Flèches au clavier"
       onClick={click}
       onPointerDown={event => {
         if (!event.isPrimary || event.button !== 0) return;
         moved.current = false;
+        suppressClick.current = false;
+        cancelHold();
+        if (owner) holdTimer.current = setTimeout(() => {
+          holdTimer.current = null;
+          if (moved.current || !drag.current) return;
+          suppressClick.current = true;
+          const enabled = setWinModeActive(!winModeIsEnabled());
+          setWinEnabled(enabled);
+          setMessage(enabled ? 'Mode Win active' : 'Mode Fair Play active');
+          if (navigator.vibrate) navigator.vibrate(120);
+        }, 5000);
         drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, origin: position };
         event.currentTarget.setPointerCapture(event.pointerId);
       }}
@@ -89,9 +114,9 @@ export default function RefreshCube() {
         const start = drag.current;
         if (!start || start.id !== event.pointerId) return;
         const dx = event.clientX - start.x, dy = event.clientY - start.y;
-        if (Math.hypot(dx, dy) > 6) moved.current = true;
+        if (Math.hypot(dx, dy) > 6) { moved.current = true; cancelHold(); }
         if (moved.current) setPosition(clamp({ x: start.origin.x + dx, y: start.origin.y + dy }));
-      }} onPointerUp={end} onPointerCancel={event => { moved.current = true; end(event); }}
+      }} onPointerUp={end} onPointerCancel={event => { moved.current = true; cancelHold(); end(event); }}
       onKeyDown={event => {
         const directions = { ArrowLeft: [-12, 0], ArrowRight: [12, 0], ArrowUp: [0, -12], ArrowDown: [0, 12] };
         const direction = directions[event.key];
