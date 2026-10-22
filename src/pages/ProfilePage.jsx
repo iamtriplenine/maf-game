@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
 import GuidePage from "../components/GuidePage";
+import CommunityLinks from "../components/CommunityLinks";
 import ProfileIdentity from "../components/ProfileIdentity";
 import Sheet from "../components/Sheet";
 import AccountHistory from "../components/AccountHistory";
@@ -189,6 +190,12 @@ export default function ProfilePage({ onOpenStudio }) {
                 <span className="menu-btn__symbol" aria-hidden="true">?</span>
                 <span>Guide</span>
               </button>
+              {session?.pseudo === '999' && (
+                <button type="button" className="menu-btn menu-btn--community" onClick={() => setSheet("community")}>
+                  <span className="menu-btn__symbol" aria-hidden="true">♧</span>
+                  <span>Communauté</span>
+                </button>
+              )}
               <button type="button" className="menu-btn" onClick={() => { setMoreOpen(false); onOpenStudio?.(); }}>
                 <IconCube />
                 <span>Studio 3D</span>
@@ -234,6 +241,12 @@ export default function ProfilePage({ onOpenStudio }) {
                   <span>Mes commissions</span>
                 </button>
               )}
+              {session?.pseudo !== '999' && (
+                <button type="button" className="menu-btn menu-btn--community" onClick={() => setSheet("community")}>
+                  <span className="menu-btn__symbol" aria-hidden="true">♧</span>
+                  <span>Communauté</span>
+                </button>
+              )}
               <button type="button" className="menu-btn menu-btn--more" onClick={() => setMoreOpen(true)} aria-label="Plus d'options">
                 <span className="menu-btn__symbol" aria-hidden="true">•••</span>
                 <span>More</span>
@@ -243,6 +256,9 @@ export default function ProfilePage({ onOpenStudio }) {
         </section>
       </main>
 
+      <Sheet open={sheet === "community"} title="Communauté MAF Game" onClose={close}>
+        <CommunityLinks />
+      </Sheet>
       {sheet === "guide" && <GuidePage onClose={close} />}
 
       {chatFull && (

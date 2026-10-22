@@ -1,0 +1,43 @@
+/* MAF COMMUNAUTE - uniquement la modale et le bouton Profil. */
+.profile .menu-btn--community {
+  border-color: #379e6c;
+  background: linear-gradient(150deg, rgba(37, 177, 113, .21), rgba(26, 68, 65, .13));
+}
+.profile .menu-btn--community .menu-btn__symbol {
+  color: #5be49b;
+  font-size: 28px;
+}
+.maf-community { display: grid; gap: 15px; width: 100%; padding-bottom: 12px; }
+.maf-community__hero {
+  padding: clamp(18px, 4vw, 27px); border: 1px solid rgba(93, 225, 156, .42);
+  background: radial-gradient(circle at top right, rgba(68, 188, 118, .21), transparent 65%),
+      linear-gradient(140deg,#112e28,#132338); border-radius: 18px; color: #f0fff5;
+}
+.maf-community__kicker { font-size: 11px; font-weight: 900; letter-spacing: .16em; color: #8ff5b7; }
+.maf-community__hero h3 { margin: 11px 0 8px; font-size: clamp(20px, 5vw, 27px); color: #fff; }
+.maf-community__hero p { margin: 0; color: #c8dfd4; font-size: 14px; line-height: 1.6; }
+.maf-community__cards { display: grid; gap: 12px; }
+.maf-community__card {
+  display: grid; grid-template-columns: 48px 1fr; gap: 12px;
+  border: 1px solid rgba(112, 196, 153, .35); border-radius: 17px;
+  background: linear-gradient(160deg,rgba(28,58,52,.94),rgba(20,39,53,.96));
+  padding: 16px; color: #f6fff9;
+}
+.maf-community__card--channel { border-color: rgba(117, 182, 225, .42); background: linear-gradient(160deg,#1b3443,#1c2d42); }
+.maf-community__icon { width: 46px; height: 46px; display: grid; place-items: center;
+  font-size: 26px; border-radius: 14px; background: rgba(100, 219, 149, .13); }
+.maf-community__eyebrow { display: block; font-size: 10px; letter-spacing: .12em; font-weight: 900; color: #93eeb7; }
+.maf-community__copy { min-width: 0; }
+.maf-community__copy h4 { margin: 3px 0 5px; color: #fff; font-size: 17px; }
+.maf-community__copy p { margin: 0; color: #c7d9dd; font-size: 13px; line-height: 1.5; }
+.maf-community__link {
+  grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; text-decoration: none; min-height: 44px; border-radius: 11px;
+  background: #27ba75; color: #052619; font-weight: 900; padding: 11px 14px;
+}
+.maf-community__card--channel .maf-community__link { background: #74d5e6; color: #073041; }
+.maf-community__link:hover { filter: brightness(1.08); }
+.maf-community__link:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.maf-community__note { font-size: 12px; line-height: 1.5; color: var(--text-dim,#a7b6c7); margin: 0 3px; }
+@media (max-width: 370px) { .maf-community__card { grid-template-columns: 40px 1fr; padding: 12px; } .maf-community__icon { width: 40px; height: 40px; } }
+@media (prefers-reduced-motion: reduce) { .maf-community__link { transition: none; } }
