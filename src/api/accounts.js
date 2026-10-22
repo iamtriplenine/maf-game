@@ -2,6 +2,8 @@
 // Le serveur gratuit s'endort apres 15 min : le premier appel peut durer ~60 s.
 import { API_URL } from "./config";
 
+let adminAccess = null; // Memoire seulement : efface a la fermeture du panel.
+
 const KEY_SESSION = "maf-session-v2"; // { token, user }
 
 export const CODE_LENGTH = 10;
@@ -33,7 +35,7 @@ function writeStored(data) {
 }
 
 // Appel serveur ; reessaie tout seul si le serveur est en train de se reveiller (502/503/504).
-async function request(path, { method = "GET", body, token } = {}) {
+async function request(path, { method = "GET", body, token, headers = {}, responseType = "json" } = {}) {
   const start = Date.now();
   let networkRetries = 0;
   for (;;) {
@@ -42,6 +44,7 @@ async function request(path, { method = "GET", body, token } = {}) {
       res = await fetch(`${API_URL}${path}`, {
         method,
         headers: {
+          ...headers,
           ...(body ? { "Content-Type": "application/json" } : {}),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
@@ -65,13 +68,13 @@ async function request(path, { method = "GET", body, token } = {}) {
       await sleep(4000);
       continue;
     }
-    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
       const error = new Error(data.error || `Erreur serveur (${res.status}).`);
       error.status = res.status;
       throw error;
     }
-    return data;
+    return responseType === "blob" ? res.blob() : res.json().catch(() => ({}));
   }
 }
 
@@ -88,6 +91,7 @@ async function authenticate(path, pseudo, code) {
   if (!isValidPseudo(pseudo)) throw new Error("Le pseudo doit faire entre 3 et 20 caracteres.");
   if (!isValidCode(code)) throw new Error("Le code doit contenir exactement 10 chiffres.");
   const { token, user } = await request(path, { method: "POST", body: { pseudo, code } });
+  clearAdminAccess();
   writeStored({ token, user });
   return user;
 }
@@ -105,6 +109,7 @@ export async function refreshSession() {
     return user;
   } catch (error) {
     if (error.status === 401) {
+      clearAdminAccess();
       writeStored(null);
       return null;
     }
@@ -113,6 +118,7 @@ export async function refreshSession() {
 }
 
 export function logout() {
+  clearAdminAccess();
   writeStored(null);
 }
 
@@ -124,4 +130,20 @@ export async function walletRequest(path, options = {}) {
 export function storeWalletUser(user) {
   const stored = readStored();
   if (stored && stored.user.id === user.id) writeStored({ ...stored, user });
+}
+
+export function setAdminAccess(access) {
+  const stored=readStored();
+  if (!stored || typeof access?.token !== 'string' || !Number.isFinite(access.expires_at))
+    throw new Error('Acces administrateur invalide.');
+  adminAccess={...access,userId:stored.user.id};
+}
+export function clearAdminAccess() { adminAccess=null; }
+export async function adminRequest(path,options={}) {
+  const stored=readStored();
+  if (!stored || !adminAccess || adminAccess.userId!==stored.user.id || adminAccess.expires_at<=Date.now()) {
+    clearAdminAccess();
+    throw new Error('Acces administrateur expire. Rouvre le panel depuis Coupons.');
+  }
+  return request('/api/admin'+path,{...options,token:stored.token,headers:{'X-Admin-Session':adminAccess.token}});
 }

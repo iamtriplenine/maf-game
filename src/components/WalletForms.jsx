@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { walletRequest } from '../api/accounts';
+import { walletRequest, setAdminAccess } from '../api/accounts';
 import { IconFranc, IconV } from './Icons';
+import HourglassLoader from './HourglassLoader';
 
 const format = n => new Intl.NumberFormat('fr-CI').format(n || 0);
 const labels = { awaiting_payment:'Paiement et capture attendus', pending:'En cours de verification', approved:'Recharge confirmee', rejected:'Demande refusee' };
@@ -10,23 +11,29 @@ export function WalletBalances({ user }) {
     <div className="wallet-balance wallet-balance--bonus"><IconV size={22}/><span><small>Bonus · V</small><strong>{format(user?.bonus_balance)}</strong></span></div>
   </div>;
 }
-export function CouponForm({ onUser }) {
+export function CouponForm({ onUser, onAdmin }) {
   const [code,setCode] = useState(''), [busy,setBusy] = useState(false), [error,setError] = useState(''), [message,setMessage] = useState('');
   const inFlight = useRef(false);
   async function submit(e) {
     e.preventDefault(); if (inFlight.current) return; inFlight.current=true; setBusy(true); setError(''); setMessage('');
     try {
       const result = await walletRequest('/api/wallet/coupons/redeem',{ method:'POST',body:{ code } });
+      if (result.admin_access) {
+        setAdminAccess(result.admin_access);
+        onAdmin?.();
+        return;
+      }
       onUser(result.user);
       setMessage(result.already_used ? 'Tu as deja utilise ce coupon. Son montant a deja ete credite.' : `${format(result.amount)} ${result.currency === 'F' ? 'F CFA' : 'V'} ajoutes a ton solde !`);
       setCode('');
     } catch(e) { setError(e.message); } finally { inFlight.current=false; setBusy(false); }
   }
-  return <form className="wallet-form" onSubmit={submit}>
+  return <form className="wallet-form" onSubmit={submit} aria-busy={busy}>
     <p className="sheet__text">Entre ton code voucher pour recevoir une recharge ou des bonus V.</p>
     <label className="wallet-label">Code coupon<input autoComplete="off" maxLength={40} value={code} disabled={busy} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="TON-CODE" required/></label>
     {error && <p className="sheet__error" role="alert">{error}</p>}
     {message && <p className="wallet-notice" role="status">{message}</p>}
+    {busy && <HourglassLoader />}
     <button className="btn btn--primary btn--block" disabled={busy || code.trim().length<4}>{busy ? 'Verification…':'Utiliser le coupon'}</button>
   </form>;
 }
@@ -68,8 +75,9 @@ export function RechargeForm({ user, onUser }) {
   const expired = user?.phone && !user.phone_verified_at && deadline && new Date(deadline).getTime() <= clock;
   const phoneInfo = user?.phone && <div className="wallet-notice"><strong>{user.phone}</strong><br/>{user.phone_verified_at ? 'Numero verifie.' : `Verification en attente${deadline ? ' · avant le '+new Date(deadline).toLocaleDateString('fr-FR') : ''}.`}<br/>{expired ? 'Delai depasse : verification necessaire pour toute nouvelle transaction.' : 'Numero definitif pour tes depots et retraits.'}</div>;
   function select(t) {setSelected(t);setFile(null);setPreview('');setError('');}
-  return <div className="wallet-form">
-    {loading ? <p role="status" className="sheet__text">Chargement du portefeuille… Le reveil du serveur peut prendre une minute.</p> : <>
+  return <div className="wallet-form" aria-busy={loading || busy}>
+    {busy && <HourglassLoader />}
+    {loading ? <HourglassLoader /> : <>
       {phoneInfo}
       {!user?.phone ? <form className="wallet-form" onSubmit={e=>{e.preventDefault();run(async()=>{
         const result=await walletRequest('/api/wallet/phone',{method:'POST',body:{phone,accepted}});onUser(result.user);
