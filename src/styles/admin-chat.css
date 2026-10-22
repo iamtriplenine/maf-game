@@ -1,0 +1,11 @@
+/* Onglet "Messages" du panel admin */
+.admin-chat__count { margin: 0; align-self: center; }
+.admin-chat__list { display: grid; gap: 12px; }
+.admin-chat__row { display: grid; gap: 12px; }
+.admin-chat__msg { display: flex; flex-direction: column; }
+.admin-chat__msg .chat-msg { max-width: 100%; animation: none; }
+.admin-chat__row > .admin-btn { justify-self: start; }
+.admin-chat__row .admin-confirm { margin: 0; }
+@media (max-width: 560px) {
+  .admin-toolbar { flex-wrap: wrap; }
+}

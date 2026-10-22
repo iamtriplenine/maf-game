@@ -10,6 +10,7 @@ const KEEP = 200; // messages gardes en memoire (= maximum garde par le serveur)
 export function useChat(enabled) {
   const [messages, setMessages] = useState([]);
   const lastId = useRef(0);
+  const epoch = useRef(null); // change quand l'administrateur supprime des messages
   const loading = useRef(false);
 
   const merge = useCallback((incoming) => {
@@ -27,7 +28,15 @@ export function useChat(enabled) {
     if (loading.current) return;
     loading.current = true;
     try {
-      merge(await fetchMessages(lastId.current));
+      let data = await fetchMessages(lastId.current);
+      if (epoch.current !== null && data.epoch !== epoch.current) {
+        // des messages ont ete supprimes : on efface l'ecran et on recharge tout
+        lastId.current = 0;
+        setMessages([]);
+        data = await fetchMessages(0);
+      }
+      epoch.current = data.epoch;
+      merge(data.messages);
     } finally {
       loading.current = false;
     }

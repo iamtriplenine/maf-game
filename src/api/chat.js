@@ -2,7 +2,8 @@
 import { API_URL } from "./config";
 import { walletRequest } from "./accounts";
 
-// Messages plus recents que `after` (0 = les derniers messages)
+// Messages plus recents que `after` (0 = les derniers messages).
+// Renvoie aussi `epoch` : il change quand l'administrateur supprime des messages.
 export async function fetchMessages(after = 0) {
   const res = await fetch(`${API_URL}/api/chat?after=${after}`, {
     cache: "no-store",
@@ -10,7 +11,7 @@ export async function fetchMessages(after = 0) {
   });
   if (!res.ok) throw new Error(`Chat indisponible (${res.status}).`);
   const data = await res.json().catch(() => ({}));
-  return Array.isArray(data.messages) ? data.messages : [];
+  return { messages: Array.isArray(data.messages) ? data.messages : [], epoch: data.epoch ?? 0 };
 }
 
 export async function postMessage(body) {
