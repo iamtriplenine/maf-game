@@ -20,6 +20,7 @@ async function openRequest(path) {
   return data;
 }
 
+export const footballLeaderboard = async () => openRequest('/api/rooms/leaderboard/football');
 export const listRooms = async () => (await openRequest('/api/rooms')).rooms || [];
 export const myRoom = async () => currentSession()
   ? (await walletRequest('/api/rooms/mine')).room : null;

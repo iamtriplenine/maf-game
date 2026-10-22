@@ -1,0 +1,35 @@
+/* MAF Game — podium du football. L'ecran est volontairement en lecture seule. */
+.maf-foot-ranking { display:flex; flex-direction:column; gap:13px; max-height: min(74dvh, 690px); overflow-y:auto; overscroll-behavior:contain; padding:2px 3px 18px; color:var(--text); scrollbar-width:thin; }
+.maf-foot-ranking__intro { padding:19px 17px; border:1px solid rgba(241,184,67,.4); border-radius:19px; background:linear-gradient(135deg,rgba(83,54,13,.66),rgba(24,40,48,.76)); box-shadow:inset 0 1px rgba(255,255,255,.09); }
+.maf-foot-ranking__kicker { display:block; font-size:10px; font-weight:850; letter-spacing:.14em; color:#ffda85; }
+.maf-foot-ranking__intro h3 { font-size:23px; line-height:1.2; margin:7px 0 5px; color:#ffe9b5; }
+.maf-foot-ranking__intro p { margin:0; color:var(--text-dim); font-size:13px; line-height:1.5; }
+.maf-foot-ranking__toolbar {display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:11px; color:var(--text-dim); }
+.maf-foot-ranking__refresh { border:1px solid rgba(239,190,83,.5); border-radius:12px; padding:8px 10px; background:rgba(238,180,73,.12); color:#ffe0a3; font:700 11px var(--font-ui); cursor:pointer; }
+.maf-foot-ranking__refresh:disabled {opacity:.5;cursor:default;}
+.maf-foot-ranking__state { display:flex; flex-direction:column; align-items:center; gap:10px; padding:30px 20px; border:1px dashed var(--border);border-radius:17px;text-align:center;font-size:13px;color:var(--text-dim); }
+.maf-foot-ranking__state p {margin:0;line-height:1.5;}
+.maf-foot-ranking__state strong {font-size:18px;color:var(--text);}
+.maf-foot-ranking__state--error {color:#ffc1ad;}
+.maf-foot-ranking__empty-icon {font-size:45px;}
+.maf-foot-ranking__podium { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; align-items:stretch; }
+.maf-foot-ranking__champion { display:flex; min-width:0; flex-direction:column; align-items:center; gap:6px; padding:13px 5px 15px; border:1px solid rgba(210,216,237,.24); border-radius:15px; background:linear-gradient(160deg,rgba(119,135,163,.18),rgba(33,45,63,.36)); text-align:center; }
+.maf-foot-ranking__champion--1 { border-color:rgba(246,193,65,.7); background:linear-gradient(160deg,rgba(176,122,27,.3),rgba(77,48,10,.14)); box-shadow:0 0 18px rgba(245,188,62,.1); }
+.maf-foot-ranking__champion--3 { border-color:rgba(208,126,72,.45); background:linear-gradient(160deg,rgba(119,63,30,.22),rgba(49,37,33,.21)); }
+.maf-foot-ranking__medal {font-size:34px; line-height:1.15;}
+.maf-foot-ranking__place {font-size:9px; letter-spacing:.09em; font-weight:900; color:var(--text-dim);}
+.maf-foot-ranking__champion strong {max-width:100%; font-size:12px; white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.maf-foot-ranking__wins {font-size:10px;font-weight:800;color:#f1d397;}
+.maf-foot-ranking__subtitle {margin:5px 0 0;font-size:13px;letter-spacing:.04em;}
+.maf-foot-ranking__list {display:flex;flex-direction:column;gap:5px;list-style:none;margin:0;padding:0;}
+.maf-foot-ranking__item {display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:12px;background:var(--glass);padding:10px 12px;min-width:0;}
+.maf-foot-ranking__item--top {background:linear-gradient(95deg,rgba(219,165,58,.1),var(--glass));}
+.maf-foot-ranking__number {width:29px;flex:none;text-align:center;font-size:15px;font-weight:850;color:var(--accent-2);}
+.maf-foot-ranking__player {flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;font-weight:750;}
+.maf-foot-ranking__results {display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:none;}
+.maf-foot-ranking__results strong {font-size:12px;color:#f5d282;}
+.maf-foot-ranking__results small {font-size:10px;color:var(--text-dim);}
+.maf-foot-ranking__footnote {margin:0;font-size:11px;line-height:1.5;color:var(--text-dim);}
+.profile .menu-btn--ranking {border-color:rgba(230,185,74,.55);background:linear-gradient(135deg,rgba(209,149,37,.19),var(--glass-strong));}
+.profile .menu-btn--ranking .menu-btn__symbol {font-size:24px;}
+@media(max-width:360px) { .maf-foot-ranking__champion{padding:10px 3px;} .maf-foot-ranking__medal{font-size:29px;} .maf-foot-ranking__champion strong{font-size:11px;} }

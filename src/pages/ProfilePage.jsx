@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
 import GuidePage from "../components/GuidePage";
 import CommunityLinks from "../components/CommunityLinks";
+import FootballLeaderboard from "../components/FootballLeaderboard";
 import ProfileIdentity from "../components/ProfileIdentity";
 import Sheet from "../components/Sheet";
 import AccountHistory from "../components/AccountHistory";
@@ -196,6 +197,10 @@ export default function ProfilePage({ onOpenStudio }) {
                   <span>Communauté</span>
                 </button>
               )}
+              <button type="button" className="menu-btn menu-btn--ranking" onClick={() => setSheet("ranking")}>
+                <span className="menu-btn__symbol" aria-hidden="true">🏆</span>
+                <span>Classement</span>
+              </button>
               <button type="button" className="menu-btn" onClick={() => { setMoreOpen(false); onOpenStudio?.(); }}>
                 <IconCube />
                 <span>Studio 3D</span>
@@ -258,6 +263,9 @@ export default function ProfilePage({ onOpenStudio }) {
 
       <Sheet open={sheet === "community"} title="Communauté MAF Game" onClose={close}>
         <CommunityLinks />
+      </Sheet>
+      <Sheet open={sheet === "ranking"} title="Classement football" onClose={close}>
+        <FootballLeaderboard />
       </Sheet>
       {sheet === "guide" && <GuidePage onClose={close} />}
 
