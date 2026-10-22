@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
 import Sheet from "../components/Sheet";
+import WithdrawalForm from "../components/WithdrawalForm";
+import { IconWithdraw } from "../components/Icons";
 import { IconChat, IconCube, IconLogin, IconLogout, IconPalette, IconPlus, IconUserPlus } from "../components/Icons";
 import ChatFeed from "../components/ChatFeed";
 import ChatComposer from "../components/ChatComposer";
@@ -192,6 +194,10 @@ export default function ProfilePage({ onOpenStudio }) {
               <IconPalette />
               <span>Personnalisation</span>
             </button>
+            <button type="button" className="menu-btn" onClick={() => setSheet(session ? "withdrawal" : "login")}>
+              <IconWithdraw />
+              <span>Retrait</span>
+            </button>
             {session && (
               <button
                 type="button"
@@ -320,6 +326,9 @@ export default function ProfilePage({ onOpenStudio }) {
         {session && <CouponForm onUser={updateUser} onAdmin={() => setSheet("admin")} />}
       </Sheet>
       {sheet === "admin" && session && <AdminPanel key={session.id} onClose={close} />}
+      <Sheet open={sheet === "withdrawal"} title="Retrait" onClose={close}>
+        {session && <WithdrawalForm key={session.id} user={session} onUser={updateUser} onRecharge={() => setSheet("recharge")} />}
+      </Sheet>
       <Sheet open={sheet === "recharge"} title="Recharger" onClose={close}>
         {session && <RechargeForm user={session} onUser={updateUser} />}
       </Sheet>

@@ -73,3 +73,6 @@
  .admin-card__top { align-items:flex-start; }
  .admin-header .admin-btn { padding:10px 12px; }
 }
+
+.admin-tabs { overflow-x: auto; }
+.admin-tabs button { flex-shrink: 0; }

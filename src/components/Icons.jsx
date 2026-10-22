@@ -102,3 +102,7 @@ export const IconSend = (props) => (
     <path d="M12 19V5.5M6 11.5l6-6 6 6" strokeWidth="2.2" />
   </Svg>
 );
+
+export const IconWithdraw = (props) => (
+  <Svg {...props}><path d="M4 4h16v6H4zM7 16h10M12 10v11m-4-4 4 4 4-4" /></Svg>
+);

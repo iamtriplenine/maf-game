@@ -270,3 +270,6 @@
   .profile { --panel-h: max(294px, 42dvh); }
   .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+.withdrawal-fields { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; min-width: 0; }
+.withdrawal-fields legend { margin-bottom: 12px; font-weight: 600; }
