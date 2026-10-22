@@ -17,3 +17,12 @@ export async function postMessage(body) {
   const data = await walletRequest("/api/chat", { method: "POST", body: { body } });
   return data.message;
 }
+
+// Vocal : `audio` en base64, `ms` = duree (20 000 ms maximum, verifie aussi par le serveur)
+export async function postVoice({ audio, ms }) {
+  const data = await walletRequest("/api/chat/voice", { method: "POST", body: { audio, ms } });
+  return data.message;
+}
+
+// Adresse du son d'un vocal (le serveur gere la lecture par morceaux, necessaire sur iPhone)
+export const voiceUrl = (id) => `${API_URL}/api/chat/${id}/audio`;

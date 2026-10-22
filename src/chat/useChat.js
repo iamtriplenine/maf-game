@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchMessages, postMessage } from "../api/chat";
+import { fetchMessages, postMessage, postVoice } from "../api/chat";
 import { registerRefresh } from "../api/refresh";
 
 const POLL_MS = 5000; // verifie les nouveaux messages toutes les 5 s
@@ -46,9 +46,10 @@ export function useChat(enabled) {
     };
   }, [enabled, load]);
 
+  // `content` : un texte, ou un vocal { audio, ms }
   const send = useCallback(
-    async (text) => {
-      merge([await postMessage(text)]);
+    async (content) => {
+      merge([await (typeof content === "string" ? postMessage(content) : postVoice(content))]);
     },
     [merge]
   );

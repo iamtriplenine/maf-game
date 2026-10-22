@@ -78,7 +78,7 @@ export default function ProfilePage({ onOpenStudio }) {
           </h1>
         </section>
 
-        {chatOn && (
+        {chatOn && !chatFull && (
           <>
             <ChatFeed messages={chat.messages} myId={session?.id} />
             <ChatComposer session={session} onSend={chat.send} onNeedLogin={() => setSheet("login")} />

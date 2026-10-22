@@ -7,26 +7,55 @@ import { useStickBottom } from "../chat/useStickBottom";
 export default function ChatScreen({ messages, myId, session, onSend, onNeedLogin, onClose }) {
   const listRef = useRef(null);
   const onScroll = useStickBottom(listRef, messages);
-  const [height, setHeight] = useState(null);
+  const [box, setBox] = useState(null); // { top, height } de la zone visible (au-dessus du clavier)
 
-  // Echap ferme ; la hauteur suit le clavier du telephone pour garder la zone d'ecriture visible
+  // Echap ferme ; la zone suit le clavier du telephone (iPhone : la page est decalee quand le clavier s'ouvre)
   useEffect(() => {
     const onKey = (event) => {
       if (event.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
+
+    // La page derriere ne bouge plus tant que le chat est ouvert
+    const body = document.body;
+    const saved = { position: body.style.position, top: body.style.top, width: body.style.width, overflow: body.style.overflow };
+    const scrollY = window.scrollY;
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+
     const vv = window.visualViewport;
-    const fit = () => vv && setHeight(vv.height);
+    const fit = () => {
+      if (!vv) return;
+      setBox({ top: Math.round(vv.offsetTop), height: Math.round(vv.height) });
+      if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+    };
     fit();
     vv?.addEventListener("resize", fit);
+    vv?.addEventListener("scroll", fit);
     return () => {
       window.removeEventListener("keydown", onKey);
       vv?.removeEventListener("resize", fit);
+      vv?.removeEventListener("scroll", fit);
+      body.style.position = saved.position;
+      body.style.top = saved.top;
+      body.style.width = saved.width;
+      body.style.overflow = saved.overflow;
+      window.scrollTo(0, scrollY);
     };
   }, [onClose]);
 
+  // Quand le clavier s'ouvre ou se ferme, on reste sur le dernier message
+  useEffect(() => {
+    const node = listRef.current;
+    if (node) node.scrollTop = node.scrollHeight;
+  }, [box?.height]);
+
   return (
-    <div className="chat-screen" role="dialog" aria-modal="true" aria-label="Chat global" style={height ? { height } : undefined}>
+    <>
+    <div className="chat-backdrop" aria-hidden="true" />
+    <div className="chat-screen" role="dialog" aria-modal="true" aria-label="Chat global" style={box ? { top: box.top, height: box.height } : undefined}>
       <header className="chat-screen__head">
         <h2 className="chat-screen__title title-tech">Chat global</h2>
         <button type="button" className="btn btn--round btn--glass btn--sm" aria-label="Fermer le chat" onClick={onClose}>
@@ -53,5 +82,6 @@ export default function ChatScreen({ messages, myId, session, onSend, onNeedLogi
         <ChatComposer session={session} onSend={onSend} onNeedLogin={onNeedLogin} />
       </div>
     </div>
+    </>
   );
 }
