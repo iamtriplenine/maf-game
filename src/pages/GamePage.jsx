@@ -3,6 +3,9 @@ import { IconGamepad } from '../components/Icons';
 import { PenaltyArena, SoloPenalty } from '../components/PenaltyArena';
 import CheckersArena from '../components/CheckersArena';
 import SoloCheckers from '../components/SoloCheckers';
+import TankArena from '../components/TankArena';
+import SoloTank from '../components/SoloTank';
+// MAF_TANK_GAMEPAGE_V1
 import { useSession } from '../auth/useSession';
 import * as roomsApi from '../api/rooms';
 import { registerRefresh } from '../api/refresh';
@@ -16,8 +19,8 @@ const localRoomDeadline = room => room ? {
 } : null;
 
 const money = (value) => `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`;
-const gameName = (game) => game === 'checkers' ? 'Dames' : 'Tir au but';
-const gameSymbol = (game) => game === 'checkers' ? '♛' : '⚽';
+const gameName = (game) => game === 'tank' ? 'Tank Battle' : game === 'checkers' ? 'Dames' : 'Tir au but';
+const gameSymbol = (game) => game === 'tank' ? '🚀' : game === 'checkers' ? '♛' : '⚽';
 const GAMES = [
   {
     id: 'penalty', emoji: '⚽', name: 'Tir au but',
@@ -29,6 +32,9 @@ const GAMES = [
     about: 'Duels de dames internationales sur un plateau de 100 cases. Prises obligatoires, combinaisons, promotions et strategie pour gagner.',
     tags: ['10 × 10', '20 pions chacun', '2 joueurs', 'Prises obligatoires'],
   },
+  { id:'tank', emoji:'🚀', name:'Tank Battle',
+    about:'Deux chars, six armes, tir tactique, carburant et terrain destructible.',
+    tags:['2 joueurs','Terrain destructible','Missiles','Carburant'] },
 ];
 const statusLabel = { open: 'Ouvert', pending: 'Demande en cours', ready: 'Pret a jouer', playing: 'Match en cours', finished: 'Termine' };
 
@@ -244,7 +250,7 @@ export default function GamePage() {
       return;
     }
     void (async () => {
-      const ok = await action(() => roomsApi.createRoom({ game: currentGame?.id || 'penalty', shots: currentGame?.id === 'checkers' ? null : shots, stake: value }),
+      const ok = await action(() => roomsApi.createRoom({ game: currentGame?.id || 'penalty', shots: currentGame?.id === 'penalty' ? shots : null, stake: value }),
         'Ton salon est public ! Partage son code a 4 chiffres.');
       if (ok) { setGameId(null); setTab('salon'); }
     })();
@@ -379,7 +385,14 @@ export default function GamePage() {
                   onEmote={(emote) => void matchAction(() => roomsApi.sendCheckersEmote(selected.id, emote))}
                   onDrawRespond={(accept) => void matchAction(() => roomsApi.respondCheckersDraw(selected.id, accept))}
                   onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}
-                  onBack={() => chooseRoom(null)} /> : <PenaltyArena
+                  onBack={() => chooseRoom(null)} /> : selected.game === 'tank' ? <TankArena
+                    room={selected} match={match} busy={busy} error={error} onExit={() => void exitArena()}
+                    onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
+                    onFire={(shot) => void matchAction(() => roomsApi.fireTank(selected.id,shot))}
+                    onDraw={(action,accept) => void matchAction(() => roomsApi.tankDrawAction(selected.id,action,accept))}
+                    onReact={(emote) => void matchAction(() => roomsApi.tankReaction(selected.id,emote))}
+                    onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}
+                    onBack={() => chooseRoom(null)} /> : <PenaltyArena
                     room={selected} match={match} busy={busy} error={error} onExit={() => void exitArena()}
                     onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
                     onChoose={(direction) => void matchAction(() => roomsApi.chooseDirection(selected.id, direction))}
@@ -453,7 +466,7 @@ export default function GamePage() {
                     {[3, 5, 10].map((n) => <label key={n} className={shots === n ? 'is-checked' : ''}>
                       <input type="radio" name="shots" value={n} checked={shots === n} onChange={() => setShots(n)} />{n} tirs
                     </label>)}
-                  </fieldset> : <p className="game-hub__muted">Partie de dames 10 × 10 · 20 pions chacun · Prise obligatoire · 2 minutes maximum par coup.</p>}
+                  </fieldset> : <p className="game-hub__muted">{currentGame.id === 'tank' ? 'Tank Battle · 100 PV · 6 armes · carburant · 2 minutes maximum par tour.' : 'Dames · 10 × 10 · prises obligatoires · 2 minutes par coup.'}</p>}
                   <label>Mise par joueur (F CFA)
                     <input type="text" inputMode="numeric" pattern="[0-9]+" required maxLength={7}
                       value={stake} onChange={(e) => setStake(e.target.value.replace(/\D/g, '').slice(0, 7))}
@@ -469,7 +482,7 @@ export default function GamePage() {
               <section className="game-detail__training" aria-label="Entraînement">
                 <span className="game-hub__eyebrow">ENTRAINEMENT</span>
                 <p className="game-hub__muted">Entraîne-toi contre le robot avant de défier un autre joueur. Aucune mise en jeu.</p>
-                {currentGame.id === 'penalty' ? <SoloPenalty /> : <SoloCheckers />}
+                {currentGame.id === 'penalty' ? <SoloPenalty /> : currentGame.id === 'checkers' ? <SoloCheckers /> : <SoloTank />}
               </section>
             </article>
           )}
