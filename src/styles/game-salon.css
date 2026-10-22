@@ -1,0 +1,22 @@
+/* Onglet Salon : liste compacte en premier, couleurs par etat, hierarchie visuelle */
+.salon-list { display:grid; gap:8px; }
+.salon-row { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:12px; padding:11px 13px; text-align:left; border:1px solid var(--border); border-left-width:5px; border-radius:14px; background:var(--glass); color:var(--text); min-width:0; transition:background .15s,border-color .15s; }
+.salon-row:hover, .salon-row.is-selected { background:var(--glass-strong); }
+.salon-row.is-selected { border-color:var(--accent); }
+.salon-row--open { border-left-color:#35d07f; }
+.salon-row--pending { border-left-color:#ffb347; }
+.salon-row--ready, .salon-row--playing { border-left-color:#5ab0ff; }
+.salon-row__code { font:700 15px/1 var(--font-tech); letter-spacing:.04em; font-variant-numeric:tabular-nums; padding:8px 9px; border-radius:9px; background:var(--bg-2); color:var(--accent-2); }
+.salon-row__main { display:grid; gap:3px; min-width:0; }
+.salon-row__main strong { font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.salon-row__main small { font-size:11px; color:var(--text-dim); }
+.salon-row__stake { padding:6px 10px; border-radius:100px; background:var(--accent-soft); color:var(--text); font-size:12px; font-weight:800; white-space:nowrap; }
+.salon-note { padding:9px 12px; border-radius:11px; background:var(--bg-2); color:var(--text-dim); font-size:11.5px; line-height:1.5; }
+.salon-create { border-style:dashed; color:var(--accent-2); }
+.game-hub__line h2 .game-hub__count { margin-left:6px; padding:2px 9px; border-radius:100px; background:var(--accent-soft); color:var(--text); font-size:12px; vertical-align:middle; }
+.game-hub__mine { padding:11px 13px; font-size:13px; }
+.game-hub__results h2 { font-size:15px; color:var(--text-dim); }
+.game-hub__result { padding:9px 11px; border-left:4px solid var(--border); }
+.game-hub__result strong.is-win { color:#5df0a2; }
+.game-hub__result strong.is-loss { color:#ff9aa2; }
+.game-hub__detail { scroll-margin-top:12px; }

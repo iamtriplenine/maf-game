@@ -6,6 +6,7 @@ import * as roomsApi from '../api/rooms';
 import { syncWallet } from '../api/accounts';
 import '../styles/game-rooms.css';
 import '../styles/game-cards.css';
+import '../styles/game-salon.css';
 
 const money = (value) => `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`;
 const gameName = () => 'Tir au but';
@@ -38,6 +39,7 @@ export default function GamePage() {
   const swipe = useRef(null);
   const fetching = useRef(false);
   const moneyKey = useRef('');
+  const detailRef = useRef(null);
 
   const chooseRoom = (room) => {
     selectedId.current = room?.id ?? null;
@@ -127,6 +129,10 @@ export default function GamePage() {
     } catch (err) { setError(err.message); return false; }
     finally { setBusy(false); }
   };
+
+  useEffect(() => {
+    if (selected?.id && tab === 'salon') detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [selected?.id, tab]);
 
   const openGame = (id) => {
     setError('');
@@ -228,16 +234,10 @@ export default function GamePage() {
       {tab === 'salon' ? (
         <section id="game-panel-salon" role="tabpanel" aria-labelledby="game-tab-salon" className="game-hub__content">
           <div className="game-hub__line">
-            <h2>Salons publics</h2>
+            <h2>Salons disponibles <span className="game-hub__count">{rooms.length}</span></h2>
             <button type="button" className="game-hub__refresh" disabled={loading || busy}
               onClick={() => void refresh()} aria-label="Actualiser les salons">↻ Actualiser</button>
           </div>
-          <p className="game-hub__muted">2 joueurs maximum par salon. Le createur choisit le jeu, les tirs et la mise.</p>
-          <div className="game-hub__test" role="note">
-            <strong>Mises en argent réel</strong>
-            <span>La mise des deux joueurs est prélevée quand le créateur accepte son adversaire, retenue pendant le match, puis versée au gagnant.</span>
-          </div>
-
           {error && <p role="alert" className="game-hub__error">{error}</p>}
           {notice && <p role="status" className="game-hub__notice">{notice}</p>}
 
@@ -248,8 +248,21 @@ export default function GamePage() {
             </button>
           )}
 
+          <div className="salon-list" aria-live="polite">
+            {rooms.length === 0 && <p className="game-hub__empty">{loading ? 'Chargement des salons...' : 'Aucun salon public. Crée le premier depuis l\'onglet Game !'}</p>}
+            {rooms.map((room) => <button type="button" key={room.id}
+              className={`salon-row salon-row--${room.status}${selected?.id === room.id ? ' is-selected' : ''}`}
+              onClick={() => void openRoom(room)}>
+              <span className="salon-row__code">#{room.code}</span>
+              <span className="salon-row__main">
+                <strong>{room.host.pseudo}</strong>
+                <small>⚽ {room.shots} tirs · {statusLabel[room.status]}</small>
+              </span>
+              <span className="salon-row__stake">{money(room.stake)}</span>
+            </button>)}
+          </div>
           {selected && (
-            <article className="game-hub__detail" aria-label="Details du salon">
+            <article ref={detailRef} className="game-hub__detail" aria-label="Details du salon">
               <div className="game-hub__line">
                 <div>
                   <span className="game-hub__eyebrow">SALON SELECTIONNE</span>
@@ -306,13 +319,9 @@ export default function GamePage() {
             </article>
           )}
 
+          <div className="salon-note" role="note">Mise prélevée quand le créateur accepte son adversaire, retenue pendant le match, puis versée au gagnant. 2 joueurs maximum par salon.</div>
+          <button type="button" className="btn btn--sm btn--block salon-create" onClick={() => setTab('jeux')}>＋ Créer un salon (choisir un jeu)</button>
           <div className="game-hub__panels game-hub__panels--single">
-            <section className="game-hub__panel" aria-label="Creer un salon">
-              <span className="game-hub__eyebrow">JOUER A DEUX</span>
-              <h3>Créer un salon</h3>
-              <p className="game-hub__muted">Choisis un jeu dans l'onglet Game, puis crée ton salon depuis sa page.</p>
-              <button type="button" className="btn btn--primary btn--sm" onClick={() => setTab('jeux')}>Voir les jeux</button>
-            </section>
             <section className="game-hub__panel" aria-label="Rechercher un salon">
               <span className="game-hub__eyebrow">UN AMI T'ATTEND ?</span>
               <h3>Rechercher un code</h3>
@@ -327,24 +336,12 @@ export default function GamePage() {
               <p className="game-hub__muted">La recherche fonctionne meme si le salon ne figure plus dans les premiers resultats.</p>
             </section>
           </div>
-
-          <div className="game-hub__line"><h2>Salons disponibles</h2><span className="game-hub__count">{rooms.length} affiches</span></div>
-          <div className="game-hub__rooms" aria-live="polite">
-            {rooms.length === 0 && <p className="game-hub__empty">{loading ? 'Chargement des salons...' : 'Aucun salon public. Cree le premier !'}</p>}
-            {rooms.map((room) => <button type="button" key={room.id}
-              className={`game-hub__room${selected?.id === room.id ? ' is-selected' : ''}`}
-              onClick={() => void openRoom(room)}>
-              <span className="game-hub__room-top"><strong>#{room.code}</strong><span className={`game-hub__state game-hub__state--${room.status}`}>{statusLabel[room.status]}</span></span>
-              <span className="game-hub__room-name">{room.host.pseudo} <small>· ID {room.host.id}</small></span>
-              <span className="game-hub__room-bottom">⚽ {room.shots} tirs · {money(room.stake)}<span>Voir →</span></span>
-            </button>)}
-          </div>
           {!!results.length && <section className="game-hub__results" aria-label="Mes derniers resultats">
             <h2>Mes derniers matchs</h2>
             {results.slice(0, 5).map((room) => <button className="game-hub__result" type="button" key={room.id}
               onClick={() => void openRoom(room)}>
               <span>⚽ Salon #{room.code} · {room.shots} tirs</span>
-              <strong>{room.result.winner === (session?.id === room.host.id ? 'host' : 'guest') ? '🏆 Victoire' : 'Defaite'} · {room.result.scores?.host ?? 0} - {room.result.scores?.guest ?? 0}</strong>
+              <strong className={room.result.winner === (session?.id === room.host.id ? 'host' : 'guest') ? 'is-win' : 'is-loss'}>{room.result.winner === (session?.id === room.host.id ? 'host' : 'guest') ? '🏆 Victoire' : 'Défaite'} · {room.result.scores?.host ?? 0} - {room.result.scores?.guest ?? 0}</strong>
               <span>Voir →</span>
             </button>)}
           </section>}
