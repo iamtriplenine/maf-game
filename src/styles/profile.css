@@ -270,3 +270,24 @@
 
 .withdrawal-fields { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; min-width: 0; }
 .withdrawal-fields legend { margin-bottom: 12px; font-weight: 600; }
+
+
+/* MAF PROFILE MORE MENU */
+.profile .menu-grid--more, .profile .menu-grid--main {
+  animation: maf-menu-appear .23s ease-out both;
+}
+.profile .menu-btn--more { border-color: var(--accent); background: var(--accent-soft); }
+.profile .menu-btn--more:hover { box-shadow: 0 0 14px var(--accent-soft); }
+.profile .menu-btn--back { border-color: var(--accent); }
+.profile .menu-btn__symbol {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 22px; color: var(--accent-2);
+  font-size: 24px; line-height: 1; font-weight: 800; letter-spacing: 0;
+}
+@keyframes maf-menu-appear {
+  from { opacity: 0; transform: translateY(9px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile .menu-grid--more, .profile .menu-grid--main { animation: none; }
+}

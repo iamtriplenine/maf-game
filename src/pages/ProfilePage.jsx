@@ -43,6 +43,7 @@ const APP_NAME = ["VIVA", "CENTER"];
 
 export default function ProfilePage({ onOpenStudio }) {
   const { session, login, register, logout, updateUser } = useSession();
+  const [moreOpen, setMoreOpen] = useState(false);
   const [sheet, setSheet] = useState(null); // login | signup | account | recharge
   const [chatOn, setChatOn] = useState(readChatPref);
   const [chatFull, setChatFull] = useState(false); // chat global en plein ecran
@@ -102,6 +103,7 @@ export default function ProfilePage({ onOpenStudio }) {
   useEffect(() => {
     setPendingSkin(null);
     setSkinError("");
+    setMoreOpen(false);
   }, [session?.id]);
 
 
@@ -176,54 +178,63 @@ export default function ProfilePage({ onOpenStudio }) {
               Connecte-toi avec ton pseudo et ton code pour retrouver ton compte.
             </p>
           )}
-          <div className="menu-grid">
-            <button type="button" className="menu-btn" onClick={onOpenStudio}>
-              <IconCube />
-              <span>Studio 3D</span>
-            </button>
-            <button
-              type="button"
-              className={`menu-btn${chatOn ? " is-on" : ""}${chatButton.pressing ? " is-pressing" : ""}`}
-              aria-pressed={chatOn}
-              title="Appui court : afficher les bulles. Appui long : ouvrir le chat"
-              {...chatButton.handlers}
-            >
-              <IconChat />
-              <span>Chat</span>
-            </button>
-            <button
-              type="button"
-              className="menu-btn"
-              onClick={() => { setSkinError(""); setSheet("personalize"); }}
-            >
-              <IconPalette />
-              <span>Personnalisation</span>
-            </button>
-            <button type="button" className="menu-btn" onClick={() => setSheet(session ? "withdrawal" : "login")}>
-              <IconWithdraw />
-              <span>Retrait</span>
-            </button>
-            <button type="button" className="menu-btn" onClick={() => setSheet(session ? "history" : "login")}>
-              <IconHistory />
-              <span>Historique</span>
-            </button>
-            {session?.pseudo === '999' && (
-              <button type="button" className="menu-btn" onClick={() => setSheet('owner-commissions')}>
-                <span aria-hidden="true" style={{fontSize:22}}>◈</span>
-                <span>Mes commissions</span>
+          {moreOpen ? (
+            <div key="more" className="menu-grid menu-grid--more" aria-label="Options supplémentaires">
+              <button type="button" className="menu-btn menu-btn--back" onClick={() => setMoreOpen(false)}>
+                <span className="menu-btn__symbol" aria-hidden="true">←</span>
+                <span>Retour</span>
               </button>
-            )}
-            {session && (
+              <button type="button" className="menu-btn" onClick={() => { setMoreOpen(false); onOpenStudio?.(); }}>
+                <IconCube />
+                <span>Studio 3D</span>
+              </button>
+              {session && (
+                <button type="button" className="menu-btn menu-btn--danger" onClick={() => setSheet("logout")}>
+                  <IconLogout />
+                  <span>Déconnexion</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div key="main" className="menu-grid menu-grid--main" aria-label="Menu principal">
               <button
                 type="button"
-                className="menu-btn menu-btn--danger"
-                onClick={() => setSheet("logout")}
+                className={`menu-btn${chatOn ? " is-on" : ""}${chatButton.pressing ? " is-pressing" : ""}`}
+                aria-pressed={chatOn}
+                title="Appui court : afficher les bulles. Appui long : ouvrir le chat"
+                {...chatButton.handlers}
               >
-                <IconLogout />
-                <span>Deconnexion</span>
+                <IconChat />
+                <span>Chat</span>
               </button>
-            )}
-          </div>
+              <button
+                type="button"
+                className="menu-btn"
+                onClick={() => { setSkinError(""); setSheet("personalize"); }}
+              >
+                <IconPalette />
+                <span>Personnalisation</span>
+              </button>
+              <button type="button" className="menu-btn" onClick={() => setSheet(session ? "withdrawal" : "login")}>
+                <IconWithdraw />
+                <span>Retrait</span>
+              </button>
+              <button type="button" className="menu-btn" onClick={() => setSheet(session ? "history" : "login")}>
+                <IconHistory />
+                <span>Historique</span>
+              </button>
+              {session?.pseudo === '999' && (
+                <button type="button" className="menu-btn" onClick={() => setSheet('owner-commissions')}>
+                  <span aria-hidden="true" style={{fontSize:22}}>◈</span>
+                  <span>Mes commissions</span>
+                </button>
+              )}
+              <button type="button" className="menu-btn menu-btn--more" onClick={() => setMoreOpen(true)} aria-label="Plus d'options">
+                <span className="menu-btn__symbol" aria-hidden="true">•••</span>
+                <span>More</span>
+              </button>
+            </div>
+          )}
         </section>
       </main>
 
