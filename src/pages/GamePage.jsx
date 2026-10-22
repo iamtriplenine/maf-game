@@ -3,6 +3,7 @@ import { IconGamepad } from '../components/Icons';
 import { PenaltyArena, SoloPenalty } from '../components/PenaltyArena';
 import { useSession } from '../auth/useSession';
 import * as roomsApi from '../api/rooms';
+import { syncWallet } from '../api/accounts';
 import '../styles/game-rooms.css';
 import '../styles/game-cards.css';
 
@@ -36,6 +37,7 @@ export default function GamePage() {
   const [notice, setNotice] = useState('');
   const swipe = useRef(null);
   const fetching = useRef(false);
+  const moneyKey = useRef('');
 
   const chooseRoom = (room) => {
     selectedId.current = room?.id ?? null;
@@ -56,6 +58,12 @@ export default function GamePage() {
       setRooms(publicRooms);
       setMine(myActiveRoom);
       setResults(recent);
+      // Une mise vient d'etre retenue, rendue ou versee : on met le solde a jour.
+      const key = `${myActiveRoom?.id}|${myActiveRoom?.status}|${myActiveRoom?.escrow}|${recent[0]?.id}|${recent[0]?.payout}`;
+      if (moneyKey.current !== key) {
+        moneyKey.current = key;
+        void syncWallet().catch(() => {});
+      }
       if (selectedId.current) {
         let detail;
         try { detail = await roomsApi.roomById(selectedId.current); }
@@ -226,8 +234,8 @@ export default function GamePage() {
           </div>
           <p className="game-hub__muted">2 joueurs maximum par salon. Le createur choisit le jeu, les tirs et la mise.</p>
           <div className="game-hub__test" role="note">
-            <strong>Mode demonstration sans argent reel</strong>
-            <span>Les matchs sont jouables. Les mises et gains restent fictifs : aucun F CFA n'est preleve ou verse.</span>
+            <strong>Mises en argent réel</strong>
+            <span>La mise des deux joueurs est prélevée quand le créateur accepte son adversaire, retenue pendant le match, puis versée au gagnant.</span>
           </div>
 
           {error && <p role="alert" className="game-hub__error">{error}</p>}
@@ -251,8 +259,18 @@ export default function GamePage() {
               </div>
               <div className="game-hub__facts">
                 <span>⚽ {gameName()}</span><span>{selected.shots} tirs / joueur</span>
-                <span>Mise test : {money(selected.stake)}</span><span>Gain fictif : {money(selected.stake * 2)} (non actif)</span>
+                <span>Mise : {money(selected.stake)} par joueur</span><span>Gain : {money(selected.stake * 2)}</span>
+                {selected.escrow > 0 && selected.status !== 'finished' && <span>Cagnotte retenue : {money(selected.escrow)}</span>}
               </div>
+              {selected.funds_alert && (
+                <p role="alert" className="game-hub__error">
+                  {selected.funds_alert.self
+                    ? "Tu n'as pas assez de fonds sur ton compte pour cette mise. Recharge ton compte depuis le Profil."
+                    : selected.status === 'open'
+                      ? "Un joueur voulait rejoindre ton salon mais n'a pas de fonds suffisants."
+                      : "Ton adversaire n'a pas de fonds suffisants. Aucune mise n'a été prélevée."}
+                </p>
+              )}
               <div className="game-hub__players">
                 <div><small>CREATEUR</small><strong>{selected.host.pseudo}</strong><span>ID {selected.host.id}</span></div>
                 <div className="game-hub__vs">VS</div>
@@ -261,13 +279,13 @@ export default function GamePage() {
               <div className="game-hub__actions">
                 {isHost && selected.status === 'open' && <p>Salon visible par tous. Donne le code <strong>{selected.code}</strong> a ton ami.</p>}
                 {isHost && selected.status === 'pending' && <>
-                  <p><strong>{selected.guest?.pseudo || 'Un joueur'}</strong> souhaite rejoindre ton salon. Tu acceptes ?</p>
+                  <p><strong>{selected.guest?.pseudo || 'Un joueur'}</strong> souhaite rejoindre ton salon. Si tu acceptes, la mise de {money(selected.stake)} est prélevée sur vos deux comptes.</p>
                   <button className="btn btn--primary btn--sm" type="button" disabled={busy}
                     onClick={() => void action(() => roomsApi.acceptRoom(selected.id), 'Adversaire accepte !')}>Accepter</button>
                   <button className="btn btn--sm" type="button" disabled={busy}
                     onClick={() => void action(() => roomsApi.declineRoom(selected.id), 'Demande refusee. Salon de nouveau ouvert.')}>Refuser</button>
                 </>}
-                {isGuest && selected.status === 'pending' && <p>Demande envoyee. Le createur doit accepter ton entree.</p>}
+                {isGuest && selected.status === 'pending' && <p>Demande envoyée. Quand le créateur t'accepte, ta mise de {money(selected.stake)} est prélevée.</p>}
                 {selected.status === 'ready' && <p>Les deux joueurs sont confirmes. Le createur peut lancer le match ci-dessous.</p>}
                 {canJoin && <button className="btn btn--primary btn--sm" type="button" disabled={busy}
                   onClick={() => void action(() => roomsApi.joinRoom(selected.id), 'Demande envoyee au createur.')}>Demander a rejoindre</button>}
@@ -372,7 +390,7 @@ export default function GamePage() {
                       value={stake} onChange={(e) => setStake(e.target.value.replace(/\D/g, '').slice(0, 7))}
                       aria-describedby="game-stake-info" />
                   </label>
-                  <p id="game-stake-info" className="game-hub__muted">100 à 1 000 000 F. Gain théorique : {money(Number(stake || 0) * 2)}.</p>
+                  <p id="game-stake-info" className="game-hub__muted">100 à 1 000 000 F. Gain si tu gagnes : {money(Number(stake || 0) * 2)}. La mise est prélevée quand ton adversaire est accepté.</p>
                   <button className="btn btn--primary btn--block" type="submit" disabled={busy || !!mine || !session}>
                     {mine ? 'Tu as déjà un salon actif' : 'Créer mon salon public'}</button>
                   {!session && <p className="game-hub__muted">Connecte-toi depuis le Profil pour créer un salon.</p>}

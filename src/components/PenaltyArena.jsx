@@ -7,6 +7,7 @@ const SIDES = [
   { id: 'right', title: 'Droite', icon: '↗' },
 ];
 const directionName = (value) => ({ left: 'gauche', center: 'milieu', right: 'droite' })[value] || '';
+const fmt = (value) => `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`;
 const randomSide = () => SIDES[Math.floor(Math.random() * SIDES.length)].id;
 
 // Points d'impact du ballon dans le but (repere du dessin 400 x 260).
@@ -167,7 +168,7 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
 
       {status === 'ready' && (
         <div className="penalty__interaction">
-          <p>Deux joueurs confirmés. Chaque tir se résout quand le tireur et le gardien ont choisi.</p>
+          <p>Deux joueurs confirmés. {room.escrow > 0 ? `Cagnotte retenue : ${fmt(room.escrow)}. ` : ''}Chaque tir se résout quand le tireur et le gardien ont choisi.</p>
           {room.is_host ? <button type="button" className="btn btn--primary" disabled={busy} onClick={onStart}>Lancer le match</button>
             : <p className="penalty__waiting">En attente du lancement par {room.host.pseudo}…</p>}
         </div>
@@ -191,7 +192,9 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
         <div className="penalty__interaction penalty__finish" role="status">
           <strong>{isWinner ? '🏆 Victoire !' : 'Fin du match — Défaite'}</strong>
           <p>{isWinner ? 'Bien joué ! Tu remportes cette partie.' : 'Une revanche sera possible dans un nouveau salon.'}</p>
-          <p className="penalty__no-money">Gain virtuel théorique : {isWinner && room ? `${new Intl.NumberFormat('fr-FR').format(room.stake * 2)} F CFA` : 'aucun'} — aucun transfert réel.</p>
+          <p className="penalty__no-money">{!room ? 'Entraînement : aucune mise en jeu.'
+            : isWinner ? `${fmt(room.payout > 0 ? room.payout : room.stake * 2)} versés sur ton compte.`
+              : `Ta mise de ${fmt(room.stake)} est perdue.`}</p>
           {onBack && <button className="btn btn--primary btn--sm" type="button" onClick={onBack}>{isSolo ? 'Rejouer' : 'Retour aux salons'}</button>}
         </div>
       )}
@@ -199,8 +202,9 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
         <p className="penalty__last">Dernier tir : {myLastShot ? ownName : rivalName} a visé {directionName(last.shot)}, le gardien a plongé {directionName(last.save)}. <strong>{last.goal ? 'But marqué (vert).' : 'Tir arrêté (rouge).'}</strong></p>
       )}
       {room && !finished && status === 'playing' && onForfeit && <button type="button" className="penalty__forfeit" disabled={busy}
-        onClick={() => { if (window.confirm('Abandonner le match ? Ton adversaire sera déclaré gagnant (sans paiement).')) onForfeit(); }}>Abandonner le match</button>}
-      <p className="penalty__disclaimer">Version de démonstration : aucune mise prélevée, aucun gain versé.</p>
+        onClick={() => { if (window.confirm('Abandonner le match ? Ton adversaire sera déclaré gagnant et recevra la cagnotte.')) onForfeit(); }}>Abandonner le match</button>}
+      <p className="penalty__disclaimer">{!room ? 'Entraînement : aucune mise en jeu.'
+        : finished ? 'Match terminé.' : `Mise de ${fmt(room.stake)} par joueur, retenue pendant le match.`}</p>
     </section>
   );
 }
