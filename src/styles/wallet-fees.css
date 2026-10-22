@@ -1,0 +1,6 @@
+/* Lecture discrète mais claire du coût de chaque transaction. */
+.wallet-fees { display:grid; gap:7px; padding:12px 14px; border:1px solid var(--border); border-radius:var(--r-md); background:var(--glass); color:var(--text-dim); font-size:13px; line-height:1.45; }
+.wallet-fees span { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; column-gap:10px; row-gap:3px; }
+.wallet-fees strong { font-variant-numeric:tabular-nums; color:var(--text); white-space:nowrap; }
+.wallet-fees__total { border-top:1px solid var(--border); padding-top:9px; color:var(--text); font-weight:750; }
+.wallet-fees__total strong { color:var(--accent-2); font-size:15px; }

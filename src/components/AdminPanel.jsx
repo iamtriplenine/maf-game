@@ -68,7 +68,7 @@ function DepositDetail({transaction:t,onBack,onDone,onBusy}) {
         <button type="button" className="admin-btn admin-btn--primary" disabled={busy || t.status!=='pending' || !imageReady || !checked || reference.trim().length<4} onClick={()=>setDecision('approve')}>Confirmer le dépôt</button>
         <button type="button" className="admin-btn admin-btn--danger" disabled={busy || !note.trim()} onClick={()=>setDecision('reject')}>Refuser</button>
       </div> : <div className="admin-confirm">
-        <strong>{decision==='approve' ? `Créditer ${money(t.amount)} F CFA au compte ${t.pseudo} ?` : `Refuser ce dépôt de ${money(t.amount)} F CFA ?`}</strong>
+        <strong>{decision==='approve' ? `Créditer ${money(t.amount)} F CFA au compte ${t.pseudo} après avoir vérifié un paiement Wave de ${money(t.total_amount ?? t.amount)} F CFA (dont ${money(t.fee_amount || 0)} F de frais) ?` : `Refuser ce dépôt de ${money(t.amount)} F CFA ?`}</strong>
         <p>{decision==='approve' ? 'Le solde sera crédité une seule fois.' : 'Le motif sera visible par le joueur. Aucun crédit ne sera ajouté.'}</p>
         {busy && <HourglassLoader/>}
         <div className="admin-actions"><button type="button" className="admin-btn" disabled={busy} onClick={()=>setDecision(null)}>Annuler</button><button type="button" className={'admin-btn '+(decision==='approve'?'admin-btn--primary':'admin-btn--danger')} disabled={busy} onClick={confirm}>{busy?'Traitement…':decision==='approve'?'Oui, créditer le solde':'Oui, refuser'}</button></div>

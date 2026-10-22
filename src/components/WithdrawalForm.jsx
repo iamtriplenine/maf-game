@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { walletRequest } from '../api/accounts';
 import { registerRefresh } from '../api/refresh';
 import HourglassLoader from './HourglassLoader';
+import { feeFor } from '../utils/walletFees';
 
 const money = n => new Intl.NumberFormat('fr-CI').format(n || 0);
 const statuses = { pending:'En attente de paiement', approved:'Retrait payé', rejected:'Retrait refusé · solde remboursé' };
@@ -51,7 +52,9 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
   const expired = account?.phone && !account.phone_verified_at && (!account.phone_verification_deadline || new Date(account.phone_verification_deadline).getTime() <= clock);
   const balance = Number(currency === 'V' ? user.bonus_balance : user.balance) || 0;
   const value = Number(amount);
-  const valid = Number.isSafeInteger(value) && value >= 100 && value <= 1000000 && value <= balance;
+  const fee = Number.isSafeInteger(value) && value >= 100 && value <= 1000000 ? feeFor(value) : null;
+  const total = fee === null ? 0 : value + fee;
+  const valid = fee !== null && total <= balance;
   function forgetIntent() {
     try { sessionStorage.removeItem(storageKey); } catch { /* La reponse est deja connue. */ }
     setIntent(null);
@@ -74,7 +77,7 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
       setItems(old => [result.transaction,...old.filter(t => t.id !== result.transaction.id)].slice(0,10));
       forgetIntent();
       setMessage(result.transaction.status === 'pending'
-        ? `Demande envoyée : ${money(request.amount)} ${unit(request)} débités. L’administrateur effectuera le paiement de ${money(request.amount)} F CFA au ${result.transaction.phone}.`
+        ? `Demande envoyée : ${money(result.transaction.total_amount ?? request.amount)} ${unit(request)} débités (dont ${money(result.transaction.fee_amount || 0)} de frais). Tu recevras ${money(request.amount)} F CFA au ${result.transaction.phone}.`
         : `Demande déjà traitée : ${statuses[result.transaction.status]}.`);
     } catch(e) {
       // Les erreurs de validation sont definitives ; une panne reseau garde la meme cle.
@@ -100,8 +103,9 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
           <label className="wallet-check"><input type="radio" name="withdrawal-currency" checked={currency === 'V'} onChange={() => setCurrency('V')}/>Bonus · {money(user.bonus_balance)} V</label>
           <label className="wallet-label">Montant à recevoir en F CFA<input type="number" inputMode="numeric" min="100" max="1000000" step="1" required value={amount} onChange={e => setAmount(e.target.value)}/></label>
         </fieldset>
-        <p className="sheet__text">Minimum : 100 F CFA. Pour les bonus : 1 V = 1 F CFA. Le montant est débité immédiatement du solde choisi. En cas de refus, il est remboursé sur ce même solde.</p>
-        {!intent && value > balance && <p className="sheet__error">Solde sélectionné insuffisant.</p>}
+        {fee !== null && <div className="wallet-fees" role="status" aria-live="polite"><span>Montant à recevoir : <strong>{money(value)} F CFA</strong></span><span>Frais de service (1 %) : <strong>{money(fee)} {currency === 'V' ? 'V' : 'F CFA'}</strong></span><span className="wallet-fees__total">Total débité de ton solde : <strong>{money(total)} {currency === 'V' ? 'V' : 'F CFA'}</strong></span></div>}
+        <p className="sheet__text">Minimum : 100 F CFA. Les frais sont arrondis au franc supérieur. Pour les bonus : 1 V = 1 F CFA. En cas de refus, montant et frais seront intégralement remboursés.</p>
+        {!intent && fee !== null && total > balance && <p className="sheet__error">Solde insuffisant pour le retrait et les frais de 1 %.</p>}
         {intent && <p className="wallet-notice">Une demande doit être vérifiée après une interruption. Réessaie avec la même demande pour éviter un double débit.</p>}
         <button className="btn btn--primary btn--block" disabled={busy || (!intent && (!valid || expired || !info?.has_deposit))}>
           {busy ? 'Envoi…' : intent ? 'Vérifier / renvoyer ma demande' : 'Valider le retrait'}
@@ -112,7 +116,8 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
     {error && <p className="sheet__error" role="alert">{error}</p>}
     {message && <p className="wallet-notice" role="status">{message}</p>}
     {items.length > 0 && <section className="wallet-form" aria-label="Derniers retraits"><h3>Derniers retraits</h3>{items.map(t => <div className="wallet-notice" key={t.id}>
-      <strong>{money(t.amount)} F CFA · {t.currency === 'V' ? 'Bonus V' : 'Argent réel'}</strong><br/>{statuses[t.status] || t.status}<br/>
+      <strong>{money(t.amount)} F CFA à recevoir · {t.currency === 'V' ? 'Bonus V' : 'Argent réel'}</strong><br/>{statuses[t.status] || t.status}<br/>
+      <small>Frais : {money(t.fee_amount || 0)} {t.currency === 'V' ? 'V' : 'F CFA'} · Débit total : {money(t.total_amount ?? t.amount)} {t.currency === 'V' ? 'V' : 'F CFA'}</small><br/>
       <small>{new Date(t.created_at).toLocaleString('fr-FR')} · {t.phone} · #{t.id.slice(0,8)}</small>
       {t.admin_note && <p>{t.admin_note}</p>}
     </div>)}</section>}

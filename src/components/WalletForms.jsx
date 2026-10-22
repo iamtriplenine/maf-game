@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { walletRequest, setAdminAccess } from '../api/accounts';
 import { IconFranc, IconV } from './Icons';
 import HourglassLoader from './HourglassLoader';
+import { feeFor } from '../utils/walletFees';
+import '../styles/wallet-fees.css';
 
 const format = n => new Intl.NumberFormat('fr-CI').format(n || 0);
 const labels = { awaiting_payment:'Paiement et capture attendus', pending:'En cours de verification', approved:'Recharge confirmee', rejected:'Demande refusee' };
@@ -72,6 +74,8 @@ export function RechargeForm({ user, onUser }) {
     if (inFlight.current) return; inFlight.current=true; setBusy(true); setError('');
     try { await fn(); } catch(e) { setError(e.message); } finally { inFlight.current=false;setBusy(false); }
   }
+  const rechargeAmount = Number(amount);
+  const rechargeFee = Number.isSafeInteger(rechargeAmount) && rechargeAmount >= 100 && rechargeAmount <= 1000000 ? feeFor(rechargeAmount) : null;
   const deadline = user?.phone_verification_deadline;
   const expired = user?.phone && !user.phone_verified_at && deadline && new Date(deadline).getTime() <= clock;
   const phoneInfo = user?.phone && <div className="wallet-notice"><strong>{user.phone}</strong><br/>{user.phone_verified_at ? 'Numero verifie.' : `Verification en attente${deadline ? ' · avant le '+new Date(deadline).toLocaleDateString('fr-FR') : ''}.`}<br/>{expired ? 'Delai depasse : verification necessaire pour toute nouvelle transaction.' : 'Numero definitif pour tes depots et retraits.'}</div>;
@@ -88,10 +92,10 @@ export function RechargeForm({ user, onUser }) {
         <label className="wallet-check"><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)} disabled={busy}/>Je confirme que ce numero sera definitif.</label>
         <button className="btn btn--primary btn--block" disabled={busy || !accepted}>{busy?'Enregistrement…':'Enregistrer et continuer'}</button>
       </form> : selected ? <>
-        <div className="wallet-notice"><strong>{format(selected.amount)} F CFA</strong><br/>{labels[selected.status]}<br/><small>Demande {selected.id.slice(0,8)}</small></div>
+        <div className="wallet-notice"><strong>{format(selected.amount)} F CFA crédités</strong><br/>{labels[selected.status]}<br/><small>Frais (1 %) : {format(selected.fee_amount || 0)} F CFA · Total à payer : {format(selected.total_amount ?? selected.amount)} F CFA</small><br/><small>Demande {selected.id.slice(0,8)}</small></div>
         {selected.status==='awaiting_payment' && <>
           <a className="btn btn--primary btn--block" href={selected.payment_url} target="_blank" rel="noopener noreferrer">Acceder au paiement Wave ↗</a>
-          <p className="sheet__text">Paie exactement {format(selected.amount)} F CFA depuis le numero {selected.phone}, puis reviens ici pour joindre la capture de confirmation du paiement.</p>
+          <p className="sheet__text">Paie exactement <strong>{format(selected.total_amount ?? selected.amount)} F CFA</strong> depuis le numero {selected.phone} (recharge : {format(selected.amount)} F CFA + frais : {format(selected.fee_amount || 0)} F CFA), puis reviens ici pour joindre la capture.</p>
           <form className="wallet-form" onSubmit={e=>{e.preventDefault();run(async()=>{
             if (!file) throw new Error('Ajoute une capture du paiement.');
             const image=await imageData(file);
@@ -117,10 +121,11 @@ export function RechargeForm({ user, onUser }) {
         window.location.assign(result.transaction.payment_url);
       });}}>
         <label className="wallet-label">Montant a recharger · F CFA<input type="number" inputMode="numeric" min="100" max="1000000" step="1" value={amount} onChange={e=>setAmount(e.target.value)} disabled={busy || expired} required/></label>
-        <p className="sheet__text">Minimum 100 F CFA. Ta demande sera enregistree avant l'ouverture de Wave. Au retour, ouvre Recharger pour ajouter la capture.</p>
+        {rechargeFee !== null && <div className="wallet-fees" role="status" aria-live="polite"><span>Recharge créditée : <strong>{format(rechargeAmount)} F CFA</strong></span><span>Frais de service (1 %) : <strong>{format(rechargeFee)} F CFA</strong></span><span className="wallet-fees__total">Total à payer sur Wave : <strong>{format(rechargeAmount + rechargeFee)} F CFA</strong></span></div>}
+        <p className="sheet__text">Minimum 100 F CFA. Les frais sont arrondis au franc supérieur. Au retour du paiement Wave, ouvre Recharger pour envoyer la capture.</p>
         <button className="btn btn--primary btn--block" disabled={busy || expired}>{busy?'Preparation…':'Acceder au paiement'}</button>
       </form>}
-      {user?.phone && items.length>0 && <div className="wallet-history"><h3>Mes recharges recentes</h3>{items.map(t=><button type="button" key={t.id} disabled={busy} onClick={()=>select(t)}><strong>{format(t.amount)} F CFA</strong><span>{labels[t.status]}</span><small>{new Date(t.created_at).toLocaleString('fr-FR')}</small></button>)}</div>}
+      {user?.phone && items.length>0 && <div className="wallet-history"><h3>Mes recharges recentes</h3>{items.map(t=><button type="button" key={t.id} disabled={busy} onClick={()=>select(t)}><strong>{format(t.amount)} F CFA crédités</strong><span>{labels[t.status]}</span><small>Total payé : {format(t.total_amount ?? t.amount)} F CFA · {new Date(t.created_at).toLocaleString('fr-FR')}</small></button>)}</div>}
     </>}
     {error && <p className="sheet__error" role="alert">{error}</p>}
   </div>;

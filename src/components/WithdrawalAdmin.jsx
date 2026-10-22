@@ -15,7 +15,7 @@ function Detail({ transaction:t,onBack,onDone,onBusy }) {
     inFlight.current = true; setBusy(true); onBusy(true); setError('');
     try {
       await adminRequest(`/withdrawals/${t.id}/${decision}`,{ method:'POST',body:{ payment_reference:reference.trim(),note:note.trim() } });
-      onDone(decision === 'approve' ? `Retrait de ${t.pseudo} confirmé.` : `Retrait refusé : ${money(t.amount)} ${t.currency === 'V' ? 'V' : 'F CFA'} remboursés.`);
+      onDone(decision === 'approve' ? `Retrait de ${t.pseudo} confirmé.` : `Retrait refusé : ${money(t.total_amount ?? t.amount)} ${t.currency === 'V' ? 'V' : 'F CFA'} remboursés (frais compris).`);
     } catch(e) { setError(e.message); }
     finally { inFlight.current = false; setBusy(false); onBusy(false); }
   }
@@ -26,7 +26,8 @@ function Detail({ transaction:t,onBack,onDone,onBusy }) {
       <dl className="admin-info-grid">
         <div className="admin-info"><dt>Joueur</dt><dd>{t.pseudo} · #{t.user_id}</dd></div>
         <div className="admin-info"><dt>Numéro de paiement définitif</dt><dd>{t.phone}</dd></div>
-        <div className="admin-info"><dt>Solde débité</dt><dd>{t.currency === 'V' ? 'Bonus V · 1 V = 1 F CFA' : 'Argent réel'}</dd></div>
+        <div className="admin-info"><dt>Solde débité</dt><dd>{money(t.total_amount ?? t.amount)} {t.currency === 'V' ? 'V' : 'F CFA'} · {t.currency === 'V' ? 'Bonus (1 V = 1 F CFA)' : 'Argent réel'}</dd></div>
+        <div className="admin-info"><dt>Frais de retrait</dt><dd>{money(t.fee_amount || 0)} {t.currency === 'V' ? 'V' : 'F CFA'}</dd></div>
         <div className="admin-info"><dt>Demande</dt><dd>{date(t.created_at)}</dd></div>
         <div className="admin-info"><dt>Identifiant</dt><dd>{t.id}</dd></div>
         <div className="admin-info"><dt>Décision</dt><dd>{date(t.decided_at)}</dd></div>
@@ -43,7 +44,7 @@ function Detail({ transaction:t,onBack,onDone,onBusy }) {
         <label className="admin-check"><input type="checkbox" checked={checked} onChange={e => setChecked(e.target.checked)}/>J’ai envoyé le paiement au numéro indiqué et vérifié le montant.</label>
       </fieldset>
       {decision ? <div className="admin-confirm">
-        <strong>{decision === 'approve' ? 'Confirmer le paiement effectué ?' : `Refuser et rembourser ${money(t.amount)} ${t.currency === 'V' ? 'V' : 'F CFA'} ?`}</strong>
+        <strong>{decision === 'approve' ? 'Confirmer le paiement effectué ?' : `Refuser et rembourser ${money(t.total_amount ?? t.amount)} ${t.currency === 'V' ? 'V' : 'F CFA'} (frais compris) ?`}</strong>
         <div className="admin-actions"><button type="button" className="admin-btn" disabled={busy} onClick={() => setDecision(null)}>Annuler</button><button type="button" className="admin-btn admin-btn--primary" disabled={busy} onClick={submit}>{busy ? 'Traitement…' : 'Confirmer'}</button></div>
       </div> : <div className="admin-actions">
         <button type="button" className="admin-btn admin-btn--primary" disabled={!checked || reference.trim().length < 4 || busy} onClick={() => setDecision('approve')}>Paiement effectué</button>
