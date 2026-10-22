@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
+import HourglassLoader from "./HourglassLoader";
 import {
   CODE_LENGTH,
   PSEUDO_MAX,
@@ -8,28 +9,19 @@ import {
 } from "../api/accounts";
 
 // Formulaire Login / Sign Up : pseudo + code a 10 chiffres.
-// Pendant l'attente (serveur gratuit qui se reveille) : animation + compteur.
+// Attente utilisateur : sablier aux couleurs du theme, sans message technique.
 export default function AuthForm({ mode, onSubmit }) {
   const [pseudo, setPseudo] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [seconds, setSeconds] = useState(0);
   const isSignup = mode === "signup";
-  const slow = busy && seconds >= 3;
-
-  useEffect(() => {
-    if (!busy) return undefined;
-    const start = Date.now();
-    const timer = setInterval(() => setSeconds(Math.floor((Date.now() - start) / 1000)), 1000);
-    return () => {
-      clearInterval(timer);
-      setSeconds(0);
-    };
-  }, [busy]);
+  const inFlight = useRef(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setError("");
     try {
@@ -37,12 +29,13 @@ export default function AuthForm({ mode, onSubmit }) {
     } catch (err) {
       setError(err.message);
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} aria-busy={busy}>
       <p className="sheet__text">
         {isSignup
           ? "Choisis ton pseudo et ton code a 10 chiffres. Il n'y a pas de mot de passe : garde bien ton code."
@@ -89,20 +82,7 @@ export default function AuthForm({ mode, onSubmit }) {
         {error}
       </p>
 
-      {slow && (
-        <div className="wake" role="status">
-          <span className="spinner" aria-hidden="true" />
-          <div>
-            <strong>Le serveur se reveille...</strong>
-            <span>
-              Ca peut prendre jusqu'a 60 secondes apres un moment d'inactivite ({seconds}s)
-            </span>
-            <div className="wake__bar" aria-hidden="true">
-              <i />
-            </div>
-          </div>
-        </div>
-      )}
+      {busy && <HourglassLoader />}
 
       <button
         type="submit"
@@ -111,7 +91,6 @@ export default function AuthForm({ mode, onSubmit }) {
       >
         {busy ? (
           <>
-            <span className="spinner spinner--sm" aria-hidden="true" />
             {isSignup ? "Creation..." : "Connexion..."}
           </>
         ) : isSignup ? (
