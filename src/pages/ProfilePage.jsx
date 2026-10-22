@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
 import Sheet from "../components/Sheet";
-import { IconCube, IconLogin, IconLogout, IconPlus, IconUserPlus } from "../components/Icons";
+import { IconChat, IconCube, IconLogin, IconLogout, IconPlus, IconUserPlus } from "../components/Icons";
+import ChatFeed from "../components/ChatFeed";
+import ChatComposer from "../components/ChatComposer";
+import { useChat } from "../chat/useChat";
 import { useSession } from "../auth/useSession";
 import AuthForm from "../components/AuthForm";
 import AdminPanel from "../components/AdminPanel";
@@ -10,6 +13,16 @@ import { clearAdminAccess } from "../api/accounts";
 import { WalletBalances, CouponForm, RechargeForm } from "../components/WalletForms";
 import { IconVoucher } from "../components/Icons";
 import "../styles/profile.css";
+import "../styles/chat.css";
+
+const CHAT_KEY = "maf-chat-on";
+const readChatPref = () => {
+  try {
+    return localStorage.getItem(CHAT_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
 
 // Nom affiche sur la page (une ligne par element)
 const APP_NAME = ["MARV", "GAME"];
@@ -17,6 +30,18 @@ const APP_NAME = ["MARV", "GAME"];
 export default function ProfilePage({ onOpenStudio }) {
   const { session, login, register, logout, updateUser } = useSession();
   const [sheet, setSheet] = useState(null); // login | signup | account | recharge
+  const [chatOn, setChatOn] = useState(readChatPref);
+  const chat = useChat(chatOn);
+  const toggleChat = () => {
+    setChatOn((on) => {
+      try {
+        localStorage.setItem(CHAT_KEY, on ? "0" : "1");
+      } catch {
+        /* stockage facultatif */
+      }
+      return !on;
+    });
+  };
   const close = useCallback(() => {
     if (sheet === "admin") clearAdminAccess();
     setSheet(null);
@@ -40,6 +65,13 @@ export default function ProfilePage({ onOpenStudio }) {
             <span>{APP_NAME[1]}</span>
           </h1>
         </section>
+
+        {chatOn && (
+          <>
+            <ChatFeed messages={chat.messages} myId={session?.id} />
+            <ChatComposer session={session} onSend={chat.send} onNeedLogin={() => setSheet("login")} />
+          </>
+        )}
 
         <div className="profile__actions">
           {session ? (
@@ -93,6 +125,15 @@ export default function ProfilePage({ onOpenStudio }) {
             <button type="button" className="menu-btn" onClick={onOpenStudio}>
               <IconCube />
               <span>Studio 3D</span>
+            </button>
+            <button
+              type="button"
+              className={`menu-btn${chatOn ? " is-on" : ""}`}
+              aria-pressed={chatOn}
+              onClick={toggleChat}
+            >
+              <IconChat />
+              <span>Chat</span>
             </button>
             {session && (
               <button

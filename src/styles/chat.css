@@ -1,0 +1,156 @@
+/* ============ CHAT GLOBAL sur la page profil ============ */
+
+/* Bouton Chat allume : rose pur (ou bleu) comme "Recharger" */
+.menu-btn.is-on {
+  border-color: transparent;
+  background: var(--accent-grad);
+  color: var(--on-accent);
+  box-shadow: var(--accent-glow);
+}
+.menu-btn.is-on svg { color: var(--on-accent); }
+
+/* Zone des bulles : sous les soldes, au-dessus du titre MARV GAME */
+.profile .chat-feed {
+  --title-h: calc(2.3 * clamp(26px, 5vw, 44px));
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  top: 118px;
+  bottom: calc(var(--panel-h) + var(--actions-h) + 14px + var(--title-h) + 12px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0 var(--pad);
+  overflow: hidden;
+  pointer-events: none; /* le personnage reste manipulable derriere */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 28%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 28%);
+}
+
+.chat-feed__empty {
+  align-self: center;
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  background: rgba(0, 0, 0, .22);
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: flex-start;
+  max-width: min(64%, 290px);
+  opacity: var(--o, 1);
+  animation: chat-in .38s var(--ease) both;
+  transition: opacity .4s var(--ease);
+}
+.chat-msg--me { align-items: flex-end; align-self: flex-end; }
+
+.chat-msg__name {
+  margin: 0 10px 2px;
+  color: var(--accent-2);
+  font: 600 10.5px/1.2 var(--font-ui);
+  letter-spacing: .03em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, .7);
+}
+
+.chat-msg__bubble {
+  padding: 7px 13px;
+  border: 1px solid var(--border);
+  border-radius: 19px 19px 19px 5px; /* petit coin pointu cote expediteur */
+  background: linear-gradient(var(--glass-strong), var(--glass-strong)), rgba(0, 0, 0, .3);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--text);
+  font: 500 13.5px/1.35 var(--font-ui);
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+}
+.chat-msg--me .chat-msg__bubble {
+  border-color: transparent;
+  border-radius: 19px 19px 5px 19px;
+  background: var(--accent-grad);
+  color: var(--on-accent);
+  text-shadow: none;
+}
+
+/* Un nouveau message pousse les autres vers le haut en douceur */
+@keyframes chat-in {
+  from { max-height: 0; opacity: 0; transform: translateY(14px) scale(.92); }
+  to { max-height: 220px; opacity: var(--o, 1); transform: none; }
+}
+
+/* ---- Ecrire : pilule a droite du titre ---- */
+.profile .chat-composer {
+  position: absolute;
+  z-index: 3;
+  right: var(--pad);
+  bottom: calc(var(--panel-h) + var(--actions-h) + 14px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: min(230px, calc(100% - 2 * var(--pad) - 128px));
+  height: 44px;
+  padding: 4px 4px 4px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: linear-gradient(var(--glass), var(--glass)), rgba(0, 0, 0, .3);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  transition: width .3s var(--ease), border-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+.profile .chat-composer:focus-within {
+  width: calc(100% - 2 * var(--pad));
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.chat-composer input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: 500 14px/1 var(--font-ui);
+}
+.chat-composer input::placeholder { color: var(--text-dim); }
+.chat-composer button[type="submit"] {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  color: var(--on-accent);
+  transition: transform .2s var(--ease), opacity .2s var(--ease);
+}
+.chat-composer button[type="submit"]:disabled { opacity: .35; transform: scale(.9); }
+.chat-composer__error {
+  position: absolute;
+  right: 4px;
+  bottom: calc(100% + 6px);
+  max-width: 100%;
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+  background: rgba(0, 0, 0, .55);
+  color: #ff9d8a;
+  font-size: 12px;
+}
+/* Visiteur non connecte */
+.profile .chat-composer--guest {
+  justify-content: center;
+  padding: 0 14px;
+  color: var(--text-dim);
+  font: 600 12.5px/1 var(--font-ui);
+  cursor: pointer;
+}
+.profile .chat-composer--guest:hover { border-color: var(--accent); color: var(--text); }
+.chat-composer input:focus-visible { outline: none; }

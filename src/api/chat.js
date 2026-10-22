@@ -1,0 +1,19 @@
+// Chat global : lecture libre, ecriture reservee aux comptes connectes.
+import { API_URL } from "./config";
+import { walletRequest } from "./accounts";
+
+// Messages plus recents que `after` (0 = les derniers messages)
+export async function fetchMessages(after = 0) {
+  const res = await fetch(`${API_URL}/api/chat?after=${after}`, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!res.ok) throw new Error(`Chat indisponible (${res.status}).`);
+  const data = await res.json().catch(() => ({}));
+  return Array.isArray(data.messages) ? data.messages : [];
+}
+
+export async function postMessage(body) {
+  const data = await walletRequest("/api/chat", { method: "POST", body: { body } });
+  return data.message;
+}

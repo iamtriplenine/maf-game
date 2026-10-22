@@ -89,3 +89,16 @@ export const IconGamepad = (props) => (
     <circle cx="17.5" cy="12.5" r=".8" fill="currentColor" />
   </Svg>
 );
+
+export const IconChat = (props) => (
+  <Svg {...props}>
+    <path d="M5 4.5h14a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-7l-4.5 3.5V17H5a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2z" />
+    <path d="M8 9.5h8M8 12.5h5" />
+  </Svg>
+);
+
+export const IconSend = (props) => (
+  <Svg {...props}>
+    <path d="M12 19V5.5M6 11.5l6-6 6 6" strokeWidth="2.2" />
+  </Svg>
+);
