@@ -3,7 +3,7 @@
 .profile {
   --pad: clamp(16px, 4vw, 48px);
   --actions-h: 86px;
-  --panel-h: max(200px, 34vh);
+  --panel-h: max(236px, 34vh);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -13,7 +13,7 @@
   overflow: hidden;
 }
 @supports (height: 1dvh) {
-  .profile { --panel-h: max(200px, 34dvh); }
+  .profile { --panel-h: max(236px, 34dvh); }
 }
 
 .profile .profile__bar {

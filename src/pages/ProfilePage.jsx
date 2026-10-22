@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
 import Sheet from "../components/Sheet";
-import ThemeToggle from "../components/ThemeToggle";
 import { IconCube, IconLogin, IconLogout, IconPlus, IconUserPlus } from "../components/Icons";
 import { useSession } from "../auth/useSession";
 import AuthForm from "../components/AuthForm";
@@ -106,7 +105,6 @@ export default function ProfilePage({ onOpenStudio }) {
               </button>
             )}
           </div>
-          <div className="profile__theme"><ThemeToggle /></div>
         </section>
       </main>
 

@@ -73,3 +73,19 @@ export const IconV = (props) => (
 export const IconVoucher = (props) => (
   <Svg {...props}><path d="M3 5h18v5a2 2 0 0 0 0 4v5H3v-5a2 2 0 0 0 0-4zM15 5v3m0 3v2m0 3v3" /></Svg>
 );
+
+export const IconUser = (props) => (
+  <Svg {...props}>
+    <circle cx="12" cy="8" r="3.8" />
+    <path d="M4.5 20.5c.7-4 3.7-6 7.5-6s6.8 2 7.5 6z" />
+  </Svg>
+);
+
+export const IconGamepad = (props) => (
+  <Svg {...props}>
+    <path d="M7 7.5h10a4.5 4.5 0 0 1 4.4 3.7l.8 4.4a2.6 2.6 0 0 1-4.4 2.2L16 15.5H8l-2.8 2.3a2.6 2.6 0 0 1-4.4-2.2l.8-4.4A4.5 4.5 0 0 1 7 7.5z" />
+    <path d="M7.5 10v3M6 11.5h3" />
+    <circle cx="15.5" cy="10.5" r=".8" fill="currentColor" />
+    <circle cx="17.5" cy="12.5" r=".8" fill="currentColor" />
+  </Svg>
+);
