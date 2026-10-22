@@ -4,6 +4,8 @@ import Sheet from "../components/Sheet";
 import { IconChat, IconCube, IconLogin, IconLogout, IconPlus, IconUserPlus } from "../components/Icons";
 import ChatFeed from "../components/ChatFeed";
 import ChatComposer from "../components/ChatComposer";
+import ChatScreen from "../components/ChatScreen";
+import { useLongPress } from "../chat/useLongPress";
 import { useChat } from "../chat/useChat";
 import { useSession } from "../auth/useSession";
 import AuthForm from "../components/AuthForm";
@@ -31,7 +33,8 @@ export default function ProfilePage({ onOpenStudio }) {
   const { session, login, register, logout, updateUser } = useSession();
   const [sheet, setSheet] = useState(null); // login | signup | account | recharge
   const [chatOn, setChatOn] = useState(readChatPref);
-  const chat = useChat(chatOn);
+  const [chatFull, setChatFull] = useState(false); // chat global en plein ecran
+  const chat = useChat(chatOn || chatFull);
   const toggleChat = () => {
     setChatOn((on) => {
       try {
@@ -46,6 +49,15 @@ export default function ProfilePage({ onOpenStudio }) {
     if (sheet === "admin") clearAdminAccess();
     setSheet(null);
   }, [sheet]);
+  // Appui long sur Chat : on ferme tout et on ouvre le chat global en plein ecran
+  const chatButton = useLongPress({
+    onClick: toggleChat,
+    onLong: () => {
+      close();
+      setChatFull(true);
+    },
+  });
+  const closeChatFull = useCallback(() => setChatFull(false), []);
   useEffect(() => {
     wakeServer();
   }, []);
@@ -128,9 +140,10 @@ export default function ProfilePage({ onOpenStudio }) {
             </button>
             <button
               type="button"
-              className={`menu-btn${chatOn ? " is-on" : ""}`}
+              className={`menu-btn${chatOn ? " is-on" : ""}${chatButton.pressing ? " is-pressing" : ""}`}
               aria-pressed={chatOn}
-              onClick={toggleChat}
+              title="Appui court : afficher les bulles. Appui long : ouvrir le chat"
+              {...chatButton.handlers}
             >
               <IconChat />
               <span>Chat</span>
@@ -148,6 +161,20 @@ export default function ProfilePage({ onOpenStudio }) {
           </div>
         </section>
       </main>
+
+      {chatFull && (
+        <ChatScreen
+          messages={chat.messages}
+          myId={session?.id}
+          session={session}
+          onSend={chat.send}
+          onNeedLogin={() => {
+            setChatFull(false);
+            setSheet("login");
+          }}
+          onClose={closeChatFull}
+        />
+      )}
 
       <Sheet open={sheet === "login"} title="Login" onClose={close}>
         <AuthForm

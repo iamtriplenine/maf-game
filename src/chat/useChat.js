@@ -3,7 +3,7 @@ import { fetchMessages, postMessage } from "../api/chat";
 import { registerRefresh } from "../api/refresh";
 
 const POLL_MS = 5000; // verifie les nouveaux messages toutes les 5 s
-const KEEP = 40; // messages gardes en memoire
+const KEEP = 200; // messages gardes en memoire (= maximum garde par le serveur)
 
 // Messages du chat global. Actif seulement quand `enabled` est vrai.
 // Le bouton "rafraichir" recharge aussi les messages (registerRefresh).
