@@ -196,10 +196,29 @@ export default function GamePage() {
       if (room.status === 'playing') {
         const data = await roomsApi.resumeMatch(room.id);
         chooseRoom(data.room); setMatch(data.match);
+        window.dispatchEvent(new CustomEvent('maf:match-resumed', { detail: { id: data.room.id } }));
       } else chooseRoom(await roomsApi.roomById(room.id));
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };
+  // Quand le joueur revient via la grande alerte, ouvrir directement son match.
+  useEffect(() => {
+    const reopen = (event) => {
+      let rawId = event?.detail?.id;
+      if (!rawId) {
+        try { rawId = sessionStorage.getItem('maf:room-to-reopen'); } catch { /* optionnel */ }
+      }
+      const id = Number(rawId);
+      if (!Number.isSafeInteger(id) || id <= 0) return;
+      try { sessionStorage.removeItem('maf:room-to-reopen'); } catch { /* optionnel */ }
+      setTab('salon');
+      void openRoom({ id, status: 'playing' });
+    };
+    window.addEventListener('maf:reopen-match', reopen);
+    reopen();
+    return () => window.removeEventListener('maf:reopen-match', reopen);
+  }, [session?.id]);
+
   const exitArena = async () => {
     if (busy) return;
     if (selected?.status !== 'playing') { chooseRoom(null); return; }
@@ -207,6 +226,9 @@ export default function GamePage() {
     try {
       const data = await roomsApi.exitMatch(selected.id);
       chooseRoom(null); setMine(data.room.status === 'playing' ? localRoomDeadline(data.room) : null);
+      if (data.room?.return_deadline) {
+        window.dispatchEvent(new CustomEvent('maf:match-exited', { detail: { room: data.room } }));
+      }
       setTab('salon');
       await syncWallet();
       void refresh({ quiet:true });
@@ -277,9 +299,11 @@ export default function GamePage() {
           {notice && <p role="status" className="game-hub__notice">{notice}</p>}
 
           {mine && selected?.id !== mine.id && (
-            <button type="button" className="game-hub__mine" onClick={() => void openRoom(mine)}>
-              <span>{mine.return_deadline ? `Revenir au match · ${Math.max(0, Math.ceil(((mine.localReturnDeadline || mine.return_deadline) - clock) / 1000))} s avant forfait` : "Ton salon actif"} <strong>#{mine.code}</strong></span>
-              <span>Voir →</span>
+            <button type="button" className={`game-hub__mine${mine.return_deadline ? ' game-hub__mine--return' : ''}`} onClick={() => void openRoom(mine)}>
+              <span>{mine.return_deadline
+                ? `⚠ MATCH INTERROMPU — ${Math.max(0, Math.ceil(((mine.localReturnDeadline || mine.return_deadline) - clock) / 1000))} s pour revenir !`
+                : 'Ton salon actif'} <strong>#{mine.code}</strong></span>
+              <span>{mine.return_deadline ? 'REVENIR →' : 'Voir →'}</span>
             </button>
           )}
 

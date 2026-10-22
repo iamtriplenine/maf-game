@@ -109,9 +109,11 @@ const statusText = {
 
 export default function ProfileIdentity({ pseudo }) {
   const { level, state } = useNetworkSignal();
-  const letters = Array.from(String(pseudo || ""));
-  const head = letters.slice(0, 5);
-  const rest = letters.slice(5).join("");
+  const characters = Array.from(String(pseudo || ""));
+  // Huit signes au total a l'ecran : sept caracteres suivis de "…" si necessaire.
+  const shortPseudo = characters.length > 8
+    ? `${characters.slice(0, 7).join("")}…`
+    : characters.join("");
   const quality = state === "measured"
     ? (level === 1 ? "Connexion tres instable" : level === 2 ? "Connexion moyenne" : level === 3 ? "Bonne connexion" : "Tres bonne connexion")
     : statusText[state];
@@ -119,16 +121,10 @@ export default function ProfileIdentity({ pseudo }) {
   return (
     <aside className="profile-id" aria-label="Identite et qualite du reseau">
       <span className="profile-id__caption">PSEUDO</span>
-      {letters.length ? (
-        <div className="profile-id__username" title={pseudo}>
-          <span className="profile-id__access">{pseudo}</span>
-          <span className="profile-id__tiles" aria-hidden="true">
-            {Array.from({ length: 5 }, (_, i) => (
-              <span className={`profile-id__tile${head[i] ? "" : " profile-id__tile--empty"}`} key={i}>{head[i] || "\u00a0"}</span>
-            ))}
-          </span>
-          {rest && <span className="profile-id__extra" aria-hidden="true">{rest}</span>}
-        </div>
+      {shortPseudo ? (
+        <span className="profile-id__username" title={pseudo} aria-label={`Pseudo : ${pseudo}`}>
+          {shortPseudo}
+        </span>
       ) : <span className="profile-id__guest">Invite</span>}
       <div className={`profile-id__signal profile-id__signal--${state === "checking" ? "pending" : level === 0 || level === 1 ? "red" : level === 2 ? "yellow" : "green"}`}
         role="img" aria-label={`${quality}${state === "measured" ? ` (${level} sur 4 barres)` : ""}`}

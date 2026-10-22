@@ -5,6 +5,7 @@ import ThemeToggle from "./components/ThemeToggle";
 import { useEffect, useRef, useState } from "react";
 import ProfilePage from "./pages/ProfilePage";
 import GamePage from "./pages/GamePage";
+import MatchReturnAlert from "./components/MatchReturnAlert";
 import Studio from "./pages/Studio";
 
 const HASHES = { studio: "#studio", game: "#game", profile: "#profil" };
@@ -49,6 +50,7 @@ export default function App() {
     <>
       <ZoomLock />
       <RefreshCube />
+      <MatchReturnAlert />
       <div key={view} className={`page page--${direction}`}>
         {view === "studio" && <Studio onBack={() => go("profile")} />}
         {view === "game" && <GamePage />}

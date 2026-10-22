@@ -20,3 +20,7 @@
 .game-hub__result strong.is-win { color:#5df0a2; }
 .game-hub__result strong.is-loss { color:#ff9aa2; }
 .game-hub__detail { scroll-margin-top:12px; }
+
+/* Secours bien visible dans le salon, meme si l'alerte flottante est masquee. */
+.game-hub__mine--return {padding:17px 15px; font-size:clamp(14px,3.5vw,17px); font-weight:900; border:2px solid #ffba3b; color:#ffe2a2; background:#4b2715; box-shadow:0 0 15px #d9770638;}
+.game-hub__mine--return span:last-child {color:#ffca52; font-weight:900; white-space:nowrap;}
