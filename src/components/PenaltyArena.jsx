@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import '../styles/penalty-arena.css';
 
 const SIDES = [
@@ -125,7 +125,23 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
   const myLastShot = last && last.shooter === viewer;
   const displayRole = role === 'shooter' ? 'TIREUR' : 'GARDIEN';
   const total = match?.totalPerPlayer || room?.shots || 3;
-  const alertNow = status === 'playing' && !finished && !awaiting && !!match?.otherReady;
+  // Apres chaque tir : on voit le resultat, compte a rebours 5 -> 0, puis le ballon revient au point de penalty.
+  const lastNumber = last?.number ?? 0;
+  const [cool, setCool] = useState(0);
+  const seenShot = useRef(null);
+  useEffect(() => {
+    if (seenShot.current === null) { seenShot.current = lastNumber; return; }
+    if (lastNumber === seenShot.current) return;
+    seenShot.current = lastNumber;
+    setCool(lastNumber && !finished ? 5 : 0);
+  }, [lastNumber, finished]);
+  useEffect(() => {
+    if (cool <= 0) return undefined;
+    const timer = setTimeout(() => setCool((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cool]);
+  const showLast = !!last && (cool > 0 || finished);
+  const alertNow = status === 'playing' && !finished && cool === 0 && !awaiting && !!match?.otherReady;
 
   // Petite vibration (telephone) quand l'adversaire vient de jouer.
   useEffect(() => {
@@ -160,8 +176,9 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
       {match?.overtime > 0 && !finished && <p className="penalty__extra">Égalité ! Prolongation n° {match.overtime} : 3 tirs de plus par joueur.</p>}
 
       <div className="penalty__stadium" aria-label="Vue du terrain et du but">
-        <Scene last={last} />
-        {last && <span key={last.number} className={`penalty__outcome ${last.goal ? 'penalty__outcome--goal' : 'penalty__outcome--miss'}`}>
+        <Scene last={showLast ? last : null} />
+        {cool > 0 && <div className="penalty__count" role="status" aria-live="polite">Prochain tir dans <strong>{cool}</strong></div>}
+        {showLast && <span key={last.number} className={`penalty__outcome ${last.goal ? 'penalty__outcome--goal' : 'penalty__outcome--miss'}`}>
           {last.goal ? 'BUT !' : 'ARRÊT !'}
         </span>}
       </div>
@@ -173,7 +190,12 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
             : <p className="penalty__waiting">En attente du lancement par {room.host.pseudo}…</p>}
         </div>
       )}
-      {status === 'playing' && match && !finished && (
+      {status === 'playing' && match && !finished && cool > 0 && (
+        <div className="penalty__interaction">
+          <p className="penalty__wait" role="status">Résultat du tir… le ballon revient au milieu dans {cool} s.</p>
+        </div>
+      )}
+      {status === 'playing' && match && !finished && cool === 0 && (
         <div className="penalty__interaction">
           <span className={`penalty__role ${role === 'shooter' ? 'penalty__role--shot' : 'penalty__role--save'}`}>{displayRole}</span>
           <p>{role === 'shooter' ? 'Choisis où tirer le ballon.' : 'Choisis où ton gardien va plonger.'}</p>
