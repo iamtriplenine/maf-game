@@ -1,0 +1,38 @@
+/* Notification persistante de demande de salon, au-dessus des pages du Profil et du Studio. */
+.maf-room-join-alert {
+  position: fixed; z-index: 11100;
+  left: 50%; transform: translateX(-50%);
+  top: max(12px, env(safe-area-inset-top));
+  width: min(550px, calc(100vw - 22px));
+  box-sizing: border-box; display: grid; justify-items: center; gap: 8px;
+  padding: 17px 42px 19px;
+  border: 3px solid #ffbd45; border-radius: 18px;
+  background: linear-gradient(145deg, #482512 0%, #262019 58%, #181b23 100%);
+  color: #fff6e4; text-align: center;
+  box-shadow: 0 14px 48px #000c, 0 0 30px #eaa52b55;
+  animation: maf-room-invite-enter .32s ease-out both;
+}
+.maf-room-join-alert__dismiss {
+  position: absolute; right: 8px; top: 8px;
+  width: 36px; height: 36px; padding: 0; border-radius: 10px;
+  border: 1px solid #c99c61; background: #251c1b; color: #ffdf9c;
+  font: 900 26px/32px system-ui, sans-serif; cursor: pointer;
+}
+.maf-room-join-alert__icon {font-size: clamp(24px, 6vw, 32px); line-height: 1; color: #ffd47e;}
+.maf-room-join-alert__eyebrow {font: 900 11px/1.25 system-ui,sans-serif; letter-spacing: .13em; color: #ffbe58;}
+.maf-room-join-alert h2 {margin: 0; font: 900 clamp(18px, 5vw, 24px)/1.22 system-ui,sans-serif; color: #ffe29d;}
+.maf-room-join-alert p {margin: 0; font-size: clamp(13px, 3.6vw, 16px); line-height: 1.4;}
+.maf-room-join-alert p strong {color: #fff4c5; overflow-wrap: anywhere;}
+.maf-room-join-alert__details {display: flex; justify-content: center; flex-wrap: wrap; gap: 5px 12px; font-size: 12px; color: #ffdaa0;}
+.maf-room-join-alert__go {
+  display: flex; justify-content: center; align-items: center; gap: 10px;
+  width: min(100%, 340px); min-height: 47px; padding: 11px 14px;
+  border: 0; border-radius: 12px; background: linear-gradient(160deg, #ffdf7b, #f5a623);
+  color: #342008; font: 900 clamp(13px, 3.7vw, 17px)/1.2 system-ui,sans-serif;
+  box-shadow: 0 5px 0 #a05b1c; cursor: pointer;
+}
+.maf-room-join-alert__go:focus-visible,.maf-room-join-alert__dismiss:focus-visible {outline: 3px solid white; outline-offset: 2px;}
+.maf-room-join-alert small {color: #e9c6a0; line-height: 1.35; font-size: 11px;}
+@keyframes maf-room-invite-enter {from {opacity: 0; transform: translate(-50%, -14px) scale(.97);} to {opacity: 1; transform: translate(-50%, 0) scale(1);}}
+@media(max-height:640px) { .maf-room-join-alert {gap: 5px; padding: 10px 40px 12px;} .maf-room-join-alert__icon {display: none;} }
+@media(prefers-reduced-motion:reduce){.maf-room-join-alert{animation:none;}}

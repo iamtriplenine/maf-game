@@ -1,5 +1,6 @@
 import ZoomLock from "./components/ZoomLock";
 import RefreshCube from "./components/RefreshCube";
+import RoomJoinAlert from "./components/RoomJoinAlert";
 import BottomNav from "./components/BottomNav";
 import ThemeToggle from "./components/ThemeToggle";
 import { useEffect, useRef, useState } from "react";
@@ -50,6 +51,7 @@ export default function App() {
     <>
       <ZoomLock />
       <RefreshCube />
+      <RoomJoinAlert />
       <MatchReturnAlert />
       <div key={view} className={`page page--${direction}`}>
         {view === "studio" && <Studio onBack={() => go("profile")} />}

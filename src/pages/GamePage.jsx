@@ -225,6 +225,26 @@ export default function GamePage() {
     return () => window.removeEventListener('maf:reopen-match', reopen);
   }, [session?.id]);
 
+  // MAF_ROOM_INVITATION_NAV_V1 : ouvrir directement la demande depuis le Profil ou Studio.
+  useEffect(() => {
+    const openPendingRoom = (event) => {
+      let payload = event?.detail || null;
+      if (!payload) {
+        try { payload = JSON.parse(sessionStorage.getItem('maf:pending-room-to-open') || 'null'); }
+        catch { payload = null; }
+      }
+      const roomId = Number(payload?.id);
+      if (!session?.id || Number(payload?.uid) !== Number(session.id)
+          || !Number.isSafeInteger(roomId) || roomId <= 0) return;
+      try { sessionStorage.removeItem('maf:pending-room-to-open'); } catch { /* facultatif */ }
+      setTab('salon');
+      void openRoom({ id: roomId, status: 'pending' });
+    };
+    window.addEventListener('maf:open-pending-room', openPendingRoom);
+    openPendingRoom();
+    return () => window.removeEventListener('maf:open-pending-room', openPendingRoom);
+  }, [session?.id]);
+
   const exitArena = async () => {
     if (busy) return;
     if (selected?.status !== 'playing') { chooseRoom(null); return; }
