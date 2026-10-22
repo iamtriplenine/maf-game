@@ -2,8 +2,8 @@
 
 .profile {
   --pad: clamp(16px, 4vw, 48px);
-  --actions-h: 86px;
-  --panel-h: max(236px, 34vh);
+  --actions-h: 72px;
+  --panel-h: max(calc(230px + max(20px, env(safe-area-inset-bottom))), 32vh);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -13,7 +13,7 @@
   overflow: hidden;
 }
 @supports (height: 1dvh) {
-  .profile { --panel-h: max(236px, 34dvh); }
+  .profile { --panel-h: max(calc(230px + max(20px, env(safe-area-inset-bottom))), 32dvh); }
 }
 
 .profile .profile__bar {
@@ -71,7 +71,7 @@
 .profile .profile__btn {
   flex-direction: column;
   gap: 6px;
-  min-height: 74px;
+  min-height: 60px;
   border-radius: var(--r-xl);
   font-size: 15px;
 }
@@ -89,7 +89,7 @@
   flex: 0 0 var(--panel-h);
   flex-direction: column;
   gap: 14px;
-  padding: 20px var(--pad) max(20px, env(safe-area-inset-bottom));
+  padding: 14px var(--pad) calc(72px + max(20px, env(safe-area-inset-bottom)));
   border: 1px solid var(--border);
   border-bottom: 0;
   border-radius: var(--r-xl) var(--r-xl) 0 0;
@@ -188,26 +188,26 @@
 .profile .profile__panel { gap: 16px; }
 .menu-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 .menu-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 84px;
-  padding: 10px 8px;
+  gap: 5px;
+  min-height: 68px;
+  padding: 7px 6px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--glass-strong);
   color: var(--text);
-  font: 600 12px/1.2 var(--font-ui);
+  font: 600 11px/1.2 var(--font-ui);
   letter-spacing: .3px;
   transition: transform var(--t) var(--ease), border-color var(--t) var(--ease);
 }
-.menu-btn svg { color: var(--accent-2); }
+.menu-btn svg { width: 20px; height: 20px; flex: none; color: var(--accent-2); }
 .menu-btn span { overflow-wrap: anywhere; text-align: center; }
 .menu-btn:hover { transform: translateY(-2px); border-color: var(--accent); }
 .menu-btn:active { transform: scale(.97); }
@@ -266,10 +266,7 @@
 .skins-message { color: var(--accent-2); font-size: 12px; }
 .skins-footnote { margin: 14px 0 0; color: var(--text-dim); font-size: 11px; line-height: 1.6; }
 .profile__model-error { position: absolute; z-index: 1; top: 35%; left: 12%; right: 12%; text-align: center; color: var(--text); font-size: 13px; line-height: 1.5; }
-@media (max-width: 360px) {
-  .profile { --panel-h: max(294px, 42dvh); }
-  .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
+
 
 .withdrawal-fields { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; min-width: 0; }
 .withdrawal-fields legend { margin-bottom: 12px; font-weight: 600; }
