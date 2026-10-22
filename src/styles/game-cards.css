@@ -1,0 +1,16 @@
+/* Onglet Game : petites cartes carrees (2 par ligne) + page detaillee d'un jeu */
+.game-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.game-card { aspect-ratio:1/1; display:grid; place-content:center; justify-items:center; gap:10px; padding:10px; border:1px solid var(--border); border-radius:var(--r-lg); background:radial-gradient(ellipse at 50% 30%,var(--accent-soft),transparent 65%),var(--glass); color:var(--text); text-align:center; min-width:0; transition:transform .15s,border-color .2s,background .2s; }
+.game-card:hover { border-color:var(--accent); background:radial-gradient(ellipse at 50% 30%,var(--accent-soft),transparent 65%),var(--glass-strong); }
+.game-card:active { transform:scale(.96); }
+.game-card__emoji { font-size:clamp(46px,14vw,78px); line-height:1; filter:drop-shadow(0 8px 14px var(--accent-soft)); }
+.game-card__name { font:700 clamp(12px,3.4vw,16px)/1.25 var(--font-tech); overflow-wrap:anywhere; }
+.game-detail { display:grid; gap:17px; animation:game-hub-in .24s ease-out; }
+.game-detail__back { justify-self:start; padding:9px 15px; border:1px solid var(--border); background:var(--glass); color:var(--text); border-radius:100px; font-size:13px; font-weight:650; }
+.game-detail__hero { display:grid; grid-template-columns:110px minmax(0,1fr); align-items:center; gap:20px; padding:clamp(18px,4vw,34px); border:1px solid var(--border); border-radius:var(--r-lg); background:radial-gradient(ellipse at 10% 30%,var(--accent-soft),transparent 55%),var(--glass); }
+.game-detail__emoji { font-size:clamp(64px,16vw,100px); text-align:center; line-height:1; filter:drop-shadow(0 12px 20px var(--accent-soft)); }
+.game-detail__hero h2 { margin:6px 0 10px; font:700 clamp(20px,5vw,28px)/1.2 var(--font-tech); }
+.game-detail__hero p { margin:0; color:var(--text-dim); line-height:1.6; font-size:14px; }
+.game-detail__training { display:grid; gap:12px; }
+.game-hub__panels--single { grid-template-columns:minmax(0,1fr); }
+@media(max-width:560px) { .game-detail__hero { grid-template-columns:1fr; gap:6px; } }

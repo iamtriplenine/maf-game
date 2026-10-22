@@ -4,14 +4,23 @@ import { PenaltyArena, SoloPenalty } from '../components/PenaltyArena';
 import { useSession } from '../auth/useSession';
 import * as roomsApi from '../api/rooms';
 import '../styles/game-rooms.css';
+import '../styles/game-cards.css';
 
 const money = (value) => `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`;
 const gameName = () => 'Tir au but';
+const GAMES = [
+  {
+    id: 'penalty', emoji: '⚽', name: 'Tir au but',
+    about: 'Face à face tireur / gardien. Vise à gauche, au milieu ou à droite. Tu changes de rôle après chaque tir et tu comptes tes buts.',
+    tags: ['3 tirs', '5 tirs', '10 tirs', '2 joueurs'],
+  },
+];
 const statusLabel = { open: 'Ouvert', pending: 'Demande en cours', ready: 'Pret a jouer', playing: 'Match en cours', finished: 'Termine' };
 
 export default function GamePage() {
   const { session } = useSession();
-  const [tab, setTab] = useState('salon');
+  const [tab, setTab] = useState('jeux');
+  const [gameId, setGameId] = useState(null);
   const [rooms, setRooms] = useState([]);
   const [mine, setMine] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -97,7 +106,7 @@ export default function GamePage() {
   }, [refresh]);
 
   const action = async (run, message) => {
-    if (busy) return;
+    if (busy) return false;
     setBusy(true);
     setError('');
     setNotice('');
@@ -106,9 +115,17 @@ export default function GamePage() {
       chooseRoom(next);
       setNotice(message);
       await refresh({ quiet: true });
-    } catch (err) { setError(err.message); }
+      return true;
+    } catch (err) { setError(err.message); return false; }
     finally { setBusy(false); }
   };
+
+  const openGame = (id) => {
+    setError('');
+    setNotice('');
+    setGameId(id);
+  };
+  const currentGame = GAMES.find((g) => g.id === gameId) || null;
 
   const matchAction = async (run) => {
     if (busy) return;
@@ -155,7 +172,11 @@ export default function GamePage() {
       setError('Choisis une mise entiere de 100 a 1 000 000 F CFA.');
       return;
     }
-    void action(() => roomsApi.createRoom({ game: 'penalty', shots, stake: value }), 'Ton salon est public ! Partage son code a 4 chiffres.');
+    void (async () => {
+      const ok = await action(() => roomsApi.createRoom({ game: currentGame?.id || 'penalty', shots, stake: value }),
+        'Ton salon est public ! Partage son code a 4 chiffres.');
+      if (ok) { setGameId(null); setTab('salon'); }
+    })();
   };
 
   const startSwipe = (event) => {
@@ -170,7 +191,7 @@ export default function GamePage() {
     const dx = touch.clientX - start.x;
     const dy = touch.clientY - start.y;
     if (Math.abs(dx) >= 70 && Math.abs(dx) > Math.abs(dy) * 1.35) {
-      setTab(dx < 0 ? 'jeux' : 'salon');
+      setTab(dx < 0 ? 'salon' : 'jeux');
     }
   };
 
@@ -188,12 +209,12 @@ export default function GamePage() {
       </header>
 
       <div className="game-hub__tabs" role="tablist" aria-label="Sections de Game">
-        <button id="game-tab-salon" type="button" role="tab" aria-controls="game-panel-salon"
-          aria-selected={tab === 'salon'} className={tab === 'salon' ? 'is-current' : ''}
-          onClick={() => setTab('salon')}>Salon</button>
         <button id="game-tab-jeux" type="button" role="tab" aria-controls="game-panel-jeux"
           aria-selected={tab === 'jeux'} className={tab === 'jeux' ? 'is-current' : ''}
           onClick={() => setTab('jeux')}>Game</button>
+        <button id="game-tab-salon" type="button" role="tab" aria-controls="game-panel-salon"
+          aria-selected={tab === 'salon'} className={tab === 'salon' ? 'is-current' : ''}
+          onClick={() => setTab('salon')}>Salon</button>
       </div>
 
       {tab === 'salon' ? (
@@ -267,29 +288,12 @@ export default function GamePage() {
             </article>
           )}
 
-          <div className="game-hub__panels">
+          <div className="game-hub__panels game-hub__panels--single">
             <section className="game-hub__panel" aria-label="Creer un salon">
               <span className="game-hub__eyebrow">JOUER A DEUX</span>
-              <h3>Creer un salon</h3>
-              <form onSubmit={doCreate} className="game-hub__form">
-                <label>Jeu
-                  <select value="penalty" aria-label="Jeu" disabled><option value="penalty">⚽ Tir au but</option></select>
-                </label>
-                <fieldset className="game-hub__shots"><legend>Nombre de tirs par joueur</legend>
-                  {[3, 5, 10].map((n) => <label key={n} className={shots === n ? 'is-checked' : ''}>
-                    <input type="radio" name="shots" value={n} checked={shots === n} onChange={() => setShots(n)} />{n} tirs
-                  </label>)}
-                </fieldset>
-                <label>Mise par joueur (F CFA)
-                  <input type="text" inputMode="numeric" pattern="[0-9]+" required maxLength={7}
-                    value={stake} onChange={(e) => setStake(e.target.value.replace(/\D/g, '').slice(0, 7))}
-                    aria-describedby="game-stake-info" />
-                </label>
-                <p id="game-stake-info" className="game-hub__muted">100 a 1 000 000 F. Gain theorique : {money(Number(stake || 0) * 2)}.</p>
-                <button className="btn btn--primary btn--block" type="submit" disabled={busy || !!mine || !session}>
-                  {mine ? 'Tu as deja un salon actif' : 'Creer mon salon public'}</button>
-                {!session && <p className="game-hub__muted">Connecte-toi depuis le Profil pour creer un salon.</p>}
-              </form>
+              <h3>Créer un salon</h3>
+              <p className="game-hub__muted">Choisis un jeu dans l'onglet Game, puis crée ton salon depuis sa page.</p>
+              <button type="button" className="btn btn--primary btn--sm" onClick={() => setTab('jeux')}>Voir les jeux</button>
             </section>
             <section className="game-hub__panel" aria-label="Rechercher un salon">
               <span className="game-hub__eyebrow">UN AMI T'ATTEND ?</span>
@@ -329,19 +333,61 @@ export default function GamePage() {
         </section>
       ) : (
         <section id="game-panel-jeux" role="tabpanel" aria-labelledby="game-tab-jeux" className="game-hub__content">
-          <div className="game-hub__line"><h2>Les jeux</h2><span className="game-hub__count">1 disponible</span></div>
-          <p className="game-hub__muted">Entraine-toi contre le robot avant de defier un autre joueur dans un salon.</p>
-          <article className="game-hub__featured">
-            <span className="game-hub__ball" aria-hidden="true">⚽</span>
-            <div><span className="game-hub__eyebrow">PREMIER JEU</span>
-              <h3>Tir au but</h3>
-              <p>Face a face tireur / gardien. Vise a gauche, au milieu ou a droite. Change de role apres chaque tir et compte tes buts.</p>
-              <div className="game-hub__tags"><span>3 tirs</span><span>5 tirs</span><span>10 tirs</span><span>2 joueurs</span></div>
-              <p className="game-hub__muted">Choisis le nombre de tirs et joue immediatement contre un gardien virtuel. Aucun argent en jeu.</p>
-              <button type="button" className="btn btn--primary btn--sm" onClick={() => setTab('salon')}>Voir les salons</button>
-            </div>
-          </article>
-          <SoloPenalty />
+          {!currentGame ? (
+            <>
+              <div className="game-hub__line"><h2>Les jeux</h2><span className="game-hub__count">{GAMES.length} disponible{GAMES.length > 1 ? 's' : ''}</span></div>
+              <div className="game-grid">
+                {GAMES.map((game) => (
+                  <button key={game.id} type="button" className="game-card" onClick={() => openGame(game.id)}>
+                    <span className="game-card__emoji" aria-hidden="true">{game.emoji}</span>
+                    <span className="game-card__name">{game.name}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <article className="game-detail" aria-label={currentGame.name}>
+              <button type="button" className="game-detail__back" onClick={() => openGame(null)}>← Tous les jeux</button>
+              <div className="game-detail__hero">
+                <span className="game-detail__emoji" aria-hidden="true">{currentGame.emoji}</span>
+                <div>
+                  <span className="game-hub__eyebrow">JEU</span>
+                  <h2>{currentGame.name}</h2>
+                  <p>{currentGame.about}</p>
+                  <div className="game-hub__tags">{currentGame.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+                </div>
+              </div>
+              {error && <p role="alert" className="game-hub__error">{error}</p>}
+              <section className="game-hub__panel" aria-label="Créer un salon">
+                <span className="game-hub__eyebrow">JOUER A DEUX</span>
+                <h3>Créer un salon pour ce jeu</h3>
+                <form onSubmit={doCreate} className="game-hub__form">
+                  <fieldset className="game-hub__shots"><legend>Nombre de tirs par joueur</legend>
+                    {[3, 5, 10].map((n) => <label key={n} className={shots === n ? 'is-checked' : ''}>
+                      <input type="radio" name="shots" value={n} checked={shots === n} onChange={() => setShots(n)} />{n} tirs
+                    </label>)}
+                  </fieldset>
+                  <label>Mise par joueur (F CFA)
+                    <input type="text" inputMode="numeric" pattern="[0-9]+" required maxLength={7}
+                      value={stake} onChange={(e) => setStake(e.target.value.replace(/\D/g, '').slice(0, 7))}
+                      aria-describedby="game-stake-info" />
+                  </label>
+                  <p id="game-stake-info" className="game-hub__muted">100 à 1 000 000 F. Gain théorique : {money(Number(stake || 0) * 2)}.</p>
+                  <button className="btn btn--primary btn--block" type="submit" disabled={busy || !!mine || !session}>
+                    {mine ? 'Tu as déjà un salon actif' : 'Créer mon salon public'}</button>
+                  {!session && <p className="game-hub__muted">Connecte-toi depuis le Profil pour créer un salon.</p>}
+                </form>
+              </section>
+              <button type="button" className="btn btn--sm btn--block" onClick={() => setTab('salon')}>Voir les salons ouverts</button>
+              {currentGame.id === 'penalty' && (
+                <section className="game-detail__training" aria-label="Entraînement">
+                  <span className="game-hub__eyebrow">ENTRAINEMENT</span>
+                  <p className="game-hub__muted">Entraîne-toi contre le robot avant de défier un autre joueur. Aucune mise en jeu.</p>
+                  <SoloPenalty />
+                </section>
+              )}
+            </article>
+          )}
         </section>
       )}
     </main>
