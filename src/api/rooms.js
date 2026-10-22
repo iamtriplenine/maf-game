@@ -51,3 +51,11 @@ export const recentResults = async () => currentSession()
 
 export const exitMatch = id => walletRequest(`/api/rooms/${id}/match/exit`, { method:'POST' });
 export const resumeMatch = id => walletRequest(`/api/rooms/${id}/match/resume`, { method:'POST' });
+
+// Dames : coups valides uniquement si acceptes par le serveur.
+export const moveCheckers = (id, move) =>
+  walletRequest(`/api/rooms/${id}/match/move`, { method: 'POST', body: move });
+export const offerCheckersDraw = id =>
+  walletRequest(`/api/rooms/${id}/match/draw/offer`, { method: 'POST' });
+export const respondCheckersDraw = (id, accept) =>
+  walletRequest(`/api/rooms/${id}/match/draw/respond`, { method: 'POST', body: { accept } });
