@@ -7,7 +7,7 @@ import { useSession } from "../auth/useSession";
 import AuthForm from "../components/AuthForm";
 import AdminPanel from "../components/AdminPanel";
 import { wakeServer } from "../api/accounts";
-import { walletRequest, clearAdminAccess } from "../api/accounts";
+import { clearAdminAccess } from "../api/accounts";
 import { WalletBalances, CouponForm, RechargeForm } from "../components/WalletForms";
 import { IconVoucher } from "../components/Icons";
 import "../styles/profile.css";
@@ -26,23 +26,6 @@ export default function ProfilePage({ onOpenStudio }) {
     wakeServer();
   }, []);
 
-  useEffect(() => {
-    if (!session?.id) return undefined;
-    let alive = true, running = false;
-    async function refresh() {
-      if (running) return;
-      running = true;
-      try {
-        const { user } = await walletRequest("/api/wallet");
-        if (alive) updateUser(user);
-      } catch { /* Le formulaire affiche les erreurs ; conserver les derniers soldes. */ }
-      finally { running = false; }
-    }
-    refresh();
-    const timer = setInterval(refresh, 15000);
-    window.addEventListener("focus", refresh);
-    return () => { alive = false; clearInterval(timer); window.removeEventListener("focus", refresh); };
-  }, [session?.id, updateUser]);
 
   return (
     <>

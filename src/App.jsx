@@ -1,3 +1,4 @@
+import RefreshCube from "./components/RefreshCube";
 import { useEffect, useState } from "react";
 import ProfilePage from "./pages/ProfilePage";
 import Studio from "./pages/Studio";
@@ -18,9 +19,9 @@ export default function App() {
     window.location.hash = next === "studio" ? "#studio" : "#profil";
   };
 
-  return view === "studio" ? (
+  return <><RefreshCube />{view === "studio" ? (
     <Studio onBack={() => go("profile")} />
   ) : (
     <ProfilePage onOpenStudio={() => go("studio")} />
-  );
+  )}</>;
 }

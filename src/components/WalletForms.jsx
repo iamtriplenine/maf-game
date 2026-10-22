@@ -1,3 +1,4 @@
+import { registerRefresh } from '../api/refresh';
 import { useEffect, useRef, useState } from 'react';
 import { walletRequest, setAdminAccess } from '../api/accounts';
 import { IconFranc, IconV } from './Icons';
@@ -59,12 +60,12 @@ export function RechargeForm({ user, onUser }) {
         onUser(wallet.user); setClock(Date.now()); const deposits = history.transactions.filter(t=>t.kind==='deposit'); setItems(deposits);
         const resume = !resumed.current; resumed.current = true;
         setSelected(current=> current ? deposits.find(t=>t.id===current.id) || current : resume ? deposits.find(t=>['awaiting_payment','pending'].includes(t.status)) || null : null);
-      } catch(e) { if (alive) setError(e.message); }
+      } catch(e) { if (alive) setError(e.message); throw e; }
       finally { running=false; if (alive) setLoading(false); }
     }
-    load(); const timer=setInterval(load,12000);
-    const focus=()=>load(); window.addEventListener('focus',focus);
-    return ()=>{alive=false;clearInterval(timer);window.removeEventListener('focus',focus);};
+    const unregister = registerRefresh(load);
+    load().catch(()=>{});
+    return ()=>{alive=false;unregister();};
   },[onUser]);
   useEffect(()=>()=>{ if (preview) URL.revokeObjectURL(preview); },[preview]);
   async function run(fn) {

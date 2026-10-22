@@ -1,0 +1,19 @@
+/* Cube adapté de Uiverse.io, bociKond. */
+.refresh-control { position: fixed; z-index: 15000; width: 80px; }
+.refresh-control__button { width: 80px; height: 96px; border: 0; background: transparent; color: var(--accent-2, #55d7ff); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.refresh-control__button:active { cursor: grabbing; }
+.refresh-control__button:focus-visible { outline: 2px solid currentColor; border-radius: 12px; }
+.refresh-cube { display: block; position: relative; width: 30px; height: 30px; transform-style: preserve-3d; transform: rotate(45deg) rotateX(-25deg) rotateY(25deg); }
+.is-busy .refresh-cube { animation: maf-cube-spin 1.6s infinite ease; }
+.refresh-cube > span { position: absolute; inset: 0; border: 1.5px solid currentColor; background: color-mix(in srgb, currentColor 10%, transparent); }
+.refresh-cube > span:nth-child(1) { transform: translateZ(-15px) rotateY(180deg); }
+.refresh-cube > span:nth-child(2) { transform: rotateY(-270deg) translateX(50%); transform-origin: top right; }
+.refresh-cube > span:nth-child(3) { transform: rotateY(270deg) translateX(-50%); transform-origin: center left; }
+.refresh-cube > span:nth-child(4) { transform: rotateX(90deg) translateY(-50%); transform-origin: top center; }
+.refresh-cube > span:nth-child(5) { transform: rotateX(-90deg) translateY(50%); transform-origin: bottom center; }
+.refresh-cube > span:nth-child(6) { transform: translateZ(15px); }
+.refresh-control__label { font: 600 11px/1.2 sans-serif; color: var(--text, white); text-shadow: 0 1px 4px #000; }
+.refresh-control__message { position: fixed; left: 16px; right: 16px; bottom: max(20px, env(safe-area-inset-bottom)); padding: 12px; background: var(--glass-strong, #182b40); color: var(--text, white); border: 1px solid var(--border); border-radius: 12px; text-align: center; pointer-events: none; }
+.refresh-control__silent { position: absolute; width: 1px; height: 1px; overflow: hidden; }
+@keyframes maf-cube-spin { 0% { transform: rotate(45deg) rotateX(-25deg) rotateY(25deg); } 50% { transform: rotate(45deg) rotateX(-385deg) rotateY(25deg); } 100% { transform: rotate(45deg) rotateX(-385deg) rotateY(385deg); } }
+@media (prefers-reduced-motion: reduce) { .is-busy .refresh-cube { animation: none; } }

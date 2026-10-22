@@ -32,6 +32,7 @@ function writeStored(data) {
   } catch {
     /* stockage indisponible */
   }
+  window.dispatchEvent(new Event("maf:session"));
 }
 
 // Appel serveur ; reessaie tout seul si le serveur est en train de se reveiller (502/503/504).
@@ -105,10 +106,11 @@ export async function refreshSession() {
   if (!stored) return null;
   try {
     const { user } = await request("/api/me", { token: stored.token });
+    if (readStored()?.token !== stored.token) return currentSession();
     writeStored({ token: stored.token, user });
     return user;
   } catch (error) {
-    if (error.status === 401) {
+    if (error.status === 401 && readStored()?.token === stored.token) {
       clearAdminAccess();
       writeStored(null);
       return null;
@@ -146,4 +148,16 @@ export async function adminRequest(path,options={}) {
     throw new Error('Acces administrateur expire. Rouvre le panel depuis Coupons.');
   }
   return request('/api/admin'+path,{...options,token:stored.token,headers:{'X-Admin-Session':adminAccess.token}});
+}
+
+export async function syncWallet() {
+  const stored = readStored();
+  if (!stored) return;
+  try {
+    const { user } = await request('/api/wallet', { token: stored.token });
+    if (readStored()?.token === stored.token) writeStored({ ...stored, user });
+  } catch (error) {
+    if (error.status === 401 && readStored()?.token === stored.token) logout();
+    throw error;
+  }
 }

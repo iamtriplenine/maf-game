@@ -4,15 +4,13 @@ import * as accounts from "../api/accounts";
 export function useSession() {
   const [session, setSession] = useState(() => accounts.currentSession());
 
-  // Au chargement : verifie la session aupres du serveur et met le solde a jour.
   useEffect(() => {
-    if (!accounts.currentSession()) return undefined;
-    let alive = true;
-    accounts.refreshSession().then((user) => {
-      if (alive) setSession(user);
-    });
+    const sync = () => setSession(accounts.currentSession());
+    window.addEventListener('maf:session', sync);
+    window.addEventListener('storage', sync);
     return () => {
-      alive = false;
+      window.removeEventListener('maf:session', sync);
+      window.removeEventListener('storage', sync);
     };
   }, []);
 
