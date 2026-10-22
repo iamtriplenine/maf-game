@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { IconGamepad } from '../components/Icons';
 import { PenaltyArena, SoloPenalty } from '../components/PenaltyArena';
+import CheckersArena from '../components/CheckersArena';
+import SoloCheckers from '../components/SoloCheckers';
 import { useSession } from '../auth/useSession';
 import * as roomsApi from '../api/rooms';
 import { registerRefresh } from '../api/refresh';
@@ -14,12 +16,18 @@ const localRoomDeadline = room => room ? {
 } : null;
 
 const money = (value) => `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`;
-const gameName = () => 'Tir au but';
+const gameName = (game) => game === 'checkers' ? 'Dames' : 'Tir au but';
+const gameSymbol = (game) => game === 'checkers' ? '♛' : '⚽';
 const GAMES = [
   {
     id: 'penalty', emoji: '⚽', name: 'Tir au but',
     about: 'Face à face tireur / gardien. Vise à gauche, au milieu ou à droite. Tu changes de rôle après chaque tir et tu comptes tes buts.',
     tags: ['3 tirs', '5 tirs', '10 tirs', '2 joueurs'],
+  },
+  {
+    id: 'checkers', emoji: '♛', name: 'Jeu de dames',
+    about: 'Duels de dames internationales sur un plateau de 100 cases. Prises obligatoires, combinaisons, promotions et strategie pour gagner.',
+    tags: ['10 × 10', '20 pions chacun', '2 joueurs', 'Prises obligatoires'],
   },
 ];
 const statusLabel = { open: 'Ouvert', pending: 'Demande en cours', ready: 'Pret a jouer', playing: 'Match en cours', finished: 'Termine' };
@@ -214,7 +222,7 @@ export default function GamePage() {
       return;
     }
     void (async () => {
-      const ok = await action(() => roomsApi.createRoom({ game: currentGame?.id || 'penalty', shots, stake: value }),
+      const ok = await action(() => roomsApi.createRoom({ game: currentGame?.id || 'penalty', shots: currentGame?.id === 'checkers' ? null : shots, stake: value }),
         'Ton salon est public ! Partage son code a 4 chiffres.');
       if (ok) { setGameId(null); setTab('salon'); }
     })();
@@ -283,7 +291,7 @@ export default function GamePage() {
               <span className="salon-row__code">#{room.code}</span>
               <span className="salon-row__main">
                 <strong>{room.host.pseudo}</strong>
-                <small>⚽ {room.shots} tirs · {statusLabel[room.status]}</small>
+                <small>{gameSymbol(room.game)} {gameName(room.game)}{room.game === 'penalty' ? ` · ${room.shots} tirs` : ''} · {statusLabel[room.status]}</small>
               </span>
               <span className="salon-row__stake">{money(room.stake)}</span>
             </button>)}
@@ -298,7 +306,7 @@ export default function GamePage() {
                 <button type="button" className="game-hub__close" onClick={() => chooseRoom(null)} aria-label="Masquer ce salon">×</button>
               </div>
               <div className="game-hub__facts">
-                <span>⚽ {gameName()}</span><span>{selected.shots} tirs / joueur</span>
+                <span>{gameSymbol(selected.game)} {gameName(selected.game)}</span>{selected.game === 'penalty' ? <span>{selected.shots} tirs / joueur</span> : <span>10 × 10 · 20 pions / joueur</span>}
                 <span>Mise : {money(selected.stake)} par joueur</span><span>Gain : {money(selected.stake * 2)}</span>
                 {selected.escrow > 0 && selected.status !== 'finished' && <span>Cagnotte retenue : {money(selected.escrow)}</span>}
               </div>
@@ -337,12 +345,20 @@ export default function GamePage() {
                   {isHost ? 'Fermer le salon' : selected.status === 'pending' ? 'Annuler ma demande' : 'Quitter le salon'}
                 </button>}
               </div>
-              {isParticipant && ['ready', 'playing', 'finished'].includes(selected.status) && <PenaltyArena
-                room={selected} match={match} busy={busy} error={error} onExit={() => void exitArena()}
-                onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
-                onChoose={(direction) => void matchAction(() => roomsApi.chooseDirection(selected.id, direction))}
-                onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}
-                onBack={() => chooseRoom(null)} />}
+              {isParticipant && ['ready', 'playing', 'finished'].includes(selected.status) && (
+                selected.game === 'checkers' ? <CheckersArena
+                  room={selected} match={match} busy={busy} error={error} onExit={() => void exitArena()}
+                  onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
+                  onMove={(move) => void matchAction(() => roomsApi.moveCheckers(selected.id, move))}
+                  onDrawOffer={() => void matchAction(() => roomsApi.offerCheckersDraw(selected.id))}
+                  onDrawRespond={(accept) => void matchAction(() => roomsApi.respondCheckersDraw(selected.id, accept))}
+                  onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}
+                  onBack={() => chooseRoom(null)} /> : <PenaltyArena
+                    room={selected} match={match} busy={busy} error={error} onExit={() => void exitArena()}
+                    onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
+                    onChoose={(direction) => void matchAction(() => roomsApi.chooseDirection(selected.id, direction))}
+                    onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}
+                    onBack={() => chooseRoom(null)} />)}
             </article>
           )}
 
@@ -367,8 +383,11 @@ export default function GamePage() {
             <h2>Mes derniers matchs</h2>
             {results.slice(0, 5).map((room) => <button className="game-hub__result" type="button" key={room.id}
               onClick={() => void openRoom(room)}>
-              <span>⚽ Salon #{room.code} · {room.shots} tirs</span>
-              <strong className={room.result.winner === (session?.id === room.host.id ? 'host' : 'guest') ? 'is-win' : 'is-loss'}>{room.result.winner === (session?.id === room.host.id ? 'host' : 'guest') ? '🏆 Victoire' : 'Défaite'} · {room.result.scores?.host ?? 0} - {room.result.scores?.guest ?? 0}</strong>
+              <span>{gameSymbol(room.game)} Salon #{room.code} · {gameName(room.game)}{room.game === 'penalty' ? ` · ${room.shots} tirs` : ''}</span>
+              <strong className={room.result.draw ? '' : room.result.winner === (session?.id === room.host.id ? 'host' : 'guest') ? 'is-win' : 'is-loss'}>
+                {room.result.draw ? '🤝 Match nul' : room.result.winner === (session?.id === room.host.id ? 'host' : 'guest') ? '🏆 Victoire' : 'Défaite'}
+                {room.game === 'penalty' ? ` · ${room.result.scores?.host ?? 0} - ${room.result.scores?.guest ?? 0}` : ''}
+              </strong>
               <span>Voir →</span>
             </button>)}
           </section>}
@@ -404,11 +423,11 @@ export default function GamePage() {
                 <span className="game-hub__eyebrow">JOUER A DEUX</span>
                 <h3>Créer un salon pour ce jeu</h3>
                 <form onSubmit={doCreate} className="game-hub__form">
-                  <fieldset className="game-hub__shots"><legend>Nombre de tirs par joueur</legend>
+                  {currentGame.id === 'penalty' ? <fieldset className="game-hub__shots"><legend>Nombre de tirs par joueur</legend>
                     {[3, 5, 10].map((n) => <label key={n} className={shots === n ? 'is-checked' : ''}>
                       <input type="radio" name="shots" value={n} checked={shots === n} onChange={() => setShots(n)} />{n} tirs
                     </label>)}
-                  </fieldset>
+                  </fieldset> : <p className="game-hub__muted">Partie de dames 10 × 10 · 20 pions chacun · Prise obligatoire · 2 minutes maximum par coup.</p>}
                   <label>Mise par joueur (F CFA)
                     <input type="text" inputMode="numeric" pattern="[0-9]+" required maxLength={7}
                       value={stake} onChange={(e) => setStake(e.target.value.replace(/\D/g, '').slice(0, 7))}
@@ -421,13 +440,11 @@ export default function GamePage() {
                 </form>
               </section>
               <button type="button" className="btn btn--sm btn--block" onClick={() => setTab('salon')}>Voir les salons ouverts</button>
-              {currentGame.id === 'penalty' && (
-                <section className="game-detail__training" aria-label="Entraînement">
-                  <span className="game-hub__eyebrow">ENTRAINEMENT</span>
-                  <p className="game-hub__muted">Entraîne-toi contre le robot avant de défier un autre joueur. Aucune mise en jeu.</p>
-                  <SoloPenalty />
-                </section>
-              )}
+              <section className="game-detail__training" aria-label="Entraînement">
+                <span className="game-hub__eyebrow">ENTRAINEMENT</span>
+                <p className="game-hub__muted">Entraîne-toi contre le robot avant de défier un autre joueur. Aucune mise en jeu.</p>
+                {currentGame.id === 'penalty' ? <SoloPenalty /> : <SoloCheckers />}
+              </section>
             </article>
           )}
         </section>
