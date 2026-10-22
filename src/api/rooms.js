@@ -59,5 +59,7 @@ export const offerCheckersDraw = id =>
   walletRequest(`/api/rooms/${id}/match/draw/offer`, { method: 'POST' });
 export const cancelCheckersDraw = id =>
   walletRequest(`/api/rooms/${id}/match/draw/cancel`, { method: 'POST' });
+export const sendCheckersEmote = (id, emote) =>
+  walletRequest(`/api/rooms/${id}/match/emote`, { method: 'POST', body: { emote } });
 export const respondCheckersDraw = (id, accept) =>
   walletRequest(`/api/rooms/${id}/match/draw/respond`, { method: 'POST', body: { accept } });

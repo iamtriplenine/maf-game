@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import '../styles/checkers-arena.css';
 import '../styles/checkers-move-replay.css';
@@ -11,15 +11,24 @@ const other = side => side === 'host' ? 'guest' : 'host';
 const secondsLeft = (deadline, serverNow, receivedAt, clock) => deadline == null
   ? null : Math.max(0, Math.ceil((deadline - serverNow - (clock - receivedAt)) / 1000));
 const isSamePrefix = (whole, prefix) => prefix.every((v, i) => whole[i] === v);
+const CHECKERS_REACTIONS = [
+  { kind: 'laugh', icon: '😂', label: 'Rire' },
+  { kind: 'smirk', icon: '😏', label: 'Sourire sournois' },
+  { kind: 'clap', icon: '👏', label: 'Applaudissement' },
+];
+const reactionIcon = (kind) => CHECKERS_REACTIONS.find((item) => item.kind === kind)?.icon || '✨';
 
 export default function CheckersArena({ room, match, busy = false, onStart, onMove, onForfeit,
-  onExit, onBack, onDrawOffer, onDrawCancel, onDrawRespond, error = '' }) {
+  onExit, onBack, onDrawOffer, onDrawCancel, onDrawRespond, onEmote, error = '' }) {
   const [from, setFrom] = useState(null);
   const [path, setPath] = useState([]);
   const [clock, setClock] = useState(Date.now);
   const [receivedAt, setReceivedAt] = useState(Date.now);
   const [confirmForfeit, setConfirmForfeit] = useState(false);
   const [confirmDrawOffer, setConfirmDrawOffer] = useState(false);
+  const lastSentEmote = useRef(null);
+  const emoteTimer = useRef(null);
+  const [activeEmote, setActiveEmote] = useState(null);
   const status = room?.status;
   const solo = room?.id === 0;
   const viewer = match?.viewer || (room?.is_host ? 'host' : 'guest');
@@ -42,6 +51,19 @@ export default function CheckersArena({ room, match, busy = false, onStart, onMo
   useEffect(() => { setFrom(null); setPath([]); }, [match?.ply, match?.toMove]);
   useEffect(() => { setConfirmForfeit(false); }, [finished]);
   useEffect(() => { setConfirmDrawOffer(false); }, [match?.drawOffer, finished]);
+  useEffect(() => () => { if (emoteTimer.current) window.clearTimeout(emoteTimer.current); }, []);
+  useEffect(() => {
+    const emote = match?.emote;
+    if (!emote?.id || !emote?.kind) return;
+    const ownEcho = emote.side === viewer && lastSentEmote.current
+      && lastSentEmote.current.kind === emote.kind && Date.now() - lastSentEmote.current.at < 5000;
+    if (ownEcho) { lastSentEmote.current = null; return; }
+    if (emoteTimer.current) window.clearTimeout(emoteTimer.current);
+    setActiveEmote(emote);
+    emoteTimer.current = window.setTimeout(() => {
+      setActiveEmote((current) => current?.id === emote.id ? null : current);
+    }, 1700);
+  }, [match?.emote?.id, match?.emote?.kind, match?.emote?.side, viewer]);
 
   function pick(i) {
     if (!myTurn) return;
@@ -60,6 +82,18 @@ export default function CheckersArena({ room, match, busy = false, onStart, onMo
     } else if (i === from) {
       setFrom(null); setPath([]);
     }
+  }
+
+  function triggerReaction(kind) {
+    if (busy || finished) return;
+    const local = { id: 'local-' + Date.now() + '-' + kind, side: viewer, kind, at: Date.now() };
+    lastSentEmote.current = { kind, at: Date.now() };
+    if (emoteTimer.current) window.clearTimeout(emoteTimer.current);
+    setActiveEmote(local);
+    emoteTimer.current = window.setTimeout(() => {
+      setActiveEmote((current) => current?.id === local.id ? null : current);
+    }, 1700);
+    onEmote?.(kind);
   }
 
   const ready = status === 'ready';
@@ -150,6 +184,15 @@ export default function CheckersArena({ room, match, busy = false, onStart, onMo
               : from !== null ? path.length ? 'Continue ta prise en choisissant la case suivante.' : 'Choisis une case lumineuse pour jouer.'
               : myTurn ? 'Selectionne un de tes pions lumineux puis sa destination.' : 'Regarde la partie, ton adversaire joue.'}
         </div>
+        {!finished && <div className="checkers-reaction-dock" role="group" aria-label="Reactions rapides">
+          {CHECKERS_REACTIONS.map((item) => <button key={item.kind} type="button" className="checkers-reaction-btn"
+            onClick={() => triggerReaction(item.kind)} disabled={busy} title={item.label} aria-label={item.label}>
+            <span aria-hidden="true">{item.icon}</span>
+          </button>)}
+        </div>}
+        {activeEmote && <div className={'checkers-reaction-flight ' + (activeEmote.side === viewer ? 'is-self' : 'is-rival')} aria-hidden="true">
+          <span className="checkers-reaction-flight__emoji">{reactionIcon(activeEmote.kind)}</span>
+        </div>}
         {error && <p className="checkers-error" role="alert">{error}</p>}
         {rivalReturn != null && !finished && <p className="checkers-alert">Adversaire sorti : {rivalReturn} s avant forfait.</p>}
         {ownReturn != null && !finished && <p className="checkers-alert">Tu dois revenir dans la partie : {ownReturn} s.</p>}

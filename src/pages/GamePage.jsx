@@ -376,6 +376,7 @@ export default function GamePage() {
                   onMove={(move) => void matchAction(() => roomsApi.moveCheckers(selected.id, move))}
                   onDrawOffer={() => void matchAction(() => roomsApi.offerCheckersDraw(selected.id))}
                   onDrawCancel={() => void matchAction(() => roomsApi.cancelCheckersDraw(selected.id))}
+                  onEmote={(emote) => void matchAction(() => roomsApi.sendCheckersEmote(selected.id, emote))}
                   onDrawRespond={(accept) => void matchAction(() => roomsApi.respondCheckersDraw(selected.id, accept))}
                   onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}
                   onBack={() => chooseRoom(null)} /> : <PenaltyArena
