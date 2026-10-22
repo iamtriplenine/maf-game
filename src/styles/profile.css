@@ -238,3 +238,13 @@
 .wallet-history button { display: grid; gap: 5px; text-align: left; padding: 12px; border: 1px solid var(--border); border-radius: var(--r-md); color: var(--text); background: var(--glass); font: inherit; cursor: pointer; }
 .wallet-history span, .wallet-history small { font-size: 12px; color: var(--text-dim); }
 .wallet-form .sheet__text, .wallet-form .sheet__error { margin: 0; }
+
+/* Soldes sans encadrement */
+.profile .wallet-balances {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
