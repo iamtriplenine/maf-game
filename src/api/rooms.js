@@ -63,3 +63,11 @@ export const sendCheckersEmote = (id, emote) =>
   walletRequest(`/api/rooms/${id}/match/emote`, { method: 'POST', body: { emote } });
 export const respondCheckersDraw = (id, accept) =>
   walletRequest(`/api/rooms/${id}/match/draw/respond`, { method: 'POST', body: { accept } });
+
+// TANK BATTLE : memes sessions et salons que les autres jeux.
+export const fireTank = (id, shot) =>
+  walletRequest(`/api/rooms/${id}/match/tank/fire`, {method:'POST',body:shot});
+export const tankDrawAction = (id, action, accept) =>
+  walletRequest(`/api/rooms/${id}/match/tank/draw/${action}`, {method:'POST',body:{accept}});
+export const tankReaction = (id, emote) =>
+  walletRequest(`/api/rooms/${id}/match/tank/emote`, {method:'POST',body:{emote}});
