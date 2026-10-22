@@ -48,3 +48,6 @@ export const forfeitMatch = async (id) =>
   walletRequest(`/api/rooms/${id}/match/forfeit`, { method: 'POST' });
 export const recentResults = async () => currentSession()
   ? (await walletRequest('/api/rooms/results/recent')).rooms || [] : [];
+
+export const exitMatch = id => walletRequest(`/api/rooms/${id}/match/exit`, { method:'POST' });
+export const resumeMatch = id => walletRequest(`/api/rooms/${id}/match/resume`, { method:'POST' });

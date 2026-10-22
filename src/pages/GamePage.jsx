@@ -3,10 +3,15 @@ import { IconGamepad } from '../components/Icons';
 import { PenaltyArena, SoloPenalty } from '../components/PenaltyArena';
 import { useSession } from '../auth/useSession';
 import * as roomsApi from '../api/rooms';
+import { registerRefresh } from '../api/refresh';
 import { syncWallet } from '../api/accounts';
 import '../styles/game-rooms.css';
 import '../styles/game-cards.css';
 import '../styles/game-salon.css';
+
+const localRoomDeadline = room => room ? {
+  ...room, localReturnDeadline:room.return_deadline ? Date.now() + room.return_deadline - (room.server_now || Date.now()) : null,
+} : null;
 
 const money = (value) => `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`;
 const gameName = () => 'Tir au but';
@@ -21,6 +26,8 @@ const statusLabel = { open: 'Ouvert', pending: 'Demande en cours', ready: 'Pret 
 
 export default function GamePage() {
   const { session } = useSession();
+  const [clock, setClock] = useState(Date.now);
+  useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const [tab, setTab] = useState('jeux');
   const [gameId, setGameId] = useState(null);
   const [rooms, setRooms] = useState([]);
@@ -58,7 +65,7 @@ export default function GamePage() {
         roomsApi.listRooms(), roomsApi.myRoom(), roomsApi.recentResults(),
       ]);
       setRooms(publicRooms);
-      setMine(myActiveRoom);
+      setMine(localRoomDeadline(myActiveRoom));
       setResults(recent);
       // Une mise vient d'etre retenue, rendue ou versee : on met le solde a jour.
       const key = `${myActiveRoom?.id}|${myActiveRoom?.status}|${myActiveRoom?.escrow}|${recent[0]?.id}|${recent[0]?.payout}`;
@@ -67,20 +74,21 @@ export default function GamePage() {
         void syncWallet().catch(() => {});
       }
       if (selectedId.current) {
+        const requestedId = selectedId.current;
         let detail;
-        try { detail = await roomsApi.roomById(selectedId.current); }
+        try { detail = await roomsApi.roomById(requestedId); }
         catch (err) {
           if (err.status !== 404) throw err;
           detail = null;
         }
-        if (selectedId.current) {
+        if (selectedId.current === requestedId) {
           selectedId.current = detail?.id ?? null;
           setSelected(detail);
           if (detail && ['ready', 'playing', 'finished'].includes(detail.status)
             && (session?.id === detail.host.id || session?.id === detail.guest?.id)) {
             try {
               const state = await roomsApi.getMatch(detail.id);
-              if (selectedId.current === detail.id) setMatch(state.match);
+              if (selectedId.current === detail.id) { setSelected(state.room); setMatch(state.match); }
             } catch (err) { if (err.status !== 404) throw err; }
           } else setMatch(null);
         }
@@ -93,6 +101,8 @@ export default function GamePage() {
       setLoading(false);
     }
   }, [session?.id]);
+
+  useEffect(() => registerRefresh(() => refresh()), [refresh]);
 
   useEffect(() => {
     let alive = true;
@@ -165,18 +175,35 @@ export default function GamePage() {
       setError('Saisis exactement 4 chiffres.');
       return;
     }
-    await action(() => roomsApi.roomByCode(code), 'Salon retrouve.');
+    await action(async () => {
+      const room = await roomsApi.roomByCode(code);
+      return room.status === 'playing' ? (await roomsApi.resumeMatch(room.id)).room : room;
+    }, 'Salon retrouve.');
   };
 
   const openRoom = async (room) => {
-    chooseRoom(room);
-    // Si le salon est en attente, le createur voit le demandeur sur le detail authentifie.
-    if (session) {
-      try {
-        const detail = await roomsApi.roomById(room.id);
-        if (selectedId.current === room.id) setSelected(detail);
-      } catch { /* Liste deja utilisable : actualisation prochaine. */ }
-    }
+    if (busy) return;
+    setBusy(true); setError('');
+    try {
+      if (room.status === 'playing') {
+        const data = await roomsApi.resumeMatch(room.id);
+        chooseRoom(data.room); setMatch(data.match);
+      } else chooseRoom(await roomsApi.roomById(room.id));
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  };
+  const exitArena = async () => {
+    if (busy) return;
+    if (selected?.status !== 'playing') { chooseRoom(null); return; }
+    setBusy(true); setError('');
+    try {
+      const data = await roomsApi.exitMatch(selected.id);
+      chooseRoom(null); setMine(data.room.status === 'playing' ? localRoomDeadline(data.room) : null);
+      setTab('salon');
+      await syncWallet();
+      void refresh({ quiet:true });
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
   };
 
   const doCreate = (event) => {
@@ -243,7 +270,7 @@ export default function GamePage() {
 
           {mine && selected?.id !== mine.id && (
             <button type="button" className="game-hub__mine" onClick={() => void openRoom(mine)}>
-              <span>Ton salon actif <strong>#{mine.code}</strong></span>
+              <span>{mine.return_deadline ? `Revenir au match · ${Math.max(0, Math.ceil(((mine.localReturnDeadline || mine.return_deadline) - clock) / 1000))} s avant forfait` : "Ton salon actif"} <strong>#{mine.code}</strong></span>
               <span>Voir →</span>
             </button>
           )}
@@ -311,7 +338,7 @@ export default function GamePage() {
                 </button>}
               </div>
               {isParticipant && ['ready', 'playing', 'finished'].includes(selected.status) && <PenaltyArena
-                room={selected} match={match} busy={busy} error={error} onExit={() => chooseRoom(null)}
+                room={selected} match={match} busy={busy} error={error} onExit={() => void exitArena()}
                 onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
                 onChoose={(direction) => void matchAction(() => roomsApi.chooseDirection(selected.id, direction))}
                 onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}

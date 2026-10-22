@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { refreshData } from '../api/refresh';
 import '../styles/refresh.css';
 
@@ -73,7 +74,7 @@ export default function RefreshCube() {
     drag.current = null;
     save(KEY, position);
   }
-  return <div className="refresh-control" style={{ left: position.x, top: position.y }}>
+  return createPortal(<div className="refresh-control" style={{ left: position.x, top: position.y }}>
     <button type="button" className={`refresh-control__button ${busy ? 'is-busy' : ''}`}
       aria-label="Actualiser les données" aria-busy={busy}
       title="Actualiser · Fais glisser pour déplacer · Flèches au clavier"
@@ -122,5 +123,5 @@ export default function RefreshCube() {
       <span className="refresh-control__count" aria-hidden="true">{remaining > 0 ? remaining : ''}</span>
     </button>
     <span role="status" className={message ? 'refresh-control__message' : 'refresh-control__silent'}>{message}</span>
-  </div>;
+  </div>, document.body);
 }

@@ -27,3 +27,6 @@
   .refresh-orb, .refresh-orb__mask, .refresh-orb__mask polygon, .is-busy .refresh-orb__art { animation: none; }
   .refresh-control__button:active .refresh-orb { opacity: .65; }
 }
+
+/* Above the immersive match; portal keeps refresh accessible outside the inert app. */
+.refresh-control { z-index: 17000; }

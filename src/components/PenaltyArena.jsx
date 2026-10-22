@@ -152,6 +152,15 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
     if (alertNow && typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([160, 80, 160]);
   }, [alertNow, match?.turn]);
 
+  const [opponentSeconds, setOpponentSeconds] = useState(null);
+  useEffect(() => {
+    const received = Date.now();
+    const update = () => setOpponentSeconds(match?.opponentReturnDeadline
+      ? Math.max(0, Math.ceil((match.opponentReturnDeadline - (match.serverNow || received) - (Date.now() - received)) / 1000)) : null);
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [match?.opponentReturnDeadline, match?.serverNow]);
   const immersive = status === 'playing' || finished;
   const arenaRef = useRef(null);
   useEffect(() => {
@@ -185,7 +194,7 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
     if (!immersive) return;
     if (e.key === 'Escape' && !busy && onExit) { e.preventDefault(); onExit(); }
     if (e.key !== 'Tab') return;
-    const buttons = [...arenaRef.current.querySelectorAll('button:not(:disabled)')];
+    const buttons = [...arenaRef.current.querySelectorAll('button:not(:disabled)'), ...document.querySelectorAll('.refresh-control button:not(:disabled)')];
     const first = buttons[0], end = buttons.at(-1);
     if (!first) { e.preventDefault(); return; }
     if (e.shiftKey && (document.activeElement === first || document.activeElement === arenaRef.current)) { e.preventDefault(); end.focus(); }
@@ -199,7 +208,7 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
       <header className="penalty__top">
         <div><h3>Tir au but</h3><small>{isSolo ? 'Entraînement' : `#${room.code} · Mise ${fmt(room.stake)}`}</small></div>
         <span className="penalty__phase">{finished ? 'Terminé' : status === 'ready' ? 'Prêt' : `Tir ${Math.floor((match?.turn || 0) / 2) + 1}/${total}`}</span>
-        {immersive && onExit && <button type="button" className="penalty__exit" disabled={busy} onClick={onExit} title={isSolo ? 'Quitter l’entraînement' : 'Revenir aux salons sans abandonner le match'}>Sortir ×</button>}
+        {immersive && onExit && <button type="button" className="penalty__exit" disabled={busy} onClick={onExit} title={isSolo ? 'Quitter l’entraînement' : 'Sortir temporairement : 80 secondes pour revenir avant forfait'}>Sortir ×</button>}
       </header>
       <div className="penalty__scoreboard" aria-live="polite">
         <ScoreTrack mine name={ownName || 'Moi'} side={viewer} history={match?.history} total={total} score={ownScore} turnSide={match?.shooter} finished={finished}/>
@@ -222,13 +231,13 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
             {SIDES.map(side => <button key={side.id} type="button" className={`penalty__direction ${match?.myChoice === side.id ? 'penalty__direction--chosen' : ''}`}
               disabled={busy || awaiting || cool > 0 || !match} onClick={() => onChoose(side.id)}><span aria-hidden="true">{side.icon}</span>{side.title}</button>)}
           </div>
-          <div className={`penalty__signal${alertNow ? ' penalty__signal--alert' : ''}`} role={alertNow ? 'alert' : 'status'}>
-            {alertNow ? '⚡ Ton adversaire a joué · À toi !' : cool > 0 ? `Prochain tir dans ${cool} s` : busy ? 'Envoi du choix…' : awaiting ? `Choix ${directionName(match.myChoice)} enregistré · Adversaire attendu` : 'Choisis ta direction'}
+          <div className={`penalty__signal${alertNow || opponentSeconds !== null ? ' penalty__signal--alert' : ''}`} role={alertNow ? 'alert' : 'status'}>
+            {opponentSeconds !== null ? `Adversaire sorti · ${opponentSeconds} s pour revenir, sinon tu gagnes par forfait` : alertNow ? '⚡ Ton adversaire a joué · À toi !' : cool > 0 ? `Prochain tir dans ${cool} s` : busy ? 'Envoi du choix…' : awaiting ? `Choix ${directionName(match.myChoice)} enregistré · Adversaire attendu` : 'Choisis ta direction'}
           </div>
         </>}
         {finished && <div className="penalty__finish" role="status">
           <strong>{isWinner ? '🏆 Victoire !' : 'Match terminé · Défaite'}</strong>
-          <p>{isSolo ? 'Entraînement · aucune mise' : isWinner ? `${fmt(room.payout > 0 ? room.payout : room.stake * 2)} gagnés` : `Mise perdue : ${fmt(room.stake)}`}</p>
+          <p>{isSolo ? 'Entraînement · aucune mise' : isWinner ? room.payout > 0 ? `Cagnotte créditée : ${fmt(room.payout)}` : 'Versement en attente de confirmation' : `Mise perdue : ${fmt(room.stake)}`}</p>
           {onBack && <button type="button" className="penalty__primary" onClick={onBack}>{isSolo ? 'Rejouer' : 'Retour aux salons'}</button>}
         </div>}
         {error && <p className="penalty__error" role="alert">{error}</p>}
