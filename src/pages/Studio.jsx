@@ -18,7 +18,7 @@ export default function Studio({ onBack }) {
     <main className="studio">
       <header className="topbar">
         <button type="button" className="btn btn--sm btn--glass" onClick={onBack}>&larr; Profil</button>
-        <a className="brand" href="./">MARV GAME</a>
+        <a className="brand" href="./">VIVA CENTER</a>
         <span>Studio de personnages</span>
         <ThemeToggle />
       </header>

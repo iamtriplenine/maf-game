@@ -118,7 +118,7 @@ export default function AdminPanel({onClose}) {
   const pending=summary?.deposits.find(d=>d.status==='pending');
   const approved=summary?.deposits.find(d=>d.status==='approved');
   return <div className="admin-panel" ref={root} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="admin-title">
-    <header className="admin-header"><div><p className="admin-eyebrow">MARV GAME</p><h1 id="admin-title">Administration</h1></div><button type="button" className="admin-btn" disabled={acting} onClick={onClose}>Fermer ✕</button></header>
+    <header className="admin-header"><div><p className="admin-eyebrow">VIVA CENTER</p><h1 id="admin-title">Administration</h1></div><button type="button" className="admin-btn" disabled={acting} onClick={onClose}>Fermer ✕</button></header>
     <main className="admin-main">
       <div className="admin-stats"><div><span>Utilisateurs</span><strong>{summary?money(summary.users):'—'}</strong></div><div><span>Dépôts à vérifier</span><strong>{summary?money(pending?.count):'—'}</strong></div><div><span>Dépôts confirmés · F CFA</span><strong>{summary?money(approved?.amount):'—'}</strong></div></div>
       <nav className="admin-tabs" aria-label="Sections du panel"><button type="button" aria-pressed={tab==='deposits'} disabled={acting} onClick={()=>changeTab('deposits')}>Dépôts</button><button type="button" aria-pressed={tab==='users'} disabled={acting} onClick={()=>changeTab('users')}>Utilisateurs</button><button type="button" aria-pressed={tab==='chat'} disabled={acting} onClick={()=>changeTab('chat')}>Messages</button></nav>

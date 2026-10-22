@@ -33,7 +33,7 @@ const readChatPref = () => {
 };
 
 // Nom affiche sur la page (une ligne par element)
-const APP_NAME = ["MARV", "GAME"];
+const APP_NAME = ["VIVA", "CENTER"];
 
 export default function ProfilePage({ onOpenStudio }) {
   const { session, login, register, logout, updateUser } = useSession();
