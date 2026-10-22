@@ -1,0 +1,32 @@
+/* Suivi visuel du coup : aucune incidence sur la validation serveur. */
+.checkers-board { position: relative; }
+.checkers-move-layer { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+.checkers-moving-slot {
+  position: absolute; width: 10%; height: 10%; display: grid; place-items: center;
+  transition: left .8s cubic-bezier(.22,.66,.28,1), top .8s cubic-bezier(.22,.66,.28,1);
+  will-change: left, top;
+}
+.checkers-moving-slot .checkers-piece {
+  width: 78%; height: 78%; box-shadow: 0 1px 0 2px #ffed99, 0 0 14px 3px #fbc560aa, 0 3px 3px #0009;
+}
+.checkers-cell.is-last-start { box-shadow: inset 0 0 0 3px #ffd35e; }
+.checkers-cell.is-last-end { box-shadow: inset 0 0 0 3px #63f3bd; background: #5d9e75 !important; }
+.checkers-cell.is-last-waypoint:not(.is-last-end) { box-shadow: inset 0 0 0 2px #8bd9ee; }
+.checkers-cell.is-last-start::after, .checkers-cell.is-last-end::after {
+  position: absolute; z-index: 4; right: 1px; top: 1px;
+  width: 15px; height: 15px; border-radius: 50%;
+  font: 800 10px/15px system-ui,Arial,sans-serif; text-align: center; color: #17212c;
+  pointer-events: none;
+}
+.checkers-cell.is-last-start::after { content: 'D'; background: #ffe18b; }
+.checkers-cell.is-last-end::after { content: 'A'; background: #8df4c1; }
+.checkers-last-move {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+  gap: 4px 9px; border: 1px solid #62778c; border-radius: 11px;
+  background: #182f45; padding: 9px 11px; font-size: 12px; text-align: center;
+  color: #ecf5ff;
+}
+.checkers-last-move__tag { color: #f8d583; font-size: 11px; font-weight: 900; letter-spacing: .06em; }
+.checkers-last-move.is-animating { border-color: #eab859; box-shadow: 0 0 0 1px #edba6266; }
+.checkers-last-move__route { font-weight: 750; color: #a3f9d2; }
+@media (prefers-reduced-motion: reduce) { .checkers-moving-slot { transition: none; } }

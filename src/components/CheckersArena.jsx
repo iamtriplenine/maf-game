@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import '../styles/checkers-arena.css';
+import '../styles/checkers-move-replay.css';
+import useCheckersReplay from '../hooks/useCheckersReplay';
+import { readableSquare, visualSquare } from '../utils/checkersReplayPlan';
 
 const pieces = { w: '●', b: '●', W: '♛', B: '♛' };
 const sideName = (side, room) => side === 'host' ? room?.host?.pseudo : room?.guest?.pseudo;
@@ -20,7 +23,8 @@ export default function CheckersArena({ room, match, busy = false, onStart, onMo
   const solo = room?.id === 0;
   const viewer = match?.viewer || (room?.is_host ? 'host' : 'guest');
   const rival = other(viewer);
-  const myTurn = status === 'playing' && !!match?.myTurn && !busy && !match?.returnDeadline;
+  const { displayBoard, moving } = useCheckersReplay(match, room?.id ?? 'unknown');
+  const myTurn = status === 'playing' && !!match?.myTurn && !busy && !match?.returnDeadline && !moving;
   const finished = status === 'finished' || !!match?.finished;
   const legal = useMemo(() => match?.legal || [], [match?.legal]);
   const relevant = useMemo(() => legal.filter(m => m.from === from && isSamePrefix(m.path, path)), [legal, from, path]);
@@ -83,19 +87,30 @@ export default function CheckersArena({ room, match, busy = false, onStart, onMo
       const i = reversed ? 99 - visual : visual;
       const row = Math.floor(i / 10), col = i % 10;
       const dark = (row + col) % 2 === 1;
-      const piece = match.board?.[i] || '.';
+      const piece = displayBoard?.[i] || '.';
       const mine = viewer === 'host' ? piece.toLowerCase() === 'w' : piece.toLowerCase() === 'b';
       const selected = from === i || path.includes(i);
       const target = next.has(i);
-      const lastHit = last && (last.from === i || last.path.includes(i));
+      const lastHit = last && (last.from === i || last.path?.includes(i));
+      const lastStart = last?.from === i;
+      const lastEnd = last?.path?.at(-1) === i;
+      const lastWaypoint = !!last?.path?.includes(i);
       const canChoose = myTurn && (target || (starters.has(i) && path.length === 0));
       return <button key={i} type="button" role="gridcell" onClick={() => pick(i)}
         disabled={!canChoose && !selected} aria-label={`Ligne ${row + 1}, colonne ${col + 1}${piece !== '.' ? `, ${piece.toLowerCase() === 'w' ? 'blanc' : 'noir'}${piece === piece.toUpperCase() ? ' dame' : ''}` : ''}`}
-        aria-selected={!!selected} className={`checkers-cell ${dark ? 'is-dark' : 'is-light'} ${selected ? 'is-selected' : ''} ${target ? 'is-target' : ''} ${lastHit ? 'is-last' : ''}`}>
+        aria-selected={!!selected} className={`checkers-cell ${dark ? 'is-dark' : 'is-light'} ${selected ? 'is-selected' : ''} ${target ? 'is-target' : ''} ${lastHit ? 'is-last' : ''} ${lastStart ? 'is-last-start' : ''} ${lastEnd ? 'is-last-end' : ''} ${lastWaypoint ? 'is-last-waypoint' : ''}`}>
         {piece !== '.' && <span className={`checkers-piece ${mine ? 'is-mine' : ''} ${piece.toLowerCase() === 'w' ? 'is-white' : 'is-black'} ${piece === piece.toUpperCase() ? 'is-king' : ''}`}>{pieces[piece]}</span>}
         {target && <span className="checkers-target" aria-hidden="true" />}
       </button>;
     })}
+    {moving && (() => {
+      const position = visualSquare(moving.position, reversed);
+      return <div className="checkers-move-layer" aria-hidden="true">
+        <div className="checkers-moving-slot" style={{ left: `${position.column * 10}%`, top: `${position.row * 10}%` }}>
+          <span className={`checkers-piece ${moving.piece.toLowerCase() === 'w' ? 'is-white' : 'is-black'} ${moving.piece === moving.piece.toUpperCase() ? 'is-king' : ''}`}>{pieces[moving.piece]}</span>
+        </div>
+      </div>;
+    })()}
   </div>;
 
   return createPortal(
@@ -120,10 +135,17 @@ export default function CheckersArena({ room, match, busy = false, onStart, onMo
           {finished ? outcome : myTurn ? 'A toi de jouer' : `Au tour de ${sideName(match.toMove, room)}`}
           {!finished && moveSeconds != null && <span> · {moveSeconds} s pour ce coup</span>}
         </div>
+        {last?.path?.length > 0 && <div className={`checkers-last-move ${moving ? 'is-animating' : ''}`} role="status" aria-live="polite">
+          <span className="checkers-last-move__tag">{moving ? 'DÉPLACEMENT EN COURS' : 'DERNIER COUP'}</span>
+          <strong>{last.side === viewer ? 'Ton pion' : `Pion de ${sideName(last.side, room) || 'ton adversaire'}`}</strong>
+          <span className="checkers-last-move__route">{readableSquare(last.from, reversed)} → {readableSquare(last.path.at(-1), reversed)}</span>
+          <span>{last.path.length > 1 ? `${last.path.length} sauts` : 'D : départ · A : arrivée'}</span>
+        </div>}
         {board}
         <div className="checkers-help" role="status">
           {finished ? `Fin : ${match.reason || 'victoire'}`
-            : from !== null ? path.length ? 'Continue ta prise en choisissant la case suivante.' : 'Choisis une case lumineuse pour jouer.'
+            : moving ? 'Regarde le pion avancer : départ en jaune, arrivée en vert.'
+              : from !== null ? path.length ? 'Continue ta prise en choisissant la case suivante.' : 'Choisis une case lumineuse pour jouer.'
               : myTurn ? 'Selectionne un de tes pions lumineux puis sa destination.' : 'Regarde la partie, ton adversaire joue.'}
         </div>
         {error && <p className="checkers-error" role="alert">{error}</p>}
