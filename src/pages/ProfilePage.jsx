@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
 import Sheet from "../components/Sheet";
-import { IconChat, IconCube, IconLogin, IconLogout, IconPlus, IconUserPlus } from "../components/Icons";
+import { IconChat, IconCube, IconLogin, IconLogout, IconPalette, IconPlus, IconUserPlus } from "../components/Icons";
 import ChatFeed from "../components/ChatFeed";
 import ChatComposer from "../components/ChatComposer";
 import ChatScreen from "../components/ChatScreen";
@@ -10,7 +10,8 @@ import { useChat } from "../chat/useChat";
 import { useSession } from "../auth/useSession";
 import AuthForm from "../components/AuthForm";
 import AdminPanel from "../components/AdminPanel";
-import { wakeServer } from "../api/accounts";
+import { wakeServer, saveSkin } from "../api/accounts";
+import { DEFAULT_SKIN, SKINS, validSkin } from "../characters/skins";
 import { clearAdminAccess } from "../api/accounts";
 import { WalletBalances, CouponForm, RechargeForm } from "../components/WalletForms";
 import { IconVoucher } from "../components/Icons";
@@ -18,6 +19,11 @@ import "../styles/profile.css";
 import "../styles/chat.css";
 
 const CHAT_KEY = "maf-chat-on";
+const GUEST_SKIN_KEY = "maf-guest-skin";
+const readGuestSkin = () => {
+  try { return validSkin(localStorage.getItem(GUEST_SKIN_KEY)); }
+  catch { return DEFAULT_SKIN; }
+};
 const readChatPref = () => {
   try {
     return localStorage.getItem(CHAT_KEY) === "1";
@@ -34,6 +40,32 @@ export default function ProfilePage({ onOpenStudio }) {
   const [sheet, setSheet] = useState(null); // login | signup | account | recharge
   const [chatOn, setChatOn] = useState(readChatPref);
   const [chatFull, setChatFull] = useState(false); // chat global en plein ecran
+  const [guestSkin, setGuestSkin] = useState(readGuestSkin);
+  const [pendingSkin, setPendingSkin] = useState(null);
+  const [skinSaving, setSkinSaving] = useState(false);
+  const [skinError, setSkinError] = useState("");
+  const selectedSkin = pendingSkin || (session ? validSkin(session.skin_id) : guestSkin);
+  const changeSkin = async (id) => {
+    if (skinSaving || selectedSkin === id) return;
+    setSkinError("");
+    if (!session) {
+      setGuestSkin(id);
+      try { localStorage.setItem(GUEST_SKIN_KEY, id); } catch { /* facultatif */ }
+      return;
+    }
+    setPendingSkin(id);
+    setSkinSaving(true);
+    try {
+      const user = await saveSkin(id);
+      updateUser(user);
+      setPendingSkin(null);
+    } catch (error) {
+      setPendingSkin(null);
+      setSkinError(error.message || "Enregistrement impossible. Reessaie.");
+    } finally {
+      setSkinSaving(false);
+    }
+  };
   const chat = useChat(chatOn || chatFull);
   const toggleChat = () => {
     setChatOn((on) => {
@@ -61,6 +93,10 @@ export default function ProfilePage({ onOpenStudio }) {
   useEffect(() => {
     wakeServer();
   }, []);
+  useEffect(() => {
+    setPendingSkin(null);
+    setSkinError("");
+  }, [session?.id]);
 
 
   return (
@@ -71,7 +107,7 @@ export default function ProfilePage({ onOpenStudio }) {
         </div>
 
         <section className="profile__stage" aria-label="Personnage">
-          <ProfileStage />
+          <ProfileStage skinId={selectedSkin} />
           <h1 className="profile__title title-tech">
             {APP_NAME[0]}
             <span>{APP_NAME[1]}</span>
@@ -148,6 +184,14 @@ export default function ProfilePage({ onOpenStudio }) {
               <IconChat />
               <span>Chat</span>
             </button>
+            <button
+              type="button"
+              className="menu-btn"
+              onClick={() => { setSkinError(""); setSheet("personalize"); }}
+            >
+              <IconPalette />
+              <span>Personnalisation</span>
+            </button>
             {session && (
               <button
                 type="button"
@@ -175,6 +219,42 @@ export default function ProfilePage({ onOpenStudio }) {
           onClose={closeChatFull}
         />
       )}
+
+      <Sheet open={sheet === "personalize"} title="Personnalisation" onClose={close}>
+        <div className="skins-head">
+          <p className="sheet__text">Skins : choisis le personnage qui apparait sur ton profil.</p>
+          <span className="skins-free">GRATUIT POUR LE MOMENT</span>
+        </div>
+        <div className="skins-grid" aria-label="Choisir un skin">
+          {SKINS.map((skin) => (
+            <button
+              key={skin.id}
+              type="button"
+              className={`skin-choice${selectedSkin === skin.id ? " is-selected" : ""}`}
+              aria-pressed={selectedSkin === skin.id}
+              disabled={skinSaving}
+              onClick={() => changeSkin(skin.id)}
+            >
+              <span className="skin-choice__icon"><IconUserPlus size={24} /></span>
+              <span className="skin-choice__info">
+                <strong>{skin.name}</strong>
+                <small>{skin.movement}</small>
+              </span>
+              <span className="skin-choice__status">
+                {selectedSkin === skin.id ? "Actif" : "Choisir"}
+              </span>
+            </button>
+          ))}
+        </div>
+        {skinSaving && <p className="skins-message" role="status">Enregistrement de ton skin...</p>}
+        {skinError && <p className="sheet__error" role="alert">{skinError}</p>}
+        <p className="skins-footnote">
+          Chaque skin garde son animation d'origine : marche, defile ou danse.
+          Messi reste statique car son fichier n'a pas d'animation.
+          {session ? " Ton choix est conserve dans ton compte." : " Sans connexion, ton choix reste sur cet appareil."}
+          {" "}Les themes et d'autres options arriveront ici plus tard.
+        </p>
+      </Sheet>
 
       <Sheet open={sheet === "login"} title="Login" onClose={close}>
         <AuthForm

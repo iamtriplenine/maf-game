@@ -1,6 +1,11 @@
-import { Suspense, useEffect, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Component, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useFrame, useLoader } from "@react-three/fiber";
+import { AnimationMixer, Box3, Vector3 } from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
+import { clone } from "three/addons/utils/SkeletonUtils.js";
 import Loki from "../characters/loki/Loki";
+import { getSkin } from "../characters/skins";
 
 const noop = () => {};
 
@@ -12,10 +17,8 @@ function readAccent() {
   );
 }
 
-// Suit le theme (ciel / rose) pour teinter la lumiere de contour.
 function useAccent() {
   const [accent, setAccent] = useState(readAccent);
-
   useEffect(() => {
     const observer = new MutationObserver(() => setAccent(readAccent()));
     observer.observe(document.documentElement, {
@@ -24,21 +27,14 @@ function useAccent() {
     });
     return () => observer.disconnect();
   }, []);
-
   return accent;
 }
 
-const BASE_ANGLE = Math.PI - 0.3;
-
-// Glisser horizontalement = tourner le personnage (360 degres, rien d'autre).
+// Glisser horizontalement : rotation 360 degres, sans interrompre la marche.
 function useDragRotation() {
   const angle = useRef(0);
   const lastX = useRef(null);
-
-  const end = () => {
-    lastX.current = null;
-  };
-
+  const end = () => { lastX.current = null; };
   const handlers = {
     onPointerDown: (event) => {
       lastX.current = event.clientX;
@@ -52,58 +48,129 @@ function useDragRotation() {
     onPointerUp: end,
     onPointerCancel: end,
   };
-
   return { angle, handlers };
 }
 
-// Fait pivoter le personnage en douceur ; l'animation de marche continue.
-function Turntable({ angle, children, ...props }) {
+function Turntable({ angle, baseAngle, children }) {
   const ref = useRef();
-
   useEffect(() => {
-    if (ref.current) ref.current.rotation.y = BASE_ANGLE + angle.current;
-  }, [angle]);
-
+    if (ref.current) ref.current.rotation.y = baseAngle + angle.current;
+  }, [angle, baseAngle]);
   useFrame((_, delta) => {
     if (!ref.current) return;
-    const smooth = 1 - Math.exp(-delta * 12);
-    const target = BASE_ANGLE + angle.current;
-    ref.current.rotation.y += (target - ref.current.rotation.y) * smooth;
+    const target = baseAngle + angle.current;
+    ref.current.rotation.y += (target - ref.current.rotation.y) * (1 - Math.exp(-delta * 12));
+  });
+  return <group ref={ref} position={[0, -0.05, 0]}>{children}</group>;
+}
+
+class SkinError extends Component {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    return this.state.failed ? (
+      <div className="profile__model-error" role="alert">
+        Impossible de charger ce skin. Choisis un autre personnage dans Personnalisation.
+      </div>
+    ) : this.props.children;
+  }
+}
+
+function chooseAnimation(clips, skin) {
+  if (skin.movementType === "none") return null;
+  const valid = clips.filter((clip) => clip.duration > 0 && clip.tracks.length > 0);
+  if (!valid.length) return null;
+  if (skin.movementType === "dance") {
+    return valid.find((clip) => /danc|samba|danse/i.test(clip.name)) || valid[0];
+  }
+  return valid.find((clip) => /walk|marche|defile|catwalk|strut/i.test(clip.name)) || valid[0];
+}
+
+function AnimatedSkin({ source, clips, skin }) {
+  // Clone avec squelette independant : ne jamais manipuler l'original en cache.
+  const model = useMemo(() => clone(source), [source]);
+  const positionAndScale = useMemo(() => {
+    model.updateMatrixWorld(true);
+    const box = new Box3().setFromObject(model);
+    const size = box.getSize(new Vector3());
+    const center = box.getCenter(new Vector3());
+    const scale = 2.0 / Math.max(size.y, 0.01);
+    return {
+      scale,
+      position: [-center.x * scale, -box.min.y * scale, -center.z * scale],
+    };
+  }, [model]);
+  const mixer = useMemo(() => new AnimationMixer(model), [model]);
+  const clip = useMemo(() => chooseAnimation(clips, skin), [clips, skin]);
+
+  useEffect(() => {
+    if (!clip) return undefined;
+    const action = mixer.clipAction(clip);
+    action.reset().setEffectiveWeight(1).play();
+    return () => action.stop();
+  }, [clip, mixer]);
+
+  useEffect(() => () => {
+    mixer.stopAllAction();
+    mixer.uncacheRoot(model);
+  }, [mixer, model]);
+
+  useFrame((_, delta) => {
+    if (clip) mixer.update(Math.min(delta, 0.05));
   });
 
   return (
-    <group ref={ref} {...props}>
-      {children}
+    <group position={positionAndScale.position} scale={positionAndScale.scale}>
+      <primitive object={model} dispose={null} />
     </group>
   );
 }
-export default function ProfileStage() {
+
+function GlbSkin({ skin }) {
+  const data = useLoader(GLTFLoader, `${import.meta.env.BASE_URL}${skin.file}`);
+  return <AnimatedSkin source={data.scene} clips={data.animations} skin={skin} />;
+}
+
+function FbxSkin({ skin }) {
+  const data = useLoader(FBXLoader, `${import.meta.env.BASE_URL}${skin.file}`);
+  return <AnimatedSkin source={data} clips={data.animations} skin={skin} />;
+}
+
+function SkinModel({ skin }) {
+  if (skin.id === "loki") {
+    // Garder exactement le rendu et la marche du profil d'origine.
+    return <Loki animation="Walk" paused={false} speed={1} onAnimations={noop} />;
+  }
+  if (skin.format === "fbx") return <FbxSkin skin={skin} />;
+  return <GlbSkin skin={skin} />;
+}
+
+export default function ProfileStage({ skinId }) {
   const accent = useAccent();
   const drag = useDragRotation();
-
+  const skin = getSkin(skinId);
   return (
     <div className="profile__canvas" {...drag.handlers}>
-      <Canvas
-        dpr={[1, 1.75]}
-        camera={{ position: [0, 0.85, 5.9], fov: 30 }}
-        onCreated={({ camera }) => camera.lookAt(0, 0.47, 0)}
-        fallback={<div className="notice">WebGL indisponible.</div>}
-      >
-        <hemisphereLight args={["#ffffff", "#334455", 1.7]} />
-        <directionalLight position={[2, 4, 4]} intensity={2.6} />
-        <directionalLight position={[-3, 2, -2]} intensity={3.2} color={accent} />
-
-        <Suspense fallback={null}>
-          <Turntable angle={drag.angle} position={[0, -0.05, 0]}>
-            <Loki
-              animation="Walk"
-              paused={false}
-              speed={1}
-              onAnimations={noop}
-            />
-          </Turntable>
-        </Suspense>
-      </Canvas>
+      <SkinError key={skin.id}>
+        <Canvas
+          dpr={[1, 1.75]}
+          camera={{ position: [0, 0.85, 5.9], fov: 30 }}
+          onCreated={({ camera }) => camera.lookAt(0, 0.47, 0)}
+          fallback={<div className="notice">WebGL indisponible.</div>}
+        >
+          <hemisphereLight args={["#ffffff", "#334455", 1.7]} />
+          <directionalLight position={[2, 4, 4]} intensity={2.6} />
+          <directionalLight position={[-3, 2, -2]} intensity={3.2} color={accent} />
+          <Suspense fallback={null}>
+            <Turntable
+              angle={drag.angle}
+              baseAngle={skin.id === "loki" ? Math.PI - 0.3 : (skin.rotation || 0)}
+            >
+              <SkinModel key={skin.id} skin={skin} />
+            </Turntable>
+          </Suspense>
+        </Canvas>
+      </SkinError>
     </div>
   );
 }

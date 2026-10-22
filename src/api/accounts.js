@@ -129,6 +129,17 @@ export async function walletRequest(path, options = {}) {
   if (!stored) throw new Error("Connecte-toi pour continuer.");
   return request(path, { ...options, token: stored.token });
 }
+// Enregistre le skin choisi dans le compte, pour le retrouver sur tous les appareils.
+export async function saveSkin(skinId) {
+  const stored = readStored();
+  if (!stored) throw new Error("Connecte-toi pour enregistrer ce skin.");
+  const { user } = await request("/api/skin", {
+    method: "PATCH", token: stored.token, body: { skin_id: skinId },
+  });
+  if (readStored()?.token !== stored.token) throw new Error("La session a change. Reessaie.");
+  return user;
+}
+
 export function storeWalletUser(user) {
   const stored = readStored();
   if (stored && stored.user.id === user.id) writeStored({ ...stored, user });
