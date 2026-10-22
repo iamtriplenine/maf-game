@@ -1,3 +1,4 @@
+import ZoomLock from "./components/ZoomLock";
 import RefreshCube from "./components/RefreshCube";
 import { useEffect, useState } from "react";
 import ProfilePage from "./pages/ProfilePage";
@@ -19,7 +20,7 @@ export default function App() {
     window.location.hash = next === "studio" ? "#studio" : "#profil";
   };
 
-  return <><RefreshCube />{view === "studio" ? (
+  return <><ZoomLock /><RefreshCube />{view === "studio" ? (
     <Studio onBack={() => go("profile")} />
   ) : (
     <ProfilePage onOpenStudio={() => go("studio")} />

@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { refreshData } from '../api/refresh';
 import '../styles/refresh.css';
 
 const KEY = 'maf-refresh-position';
 const COOLDOWN = 'maf-refresh-until';
-const clamp = point => ({ x: Math.max(8, Math.min(window.innerWidth - 88, point.x)), y: Math.max(8, Math.min(window.innerHeight - 108, point.y)) });
+const clamp = point => ({ x: Math.max(8, Math.min(window.innerWidth - 88, point.x)), y: Math.max(8, Math.min(window.innerHeight - 88, point.y)) });
 const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 const save = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* stockage facultatif */ } };
 
 export default function RefreshCube() {
+  const maskId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const [pulse, setPulse] = useState(0);
   const [position, setPosition] = useState(() => {
     const value = read(KEY, null);
     return clamp(value && Number.isFinite(value.x) && Number.isFinite(value.y) ? value : { x: window.innerWidth - 96, y: window.innerHeight - 180 });
@@ -60,7 +62,8 @@ export default function RefreshCube() {
     return () => clearTimeout(timer);
   }, [message]);
   function click(event) {
-    if ((event.detail !== 0 && moved.current) || lock.current || Date.now() < until) return;
+    if (event.detail !== 0 && moved.current) return;
+    setPulse(value => value + 1);
     const next = Date.now() + 60000;
     setUntil(next); setNow(Date.now()); save(COOLDOWN, next);
     refresh(true);
@@ -72,8 +75,7 @@ export default function RefreshCube() {
   }
   return <div className="refresh-control" style={{ left: position.x, top: position.y }}>
     <button type="button" className={`refresh-control__button ${busy ? 'is-busy' : ''}`}
-      aria-label={busy ? 'Actualisation en cours' : remaining ? `Actualiser dans ${remaining} secondes` : 'Actualiser les données'}
-      aria-disabled={busy || remaining > 0} aria-busy={busy}
+      aria-label="Actualiser les données" aria-busy={busy}
       title="Actualiser · Fais glisser pour déplacer · Flèches au clavier"
       onClick={click}
       onPointerDown={event => {
@@ -97,8 +99,27 @@ export default function RefreshCube() {
         const next = clamp({ x: position.x + direction[0], y: position.y + direction[1] });
         setPosition(next); save(KEY, next);
       }}>
-      <span className="refresh-cube" aria-hidden="true">{Array.from({ length: 6 }, (_, i) => <span key={i} />)}</span>
-      <span className="refresh-control__label">{busy ? 'En cours…' : remaining ? `${remaining}s` : 'Actualiser'}</span>
+      <span key={pulse} className={`refresh-orb ${pulse ? 'refresh-orb--tap' : ''}`} aria-hidden="true">
+        <svg className="refresh-orb__art" viewBox="0 0 100 100" width="76" height="76">
+          <defs>
+            <linearGradient id={`${maskId}-gradient`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="30%" stopColor="var(--accent-2, #55d7ff)" />
+              <stop offset="70%" stopColor="var(--accent, #168bda)" />
+            </linearGradient>
+            <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100" style={{ maskType: 'luminance' }}>
+              <g className="refresh-orb__mask">
+                <polygon points="0,0 100,0 100,100 0,100" fill="black" />
+                <polygon points="25,25 75,25 50,75" fill="white" />
+                <polygon points="50,25 75,75 25,75" fill="white" />
+                {[0,1,2,3].map(i => <polygon key={i} points="35,35 65,35 50,65" fill="white" />)}
+              </g>
+            </mask>
+          </defs>
+          <circle cx="50" cy="50" r="48" className="refresh-orb__rim" />
+          <rect width="100" height="100" fill={`url(#${maskId}-gradient)`} mask={`url(#${maskId})`} />
+        </svg>
+      </span>
+      <span className="refresh-control__count" aria-hidden="true">{remaining > 0 ? remaining : ''}</span>
     </button>
     <span role="status" className={message ? 'refresh-control__message' : 'refresh-control__silent'}>{message}</span>
   </div>;

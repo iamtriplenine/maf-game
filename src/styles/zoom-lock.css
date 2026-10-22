@@ -1,0 +1,14 @@
+/* Autoriser le defilement a un doigt, sans zoom de la page. */
+html.maf-zoom-locked,
+.maf-zoom-locked body,
+.maf-zoom-locked #root,
+.maf-zoom-locked #root * { touch-action: pan-x pan-y; }
+.maf-zoom-locked #root canvas,
+.maf-zoom-locked #root .refresh-control__button,
+.maf-zoom-locked #root .refresh-control__button * { touch-action: none; }
+/* Eviter le zoom automatique a la saisie sur les petits ecrans. */
+@media (pointer: coarse) {
+  .maf-zoom-locked #root input,
+  .maf-zoom-locked #root textarea,
+  .maf-zoom-locked #root select { font-size: max(16px, 1em); }
+}
