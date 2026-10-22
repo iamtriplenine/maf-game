@@ -110,6 +110,36 @@ function GlbCharacter(props) {
   );
 }
 
+// Catwalk : l'animation d'origine fait avancer le personnage de plus de 2 m.
+// On la fige sur place (le bassin garde sa position de repos en X et Z)
+// pour que le defile reste dans le cadre du Studio.
+function catwalkClips(data) {
+  let hips = null;
+  data.traverse((object) => {
+    if (!hips && object.isBone && /hips$/i.test(object.name)) hips = object;
+  });
+
+  return data.animations
+    .filter((clip) => clip.duration > 0 && clip.tracks.length > 0)
+    .map((clip, index) => {
+      const copy = clip.clone();
+      if (index === 0) copy.name = "Defile";
+
+      if (hips) {
+        copy.tracks.forEach((track) => {
+          if (!/hips\.position$/i.test(track.name)) return;
+          const values = track.values;
+          for (let i = 0; i < values.length; i += 3) {
+            values[i] = hips.position.x;
+            values[i + 2] = hips.position.z;
+          }
+        });
+      }
+
+      return copy;
+    });
+}
+
 function FbxCharacter(props) {
   const data = useLoader(
     FBXLoader,
@@ -122,6 +152,7 @@ function FbxCharacter(props) {
   );
 
   const clips = useMemo(() => {
+    if (props.character.id === "catwalk") return catwalkClips(data);
     if (props.character.id !== "samba") return data.animations;
 
     const original = data.animations

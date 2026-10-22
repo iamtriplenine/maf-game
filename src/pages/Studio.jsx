@@ -4,9 +4,12 @@ import CharacterViewer from "../components/CharacterViewer";
 import ThemeToggle from "../components/ThemeToggle";
 import loki from "../characters/loki/character.json";
 import samba from "../characters/samba/character.json";
+import bailarina from "../characters/bailarina/character.json";
+import catwalk from "../characters/catwalk/character.json";
 import "../App.css";
 
-const characters = [loki, samba, messi];
+const characters = [loki, samba, messi, bailarina, catwalk];
+const statics = ["messi", "bailarina"];
 
 export default function Studio({ onBack }) {
   const [selectedId, setSelectedId] = useState("samba");
@@ -43,17 +46,9 @@ export default function Studio({ onBack }) {
             <span className="card-action">Ouvrir le personnage ↗</span>
           </button>
         ))}
-
-        {[4, 5].map((number) => (
-          <div className="character-card empty" key={number}>
-            <span className="card-number">0{number}</span>
-            <strong>A ajouter</strong>
-            <span>Emplacement disponible</span>
-          </div>
-        ))}
       </section>
 
-      {selected.id === "messi" && (
+      {statics.includes(selected.id) && (
         <p className="help">
           Modele statique : rotation et zoom disponibles.
           Un squelette devra etre ajoute pour animer ce personnage.

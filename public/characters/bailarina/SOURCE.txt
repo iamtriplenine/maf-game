@@ -1,0 +1,3 @@
+Nom dans le projet : Bailarina
+Modele fourni par l utilisateur (fichier bailarina_sexy.glb, export Sketchfab).
+Modele statique : pas de squelette, pas d animation.
