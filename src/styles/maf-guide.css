@@ -1,0 +1,22 @@
+/* MAF GUIDE STAGE 1 — panneau autonome, sans impact sur les pages existantes. */
+.maf-guide-overlay{position:fixed;inset:0;z-index:16500;display:flex;justify-content:center;align-items:center;padding:0;color:#f5f7ff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;isolation:isolate}
+.maf-guide-backdrop{position:absolute;inset:0;background:#060d18e8;border:0;cursor:pointer}
+.maf-guide-shell{position:relative;display:flex;flex-direction:column;width:min(100%,680px);max-height:100vh;max-height:100dvh;height:100%;overflow:hidden;background:radial-gradient(circle at 85% -10%,#255e79 0%,transparent 38%),linear-gradient(180deg,#111e30,#09121e 68%);border-left:1px solid #54829b35;border-right:1px solid #54829b35;box-shadow:0 22px 80px #000b}
+.maf-guide-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:max(18px,env(safe-area-inset-top)) 19px 14px;border-bottom:1px solid #ffffff18;background:#0c1729e8;z-index:1}
+.maf-guide-back{min-height:39px;border-radius:999px;background:#1c3449;color:#f0f5ff;border:1px solid #5784a0;padding:8px 14px;font-size:13px;font-weight:800;cursor:pointer}
+.maf-guide-back:focus-visible,.maf-guide-backdrop:focus-visible{outline:2px solid #8deadd;outline-offset:2px}
+.maf-guide-header__tag{letter-spacing:.16em;color:#91cace;font-weight:900;font-size:10px}
+.maf-guide-header>span:last-child{color:#f4c978;font-size:24px}
+.maf-guide-scroll{overflow:auto;overscroll-behavior:contain;padding:18px 16px calc(35px + env(safe-area-inset-bottom));flex:1}
+.maf-guide-hero{border:1px solid #5a98ac80;border-radius:25px;padding:24px 19px;background:linear-gradient(125deg,#234b60b5,#151e38d5 68%),radial-gradient(circle at 100% 0%,#70e8ec80,transparent 45%);box-shadow:0 12px 28px #0005}
+.maf-guide-kicker{font-size:10px;color:#a7eff6;letter-spacing:.17em;font-weight:800}
+.maf-guide-hero h2{font-size:clamp(28px,7vw,40px);font-weight:950;line-height:1.08;letter-spacing:-.045em;margin:14px 0 10px}
+.maf-guide-hero h2 em{font-style:normal;color:#9bf4d5}
+.maf-guide-hero p{color:#d8e4f2;font-size:14px;line-height:1.55;max-width:440px;margin:0 0 16px}
+.maf-guide-pill{display:inline-block;padding:8px 12px;border-radius:100px;border:1px solid #f3d48b65;background:#f3d48b18;color:#f9dda0;font-size:11px;font-weight:800}
+.maf-guide-placeholder{margin-top:16px;padding:33px 22px;text-align:center;border-radius:22px;border:1px solid #91bbd036;background:#13243a}
+.maf-guide-placeholder__icon{font-size:65px;color:#99e9ee;display:block}
+.maf-guide-placeholder h3{margin:8px 0;color:#fcde9a}
+.maf-guide-placeholder p{font-size:13px;line-height:1.7;color:#c3d5e7}
+@media(min-width:720px){.maf-guide-overlay{padding:24px}.maf-guide-shell{border:1px solid #54829b70;border-radius:25px;height:min(92vh,920px)}}
+@media(prefers-reduced-motion:reduce){.maf-guide-overlay *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}

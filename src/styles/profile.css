@@ -291,3 +291,7 @@
 @media (prefers-reduced-motion: reduce) {
   .profile .menu-grid--more, .profile .menu-grid--main { animation: none; }
 }
+
+/* MAF GUIDE ENTRY */
+.profile .menu-btn--guide { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: linear-gradient(135deg, var(--accent-soft), var(--glass-strong)); }
+.profile .menu-btn--guide .menu-btn__symbol { font-size: 23px; border-radius: 50%; border: 1px solid currentColor; width: 27px; height: 27px; }

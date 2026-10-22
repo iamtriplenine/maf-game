@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
+import GuidePage from "../components/GuidePage";
 import ProfileIdentity from "../components/ProfileIdentity";
 import Sheet from "../components/Sheet";
 import AccountHistory from "../components/AccountHistory";
@@ -184,6 +185,10 @@ export default function ProfilePage({ onOpenStudio }) {
                 <span className="menu-btn__symbol" aria-hidden="true">←</span>
                 <span>Retour</span>
               </button>
+              <button type="button" className="menu-btn menu-btn--guide" onClick={() => setSheet("guide")}>
+                <span className="menu-btn__symbol" aria-hidden="true">?</span>
+                <span>Guide</span>
+              </button>
               <button type="button" className="menu-btn" onClick={() => { setMoreOpen(false); onOpenStudio?.(); }}>
                 <IconCube />
                 <span>Studio 3D</span>
@@ -237,6 +242,8 @@ export default function ProfilePage({ onOpenStudio }) {
           )}
         </section>
       </main>
+
+      {sheet === "guide" && <GuidePage onClose={close} />}
 
       {chatFull && (
         <ChatScreen
