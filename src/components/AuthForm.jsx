@@ -1,14 +1,14 @@
 import { useRef, useState } from "react";
 import HourglassLoader from "./HourglassLoader";
+import CodeDials from "./CodeDials";
 import {
-  CODE_LENGTH,
   PSEUDO_MAX,
   cleanPseudo,
   isValidCode,
   isValidPseudo,
 } from "../api/accounts";
 
-// Formulaire Login / Sign Up : pseudo + code a 10 chiffres.
+// Formulaire Login / Sign Up : pseudo + code a 10 chiffres (molettes 3D).
 // Attente utilisateur : sablier aux couleurs du theme, sans message technique.
 export default function AuthForm({ mode, onSubmit }) {
   const [pseudo, setPseudo] = useState("");
@@ -59,24 +59,8 @@ export default function AuthForm({ mode, onSubmit }) {
         />
       </label>
 
-      <label className="field">
-        <input
-          className="code-input"
-          name="code"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="0000000000"
-          maxLength={CODE_LENGTH}
-          value={code}
-          disabled={busy}
-          onChange={(event) =>
-            setCode(event.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH))
-          }
-        />
-        <span className="code-count">
-          {code.length}/{CODE_LENGTH}
-        </span>
-      </label>
+      <CodeDials onChange={setCode} disabled={busy} />
+      <p className="dials-hint">Fais rouler chaque molette sur ton chiffre.</p>
 
       <p className="sheet__error" role="alert">
         {error}
