@@ -317,9 +317,13 @@ export default function GamePage() {
   const myHostedRooms = myRooms.filter((room) => room.is_host);
   const sameGameRoom = myHostedRooms.some((room) => room.game === currentGame?.id);
   const slotLimitReached = myHostedRooms.length >= 5;
-  const joinedElsewhere = myRooms.some((room) => room.is_guest);
-  const otherRoom = mine && selected && mine.id !== selected.id;
-  const canJoin = selected?.status === 'open' && !selected.host_busy && session && !isParticipant && !otherRoom;
+  // MAF_ROOMS_FREE_UNTIL_ACCEPTED_V1: seuls une autre demande sortante et les matchs acceptes bloquent l'invitation.
+  const guestRequestElsewhere = myRooms.some((room) => room.is_guest &&
+    ['pending','ready','playing'].includes(room.status) && room.id !== selected?.id);
+  const acceptedMatchElsewhere = myRooms.some((room) =>
+    ['ready','playing'].includes(room.status) && room.id !== selected?.id);
+  const canJoin = selected?.status === 'open' && !selected.host_busy && !!session &&
+    !isParticipant && !guestRequestElsewhere && !acceptedMatchElsewhere;
 
   return (
     <main className="game-page game-hub">
@@ -368,7 +372,7 @@ export default function GamePage() {
               <span className="salon-row__code">#{room.code}</span>
               <span className="salon-row__main">
                 <strong>{room.host.pseudo}</strong>
-                <small>{gameSymbol(room.game)} {gameName(room.game)}{room.game === 'penalty' ? ` · ${room.shots} tirs` : room.game === 'dice' ? ` · ${room.dice_count} dé(s) · ${room.shots} coup(s)` : ''} · {room.host_busy && room.status === 'open' ? 'Createur occupe' : statusLabel[room.status]}</small>
+                <small>{gameSymbol(room.game)} {gameName(room.game)}{room.game === 'penalty' ? ` · ${room.shots} tirs` : room.game === 'dice' ? ` · ${room.dice_count} dé(s) · ${room.shots} coup(s)` : ''} · {room.host_busy && ['open','pending'].includes(room.status) ? 'En partie, veuillez patienter' : statusLabel[room.status]}</small>
               </span>
               <span className="salon-row__stake">{money(room.stake)}</span>
             </button>)}
@@ -387,8 +391,8 @@ export default function GamePage() {
                 <span>Mise : {money(selected.stake)} par joueur</span><span>Gain : {money(selected.stake * 2)}</span>
                 {selected.escrow > 0 && selected.status !== 'finished' && <span>Cagnotte retenue : {money(selected.escrow)}</span>}
               </div>
-              {selected.host_busy && selected.status === 'open' && !isParticipant && (
-                <p role="status" className="maf-room-busy">🔒 Le createur est occupe dans un autre salon. Tu pourras le rejoindre une fois la partie terminee ou la demande annulee.</p>
+              {selected.host_busy && ['open','pending'].includes(selected.status) && (
+                <p role="status" className="maf-room-busy">🔒 En partie, veuillez patienter. Le createur joue deja une autre partie.</p>
               )}
               {selected.funds_alert && (
                 <p role="alert" className="game-hub__error">
@@ -408,7 +412,7 @@ export default function GamePage() {
                 {isHost && selected.status === 'open' && <p>Salon visible par tous. Donne le code <strong>{selected.code}</strong> a ton ami.</p>}
                 {isHost && selected.status === 'pending' && <>
                   <p><strong>{selected.guest?.pseudo || 'Un joueur'}</strong> souhaite rejoindre ton salon. Si tu acceptes, la mise de {money(selected.stake)} est prélevée sur vos deux comptes.</p>
-                  <button className="btn btn--primary btn--sm" type="button" disabled={busy}
+                  <button className="btn btn--primary btn--sm" type="button" disabled={busy || selected.host_busy}
                     onClick={() => void action(() => roomsApi.acceptRoom(selected.id), 'Adversaire accepte !')}>Accepter</button>
                   <button className="btn btn--sm" type="button" disabled={busy}
                     onClick={() => void action(() => roomsApi.declineRoom(selected.id), 'Demande refusee. Salon de nouveau ouvert.')}>Refuser</button>
@@ -418,7 +422,10 @@ export default function GamePage() {
                 {canJoin && <button className="btn btn--primary btn--sm" type="button" disabled={busy}
                   onClick={() => void action(() => roomsApi.joinRoom(selected.id), 'Demande envoyee au createur.')}>Demander a rejoindre</button>}
                 {!session && selected.status === 'open' && <p>Connecte-toi depuis le Profil pour rejoindre.</p>}
-                {otherRoom && !isParticipant && <p>Tu dois quitter ton salon actuel avant d'en rejoindre un autre.</p>}
+                {!isParticipant && selected.status === 'open' && guestRequestElsewhere &&
+                  <p>Tu as deja une demande envoyee dans un autre salon. Annule-la avant d'en envoyer une autre.</p>}
+                {!isParticipant && selected.status === 'open' && acceptedMatchElsewhere &&
+                  <p>Tu es en partie, veuillez patienter jusqu'a la fin du match.</p>}
                 {selected.status === 'pending' && !isParticipant && <p>Ce salon attend deja la reponse a une demande.</p>}
                 {isParticipant && ['open', 'pending', 'ready'].includes(selected.status) && <button type="button" className="btn btn--sm btn--outline" disabled={busy}
                   onClick={() => void action(() => roomsApi.leaveRoom(selected.id), 'Tu as quitte le salon.')}>
@@ -540,8 +547,8 @@ export default function GamePage() {
                       aria-describedby="game-stake-info" />
                   </label>
                   <p id="game-stake-info" className="game-hub__muted">100 à 1 000 000 F. Gain si tu gagnes : {money(Number(stake || 0) * 2)}. La mise est prélevée quand ton adversaire est accepté.</p>
-                  <button className="btn btn--primary btn--block" type="submit" disabled={busy || !session || slotLimitReached || sameGameRoom || joinedElsewhere}>
-                    {sameGameRoom ? 'Tu as deja un salon pour ce jeu' : slotLimitReached ? 'Limite de 5 salons atteinte' : joinedElsewhere ? 'Tu participes deja a un match' : 'Creer mon salon public'}</button>
+                  <button className="btn btn--primary btn--block" type="submit" disabled={busy || !session || slotLimitReached || sameGameRoom}>
+                    {sameGameRoom ? 'Tu as deja un salon pour ce jeu' : slotLimitReached ? 'Limite de 5 salons atteinte' : 'Creer mon salon public'}</button>
                   {!session && <p className="game-hub__muted">Connecte-toi depuis le Profil pour créer un salon.</p>}
                 </form>
               </section>

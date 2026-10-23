@@ -18,13 +18,13 @@ export default function MultiRoomSlots({ rooms, busy, onOpen, gameName, gameSymb
             <span className="maf-slots__icon" aria-hidden="true">{gameSymbol(room.game)}</span>
             <span className="maf-slots__info">
               <strong>{gameName(room.game)}</strong>
-              <small>Salon #{room.code} · {room.host_busy && room.status === 'open' ? 'En pause : autre partie en cours' : stateName[room.status] || room.status}</small>
+              <small>Salon #{room.code} · {room.host_busy && ['open','pending'].includes(room.status) ? 'En partie, veuillez patienter' : stateName[room.status] || room.status}{/* MAF_ROOMS_FREE_UNTIL_ACCEPTED_V1 */}</small>
             </span>
             <span className="maf-slots__arrow" aria-hidden="true">→</span>
           </button>)}
         </div>
       )}
-      <p className="maf-slots__foot">Des qu'un adversaire demande a rejoindre un salon, les autres salons sont mis en attente jusqu'a la fin du match ou l'annulation de la demande.</p>
+      <p className="maf-slots__foot">Une demande en attente ne bloque pas tes autres salons. Ils affichent "En partie, veuillez patienter" seulement des qu'un match est accepte ailleurs.</p>
     </section>
   );
 }
