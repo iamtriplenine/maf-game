@@ -257,7 +257,7 @@
 .skins-carousel-shell { position: relative; display: grid; grid-template-columns: 38px 1fr 38px; align-items: center; gap: 8px; }
 .skins-carousel {
   position: relative;
-  min-height: 198px;
+  min-height: 210px;
   perspective: 900px;
   overflow: hidden;
   border-radius: 24px;
@@ -268,9 +268,9 @@
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 198px;
+  min-height: 210px;
   transform-style: preserve-3d;
-  transform: perspective(900px) rotateY(calc(var(--skin-index, 0) * -72deg));
+  transform: perspective(900px) rotateY(var(--skin-rotation, 0deg));
   transition: transform .55s cubic-bezier(.2,.75,.2,1);
 }
 .skin-card {
@@ -278,7 +278,7 @@
   top: 50%;
   left: 50%;
   width: 104px;
-  min-height: 142px;
+  min-height: 168px;
   padding: 14px 12px;
   display: flex;
   flex-direction: column;
@@ -294,8 +294,8 @@
   transform-style: preserve-3d;
   transform:
     translate(-50%, -50%)
-    rotateY(calc(var(--skin-position) * 72deg))
-    translateZ(150px);
+    rotateY(var(--skin-card-angle, 0deg))
+    translateZ(var(--skin-radius, 150px));
   transition: transform .45s ease, border-color .25s ease, box-shadow .25s ease, background .25s ease, opacity .25s ease;
   opacity: .72;
   cursor: pointer;
@@ -350,15 +350,15 @@
 .profile__model-error { position: absolute; z-index: 1; top: 35%; left: 12%; right: 12%; text-align: center; color: var(--text); font-size: 13px; line-height: 1.5; }
 @media (max-width: 420px) {
   .skins-carousel-shell { grid-template-columns: 34px 1fr 34px; gap: 6px; }
-  .skins-carousel { min-height: 188px; }
-  .skins-carousel__track { min-height: 188px; }
+  .skins-carousel { min-height: 200px; }
+  .skins-carousel__track { min-height: 200px; }
   .skin-card {
     width: 98px;
-    min-height: 134px;
+    min-height: 154px;
     transform:
       translate(-50%, -50%)
-      rotateY(calc(var(--skin-position) * 72deg))
-      translateZ(134px);
+      rotateY(var(--skin-card-angle, 0deg))
+      translateZ(var(--skin-radius, 134px));
   }
 }
 
@@ -384,3 +384,26 @@
 /* MAF GUIDE ENTRY */
 .profile .menu-btn--guide { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: linear-gradient(135deg, var(--accent-soft), var(--glass-strong)); }
 .profile .menu-btn--guide .menu-btn__symbol { font-size: 23px; border-radius: 50%; border: 1px solid currentColor; width: 27px; height: 27px; }
+
+/* Live preview uniquement pour la carte active afin de limiter la consommation 3D. */
+.skin-card__art {
+  position: relative;
+  width: 74px;
+  height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-2);
+  border-radius: 10px;
+  background: rgba(12, 35, 56, .6);
+  overflow: hidden;
+  pointer-events: none;
+}
+.skin-card__preview-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.skin-card__preview-canvas canvas { pointer-events: none !important; }
+.skin-card__preview-canvas .profile__model-error { display: none; }
+.skin-card__icon { display: none; }
+.skin-card__name { font-size: 12px; }
+.skin-card__move { font-size: 10px; }
+.skin-card__status { font-size: 9px; }
+@media(max-width: 420px) { .skin-card__art { width: 66px; height: 80px; } }

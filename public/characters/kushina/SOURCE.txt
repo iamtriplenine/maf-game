@@ -1,0 +1,5 @@
+Modele: source/Kushina Sexy .glb fourni par l utilisateur.
+Rig experiment: les 22 os et animation Defile de Bailarina ont ete copies,
+avec attribution des poids par correspondance geometrique (pas de Blender).
+Verifier le rendu des bras, jambes et vetements avant publication.
+La licence originale de Kushina doit etre verifiee avant diffusion publique.

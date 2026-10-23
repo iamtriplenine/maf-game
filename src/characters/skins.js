@@ -3,6 +3,7 @@ import bailarina from "./bailarina/character.json";
 import samba from "./samba/character.json";
 import messi from "./messi/character.json";
 import mutant from "./mutant/character.json";
+import kushina from "./kushina/character.json";
 
 // Collection utilisee par la personnalisation du profil.
 // Le Studio 3D garde ses propres mouvements internes pour tester les animations.
@@ -11,6 +12,7 @@ export const SKINS = [
   { ...bailarina, movement: "Defile", movementType: "walk" },
   { ...samba, movement: "Danse", movementType: "dance" },
   { ...messi, movement: "Statique", movementType: "none" },
+  { ...kushina, movement: "Defile", movementType: "walk" },
   {
     ...mutant,
     id: "mutant-swipe",

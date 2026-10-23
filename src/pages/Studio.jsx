@@ -6,9 +6,10 @@ import loki from "../characters/loki/character.json";
 import samba from "../characters/samba/character.json";
 import bailarina from "../characters/bailarina/character.json";
 import mutant from "../characters/mutant/character.json";
+import kushina from "../characters/kushina/character.json";
 import "../App.css";
 
-const characters = [loki, samba, messi, bailarina, mutant];
+const characters = [loki, samba, messi, bailarina, mutant, kushina];
 const statics = ["messi"];
 
 export default function Studio({ onBack }) {

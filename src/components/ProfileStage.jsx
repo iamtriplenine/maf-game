@@ -173,16 +173,16 @@ function SkinModel({ skin }) {
   return <GlbSkin skin={skin} />;
 }
 
-export default function ProfileStage({ skinId }) {
+export default function ProfileStage({ skinId, compact = false }) {
   const accent = useAccent();
   const drag = useDragRotation();
   const skin = getSkin(skinId);
   return (
-    <div className="profile__canvas" {...drag.handlers}>
+    <div className={compact ? "skin-card__preview-canvas" : "profile__canvas"} {...(compact ? {} : drag.handlers)}>
       <SkinError key={skin.id}>
         <Canvas
-          dpr={[1, 1.75]}
-          camera={{ position: [0, 0.85, 5.9], fov: 30 }}
+          dpr={compact ? [1, 1] : [1, 1.75]}
+          camera={compact ? { position: [0, 0.85, 6], fov: 38 } : { position: [0, 0.85, 5.9], fov: 30 }}
           onCreated={({ camera }) => camera.lookAt(0, 0.47, 0)}
           fallback={<div className="notice">WebGL indisponible.</div>}
         >

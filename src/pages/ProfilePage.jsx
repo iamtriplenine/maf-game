@@ -320,6 +320,10 @@ export default function ProfilePage({ onOpenStudio }) {
               className="skins-carousel"
               style={{
                 "--skin-count": SKINS.length,
+                "--skin-angle": `${360 / SKINS.length}deg`,
+                "--skin-rotation": `${-activeSkinIndex * 360 / SKINS.length}deg`,
+                "--skin-rotation": `${-360 / SKINS.length}deg`,
+                "--skin-radius": `${Math.round(Math.max(145, (104 / 2) / Math.tan(Math.PI / SKINS.length) + 42))}px`,
                 "--skin-index": activeSkinIndex,
               }}
             >
@@ -334,13 +338,16 @@ export default function ProfilePage({ onOpenStudio }) {
                       key={skin.id}
                       type="button"
                       className={`skin-card${isActive ? " is-active" : ""}`}
-                      style={{ "--skin-position": index }}
+                      style={{ "--skin-position": index, "--skin-card-angle": `${index * 360 / SKINS.length}deg` }}
                       aria-pressed={isActive}
                       disabled={skinSaving}
                       onClick={() => setDraftSkin(skin.id)}
                     >
                       <span className="skin-card__glow" aria-hidden="true" />
-                      <span className="skin-card__icon"><IconUserPlus size={24} /></span>
+                      <span className="skin-card__art" aria-hidden="true">
+                        {isActive && <ProfileStage skinId={skin.id} compact />}
+                        {!isActive && <IconUserPlus size={24} />}
+                      </span>
                       <span className="skin-card__name">{skin.name}</span>
                       <span className="skin-card__move">{skin.movement}</span>
                       <span className="skin-card__status">{state}</span>
