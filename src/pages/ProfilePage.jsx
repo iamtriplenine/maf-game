@@ -210,9 +210,9 @@ export default function ProfilePage({ onOpenStudio }) {
                   <span>Communauté</span>
                 </button>
               )}
-              <button type="button" className="menu-btn menu-btn--ranking" onClick={() => setSheet("ranking")}>
-                <span className="menu-btn__symbol" aria-hidden="true">🏆</span>
-                <span>Classement</span>
+              <button type="button" className="menu-btn" onClick={() => setSheet(session ? "history" : "login")}>
+                <IconHistory />
+                <span>Historique</span>
               </button>
               <button type="button" className="menu-btn" onClick={() => { setMoreOpen(false); onOpenStudio?.(); }}>
                 <IconCube />
@@ -249,9 +249,9 @@ export default function ProfilePage({ onOpenStudio }) {
                 <IconWithdraw />
                 <span>Retrait</span>
               </button>
-              <button type="button" className="menu-btn" onClick={() => setSheet(session ? "history" : "login")}>
-                <IconHistory />
-                <span>Historique</span>
+              <button type="button" className="menu-btn menu-btn--ranking" onClick={() => setSheet("ranking")}>
+                <span className="menu-btn__symbol" aria-hidden="true">🏆</span>
+                <span>Classement</span>
               </button>
               {session?.pseudo === '999' && (
                 <button type="button" className="menu-btn" onClick={() => setSheet('owner-commissions')}>
