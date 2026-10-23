@@ -152,35 +152,30 @@ function FbxCharacter(props) {
 }
 
 // Le FBX principal est le VRAI monstre (MutantMesh + textures turquoise).
-// Les mouvements supplementaires sont charges seulement lorsque l'utilisateur
-// clique dessus : aucun telechargement inutile sur le reseau mobile.
+// Le mouvement de course reste disponible au Studio 3D pour tester l'animation.
+// Le saut-attaque a ete retire pour eviter un doublon inutile dans l'experience.
 function MutantCharacter(props) {
   const mutant = useLoader(
     FBXLoader,
     `${import.meta.env.BASE_URL}${props.character.file}`
   );
   const [run, setRun] = useState(null);
-  const [attack, setAttack] = useState(null);
 
   useEffect(() => {
     const isRun = props.active === 1;
-    const isAttack = props.active === 2;
-    if ((!isRun && !isAttack) || (isRun && run) || (isAttack && attack)) return;
+    if (!isRun || run) return;
 
-    const url = isRun ? props.character.runFile : props.character.attackFile;
     let mounted = true;
     new FBXLoader().load(
-      `${import.meta.env.BASE_URL}${url}`,
+      `${import.meta.env.BASE_URL}${props.character.runFile}`,
       (data) => {
-        if (!mounted) return;
-        if (isRun) setRun(data);
-        else setAttack(data);
+        if (mounted) setRun(data);
       },
       undefined,
       (error) => console.error("Chargement animation du mutant impossible", error)
     );
     return () => { mounted = false; };
-  }, [props.active, props.character.runFile, props.character.attackFile, run, attack]);
+  }, [props.active, props.character.runFile, run]);
 
   const clips = useMemo(() => {
     const movement = (source, name) => {
@@ -209,9 +204,8 @@ function MutantCharacter(props) {
     return [
       ...movement(mutant, "Balayage"),
       ...movement(run, "Courir"),
-      ...movement(attack, "Saut-attaque"),
     ];
-  }, [mutant, run, attack]);
+  }, [mutant, run]);
 
   return <AnimatedModel {...props} source={mutant} clips={clips} />;
 }

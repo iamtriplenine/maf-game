@@ -4,8 +4,8 @@ import samba from "./samba/character.json";
 import messi from "./messi/character.json";
 import mutant from "./mutant/character.json";
 
-// Collection commune au Studio 3D et a la personnalisation du profil.
-// Les skins sont gratuits pour cette premiere version.
+// Collection utilisee par la personnalisation du profil.
+// Le Studio 3D garde ses propres mouvements internes pour tester les animations.
 export const SKINS = [
   { ...loki, movement: "Marche", movementType: "walk" },
   { ...bailarina, movement: "Defile", movementType: "walk" },
@@ -14,31 +14,21 @@ export const SKINS = [
   {
     ...mutant,
     id: "mutant-swipe",
-    name: "Mutant - Balayage",
-    movement: "Attaquer",
+    name: "Mutant",
+    movement: "Balayage",
     movementType: "swipe",
-  },
-  {
-    ...mutant,
-    id: "mutant-run",
-    name: "Mutant - Course",
-    animationFile: mutant.runFile,
-    movement: "Courir",
-    movementType: "run",
-  },
-  {
-    ...mutant,
-    id: "mutant-attack",
-    name: "Mutant - Saut-attaque",
-    animationFile: mutant.attackFile,
-    movement: "Sauter et attaquer",
-    movementType: "attack",
   },
 ];
 
+const LEGACY_SKIN_ALIASES = {
+  "mutant-run": "mutant-swipe",
+  "mutant-attack": "mutant-swipe",
+};
+
 export const DEFAULT_SKIN = "loki";
 export function validSkin(value) {
-  return SKINS.some((skin) => skin.id === value) ? value : DEFAULT_SKIN;
+  const normalized = LEGACY_SKIN_ALIASES[value] || value;
+  return SKINS.some((skin) => skin.id === normalized) ? normalized : DEFAULT_SKIN;
 }
 export function getSkin(value) {
   return SKINS.find((skin) => skin.id === validSkin(value)) || SKINS[0];

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
 import GuidePage from "../components/GuidePage";
 import CommunityLinks from "../components/CommunityLinks";
@@ -51,26 +51,43 @@ export default function ProfilePage({ onOpenStudio }) {
   const [chatOn, setChatOn] = useState(readChatPref);
   const [chatFull, setChatFull] = useState(false); // chat global en plein ecran
   const [guestSkin, setGuestSkin] = useState(readGuestSkin);
-  const [pendingSkin, setPendingSkin] = useState(null);
   const [skinSaving, setSkinSaving] = useState(false);
   const [skinError, setSkinError] = useState("");
-  const selectedSkin = pendingSkin || (session ? validSkin(session.skin_id) : guestSkin);
-  const changeSkin = async (id) => {
-    if (skinSaving || selectedSkin === id) return;
+  const [draftSkin, setDraftSkin] = useState(null);
+  const selectedSkin = session ? validSkin(session.skin_id) : guestSkin;
+  const activeSkin = draftSkin || selectedSkin;
+  const activeSkinIndex = useMemo(() => {
+    const index = SKINS.findIndex((skin) => skin.id === activeSkin);
+    return index >= 0 ? index : 0;
+  }, [activeSkin]);
+  const openPersonalize = () => {
     setSkinError("");
-    if (!session) {
-      setGuestSkin(id);
-      try { localStorage.setItem(GUEST_SKIN_KEY, id); } catch { /* facultatif */ }
+    setDraftSkin(selectedSkin);
+    setSheet("personalize");
+  };
+  const rotateSkin = (step) => {
+    const total = SKINS.length || 1;
+    const next = (activeSkinIndex + step + total) % total;
+    setDraftSkin(SKINS[next].id);
+  };
+  const confirmSkin = async () => {
+    const id = draftSkin || selectedSkin;
+    if (skinSaving || !id || id === selectedSkin) {
+      close();
       return;
     }
-    setPendingSkin(id);
+    setSkinError("");
     setSkinSaving(true);
     try {
-      const user = await saveSkin(id);
-      updateUser(user);
-      setPendingSkin(null);
+      if (!session) {
+        setGuestSkin(id);
+        try { localStorage.setItem(GUEST_SKIN_KEY, id); } catch { /* facultatif */ }
+      } else {
+        const user = await saveSkin(id);
+        updateUser(user);
+      }
+      close();
     } catch (error) {
-      setPendingSkin(null);
       setSkinError(error.message || "Enregistrement impossible. Reessaie.");
     } finally {
       setSkinSaving(false);
@@ -104,7 +121,7 @@ export default function ProfilePage({ onOpenStudio }) {
     wakeServer();
   }, []);
   useEffect(() => {
-    setPendingSkin(null);
+    setDraftSkin(null);
     setSkinError("");
     setMoreOpen(false);
   }, [session?.id]);
@@ -227,7 +244,7 @@ export default function ProfilePage({ onOpenStudio }) {
               <button
                 type="button"
                 className="menu-btn"
-                onClick={() => { setSkinError(""); setSheet("personalize"); }}
+                onClick={openPersonalize}
               >
                 <IconPalette />
                 <span>Personnalisation</span>
@@ -285,37 +302,85 @@ export default function ProfilePage({ onOpenStudio }) {
 
       <Sheet open={sheet === "personalize"} title="Personnalisation" onClose={close}>
         <div className="skins-head">
-          <p className="sheet__text">Skins : choisis le personnage qui apparait sur ton profil.</p>
+          <p className="sheet__text">Skins : tourne le carrousel, choisis un personnage, puis confirme.</p>
           <span className="skins-free">GRATUIT POUR LE MOMENT</span>
         </div>
-        <div className="skins-grid" aria-label="Choisir un skin">
-          {SKINS.map((skin) => (
+        <div className="skins-picker" aria-label="Choisir un skin">
+          <div className="skins-carousel-shell">
             <button
-              key={skin.id}
               type="button"
-              className={`skin-choice${selectedSkin === skin.id ? " is-selected" : ""}`}
-              aria-pressed={selectedSkin === skin.id}
+              className="skins-nav skins-nav--prev"
+              onClick={() => rotateSkin(-1)}
               disabled={skinSaving}
-              onClick={() => changeSkin(skin.id)}
+              aria-label="Personnage precedent"
             >
-              <span className="skin-choice__icon"><IconUserPlus size={24} /></span>
-              <span className="skin-choice__info">
-                <strong>{skin.name}</strong>
-                <small>{skin.movement}</small>
-              </span>
-              <span className="skin-choice__status">
-                {selectedSkin === skin.id ? "Actif" : "Choisir"}
-              </span>
+              ‹
             </button>
-          ))}
+            <div
+              className="skins-carousel"
+              style={{
+                "--skin-count": SKINS.length,
+                "--skin-index": activeSkinIndex,
+              }}
+            >
+              <div className="skins-carousel__track">
+                {SKINS.map((skin, index) => {
+                  const isActive = activeSkin === skin.id;
+                  const state = selectedSkin === skin.id
+                    ? (isActive ? "Actif" : "Actuel")
+                    : (isActive ? "Selectionne" : "Choisir");
+                  return (
+                    <button
+                      key={skin.id}
+                      type="button"
+                      className={`skin-card${isActive ? " is-active" : ""}`}
+                      style={{ "--skin-position": index }}
+                      aria-pressed={isActive}
+                      disabled={skinSaving}
+                      onClick={() => setDraftSkin(skin.id)}
+                    >
+                      <span className="skin-card__glow" aria-hidden="true" />
+                      <span className="skin-card__icon"><IconUserPlus size={24} /></span>
+                      <span className="skin-card__name">{skin.name}</span>
+                      <span className="skin-card__move">{skin.movement}</span>
+                      <span className="skin-card__status">{state}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="skins-nav skins-nav--next"
+              onClick={() => rotateSkin(1)}
+              disabled={skinSaving}
+              aria-label="Personnage suivant"
+            >
+              ›
+            </button>
+          </div>
+          <div className="skins-caption">
+            <strong>{SKINS[activeSkinIndex]?.name || "Skin"}</strong>
+            <small>{SKINS[activeSkinIndex]?.movement || "Animation"}</small>
+          </div>
+          <button
+            type="button"
+            className="btn btn--primary btn--block skins-confirm"
+            onClick={confirmSkin}
+            disabled={skinSaving}
+          >
+            {skinSaving
+              ? "Enregistrement..."
+              : draftSkin && draftSkin !== selectedSkin
+                ? "Confirmer ce personnage"
+                : "Garder ce personnage"}
+          </button>
         </div>
-        {skinSaving && <p className="skins-message" role="status">Enregistrement de ton skin...</p>}
         {skinError && <p className="sheet__error" role="alert">{skinError}</p>}
         <p className="skins-footnote">
-          Chaque skin utilise son animation : marche, defile, danse,
-          balayage, course ou saut-attaque. Messi reste statique car son fichier n'a pas d'animation.
+          Le profil utilise un seul mouvement par personnage : marche, defile, danse, balayage ou pose statique.
           {session ? " Ton choix est conserve dans ton compte." : " Sans connexion, ton choix reste sur cet appareil."}
-          {" "}Les themes et d'autres options arriveront ici plus tard.
+          {" "}Le Studio 3D permet de tester plus de mouvements quand ils existent.
         </p>
       </Sheet>
 

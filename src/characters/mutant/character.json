@@ -1,10 +1,9 @@
 {
   "id": "mutant",
   "name": "Mutant",
-  "description": "Vrai mutant Mixamo · balayage, course et saut-attaque",
+  "description": "Vrai mutant Mixamo · balayage et course",
   "format": "fbx",
   "file": "characters/mutant/mutant-swiping-mobile.fbx",
   "runFile": "characters/mutant/run.fbx",
-  "attackFile": "characters/mutant/jump-attack.fbx",
   "rotation": 0
 }
