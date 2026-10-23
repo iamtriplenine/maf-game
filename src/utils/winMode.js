@@ -1,5 +1,5 @@
 // Le mode proprietaire existant reste inchange.
-// Les codes temporaires donnent acces UNIQUEMENT aux parties solo sans mise.
+// Les codes temporaires sont egalement utilisables dans les matchs a deux; le serveur valide leur application.
 import { currentSession, walletRequest } from '../api/accounts';
 const KEY = 'maf-owner-win-mode';
 const ACCESS_KEY = 'maf-win-solo-access';
@@ -30,12 +30,12 @@ export function winModeIsEnabled(game = null, solo = false) {
     try { if (sessionStorage.getItem(KEY) === '1') return true; }
     catch { /* facultatif */ }
   }
-  // Les codes n'ont aucun effet dans les salons multijoueurs avec mise.
-  if (!solo || !['tank','penalty'].includes(game)) return false;
+  if (!['tank','penalty'].includes(game)) return false;
   const grant = readGrant();
   return !!grant && new Date(grant.expires_at).getTime() > Date.now() &&
     (grant.game === 'all' || grant.game === game) &&
-    (grant.kind === 'duration' || grant.playing === game);
+    (grant.kind === 'duration' || (solo ? grant.playing === game :
+      grant.matches_left === 1 || grant.matches_left === 0));
 }
 export function setWinModeActive(active) {
   if (currentSession()?.pseudo !== '999') return false;

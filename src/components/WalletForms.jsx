@@ -30,7 +30,7 @@ export function CouponForm({ onUser, onAdmin }) {
       if (result.win_access) {
         setWinGrant(result.win_access);
         setMessage(result.win_access.active
-          ? 'Mode Win activé pour les entraînements solo. Lance le jeu choisi contre le robot.'
+          ? 'Mode Win activé. Utilise-le dans le jeu sélectionné, en solo ou à deux.'
           : 'Ce code Win a déjà été utilisé.');
         setCode('');
         return;

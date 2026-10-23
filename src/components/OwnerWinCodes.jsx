@@ -36,7 +36,7 @@ export default function OwnerWinCodes() {
     catch { setError('Selectionne le code pour le copier.'); }
   }
   return <section className="win-codes">
-    <p className="sheet__text">Génère un code personnel de Mode Win. Il fonctionne contre le robot en entraînement solo, sans mise. Les matchs entre joueurs ne sont pas concernés.</p>
+    <p className="sheet__text">Génère un code personnel de Mode Win. Il fonctionne dans les parties contre le robot et les parties à deux. Les mises et les gains suivent les règles habituelles du jeu.</p>
     <form className="wallet-form" onSubmit={create}>
       <label className="wallet-label">Jeu
         <select value={game} onChange={e=>setGame(e.target.value)} disabled={busy}>
