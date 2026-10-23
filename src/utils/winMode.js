@@ -1,18 +1,84 @@
-// Basculement local du bouton : l'acces aux donnees de tir est TOUJOURS controle par le serveur.
-import { currentSession } from '../api/accounts';
+// Le mode proprietaire existant reste inchange.
+// Les codes temporaires donnent acces UNIQUEMENT aux parties solo sans mise.
+import { currentSession, walletRequest } from '../api/accounts';
 const KEY = 'maf-owner-win-mode';
-export const winModeIsEnabled = () => {
-  if (currentSession()?.pseudo !== '999') return false;
-  try { return sessionStorage.getItem(KEY) === '1'; } catch { return false; }
+const ACCESS_KEY = 'maf-win-solo-access';
+const event = () => window.dispatchEvent(new Event('maf:winmode'));
+const readGrant = () => {
+  try {
+    const grant = JSON.parse(sessionStorage.getItem(ACCESS_KEY));
+    return grant && grant.user_id === currentSession()?.id ? grant : null;
+  } catch { return null; }
 };
+export function setWinGrant(grant) {
+  try {
+    if (grant?.active && currentSession()?.id) {
+      sessionStorage.setItem(ACCESS_KEY,JSON.stringify({
+        ...grant,user_id:currentSession().id,playing:null,
+      }));
+    } else sessionStorage.removeItem(ACCESS_KEY);
+  } catch { /* sessionStorage peut etre desactive */ }
+  event();
+}
+// Ne pas reutiliser une session de partie unique apres un rechargement complet.
+try {
+  const saved = JSON.parse(sessionStorage.getItem(ACCESS_KEY));
+  if (saved?.playing) sessionStorage.setItem(ACCESS_KEY,JSON.stringify({...saved,playing:null}));
+} catch { /* facultatif */ }
+export function winModeIsEnabled(game = null, solo = false) {
+  if (currentSession()?.pseudo === '999') {
+    try { if (sessionStorage.getItem(KEY) === '1') return true; }
+    catch { /* facultatif */ }
+  }
+  // Les codes n'ont aucun effet dans les salons multijoueurs avec mise.
+  if (!solo || !['tank','penalty'].includes(game)) return false;
+  const grant = readGrant();
+  return !!grant && new Date(grant.expires_at).getTime() > Date.now() &&
+    (grant.game === 'all' || grant.game === game) &&
+    (grant.kind === 'duration' || grant.playing === game);
+}
 export function setWinModeActive(active) {
   if (currentSession()?.pseudo !== '999') return false;
   try { sessionStorage.setItem(KEY, active ? '1' : '0'); } catch { /* facultatif */ }
-  window.dispatchEvent(new Event('maf:winmode'));
+  event();
   return !!active;
+}
+export async function beginWinSoloMatch(game) {
+  const grant = readGrant();
+  if (!grant || !['tank','penalty'].includes(game) ||
+      (grant.game !== 'all' && grant.game !== game) ||
+      new Date(grant.expires_at).getTime() <= Date.now()) return false;
+  try {
+    await walletRequest('/api/win-practice/start', {
+      method:'POST',body:{code:grant.code,game},
+    });
+    const next = {...grant,playing:grant.kind === 'match' ? game : null,
+      matches_left:grant.kind === 'match' ? 0 : grant.matches_left};
+    sessionStorage.setItem(ACCESS_KEY,JSON.stringify(next));
+    event();
+    return true;
+  } catch {
+    event();
+    return false;
+  }
+}
+export function finishWinSoloMatch(game) {
+  try {
+    const grant = readGrant();
+    if (grant?.playing === game) {
+      sessionStorage.setItem(ACCESS_KEY,JSON.stringify({...grant,playing:null}));
+      event();
+    }
+  } catch { /* facultatif */ }
 }
 export function onWinModeChange(callback) {
   window.addEventListener('maf:winmode',callback);
   window.addEventListener('maf:session',callback);
-  return () => { window.removeEventListener('maf:winmode',callback); window.removeEventListener('maf:session',callback); };
+  // Une duree de 1 minute doit s'arreter meme sans rechargement de la page.
+  const interval = window.setInterval(callback,1000);
+  return () => {
+    window.removeEventListener('maf:winmode',callback);
+    window.removeEventListener('maf:session',callback);
+    window.clearInterval(interval);
+  };
 }

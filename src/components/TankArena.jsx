@@ -160,8 +160,8 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
   };
   const endAim=()=>{aimStart.current=null;};
   // Mode Win (compte proprietaire) : trajectoire exacte, modifiable ensuite a la main.
-  const [winEnabled,setWinEnabled]=useState(winModeIsEnabled);
-  useEffect(()=>onWinModeChange(()=>setWinEnabled(winModeIsEnabled())),[]);
+  const [winEnabled,setWinEnabled]=useState(()=>winModeIsEnabled('tank',solo));
+  useEffect(()=>onWinModeChange(()=>setWinEnabled(winModeIsEnabled('tank',solo))),[solo]);
   const winTurn=winEnabled && active && !!match?.myTurn && !finished && !!match?.tanks;
   const winSolution=useMemo(()=>winTurn?tankSolve(match,viewer,weapon):null,
     // eslint-disable-next-line react-hooks/exhaustive-deps

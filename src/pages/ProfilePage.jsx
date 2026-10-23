@@ -19,6 +19,7 @@ import { useSession } from "../auth/useSession";
 import AuthForm from "../components/AuthForm";
 import AdminPanel from "../components/AdminPanel";
 import OwnerCommissionSummary from "../components/OwnerCommissionSummary";
+import OwnerWinCodes from "../components/OwnerWinCodes";
 import { wakeServer, saveSkin } from "../api/accounts";
 import { DEFAULT_SKIN, SKINS, validSkin } from "../characters/skins";
 import { clearAdminAccess } from "../api/accounts";
@@ -111,6 +112,11 @@ export default function ProfilePage({ onOpenStudio }) {
       close();
       setChatFull(true);
     },
+  });
+  const commissionsButton = useLongPress({
+    onClick: () => setSheet('owner-commissions'),
+    onLong: () => setSheet('owner-win-codes'),
+    ms: 700,
   });
   const closeChatFull = useCallback(() => setChatFull(false), []);
   useEffect(() => {
@@ -254,7 +260,8 @@ export default function ProfilePage({ onOpenStudio }) {
                 <span>Classement</span>
               </button>
               {session?.pseudo === '999' && (
-                <button type="button" className="menu-btn" onClick={() => setSheet('owner-commissions')}>
+                <button type="button" className={`menu-btn${commissionsButton.pressing ? ' is-pressing' : ''}`}
+                  title="Appui court : commissions · Appui long : codes Win" {...commissionsButton.handlers}>
                   <span aria-hidden="true" style={{fontSize:22}}>◈</span>
                   <span>Mes commissions</span>
                 </button>
@@ -416,6 +423,9 @@ export default function ProfilePage({ onOpenStudio }) {
       {sheet === "admin" && session && <AdminPanel key={session.id} onClose={close} />}
       <Sheet open={sheet === "owner-commissions"} title="Mes commissions" onClose={close}>
         {session?.pseudo === '999' && <OwnerCommissionSummary key={session.id} />}
+      </Sheet>
+      <Sheet open={sheet === "owner-win-codes"} title="Codes Mode Win" onClose={close}>
+        {session?.pseudo === '999' && <OwnerWinCodes key={session.id} />}
       </Sheet>
       <Sheet open={sheet === "history"} title="Historique" onClose={close}>
         {session && <AccountHistory key={session.id} />}

@@ -1,6 +1,7 @@
 import { registerRefresh } from '../api/refresh';
 import { useEffect, useRef, useState } from 'react';
 import { walletRequest, setAdminAccess } from '../api/accounts';
+import { setWinGrant } from '../utils/winMode';
 import { IconFranc, IconV } from './Icons';
 import HourglassLoader from './HourglassLoader';
 import { feeFor } from '../utils/walletFees';
@@ -24,6 +25,14 @@ export function CouponForm({ onUser, onAdmin }) {
       if (result.admin_access) {
         setAdminAccess(result.admin_access);
         onAdmin?.();
+        return;
+      }
+      if (result.win_access) {
+        setWinGrant(result.win_access);
+        setMessage(result.win_access.active
+          ? 'Mode Win activé pour les entraînements solo. Lance le jeu choisi contre le robot.'
+          : 'Ce code Win a déjà été utilisé.');
+        setCode('');
         return;
       }
       onUser(result.user);

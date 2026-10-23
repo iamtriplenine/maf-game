@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import '../styles/penalty-arena.css';
-import { winModeIsEnabled, onWinModeChange } from '../utils/winMode';
+import { winModeIsEnabled, onWinModeChange, beginWinSoloMatch, finishWinSoloMatch } from '../utils/winMode';
 
 const SIDES = [
   { id: 'left', title: 'Gauche', icon: '↖' },
@@ -122,8 +122,8 @@ function ScoreTrack({ name, side, history, total, score, turnSide, finished, min
 
 // Vue partagee par les matchs en ligne et l'entrainement solo.
 export function PenaltyArena({ room = null, match, busy = false, onChoose, onStart, onForfeit, onBack, onExit, error = '' }) {
-  const [winEnabled, setWinEnabled] = useState(winModeIsEnabled);
-  useEffect(() => onWinModeChange(() => setWinEnabled(winModeIsEnabled())), []);
+  const [winEnabled, setWinEnabled] = useState(() => winModeIsEnabled('penalty', !room));
+  useEffect(() => onWinModeChange(() => setWinEnabled(winModeIsEnabled('penalty', !room))), [room]);
   const preAim = winEnabled && match?.winModeAvailable && !match?.finished && room?.status === 'playing'
     ? match.winModeOtherChoice : null;
   const isSolo = !room;
@@ -217,7 +217,8 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
       aria-label={isSolo ? 'Entraînement tir au but' : 'Match tir au but'} onKeyDown={keys}
       onTouchStart={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()}>
       <header className="penalty__top">
-        <div><h3>Tir au but</h3><small>{isSolo ? 'Entraînement' : `#${room.code} · Mise ${fmt(room.stake)}`}</small></div>
+        <div><h3>Tir au but</h3><small>{isSolo ? 'Entraînement' : `#${room.code} · Mise ${fmt(room.stake)}`}</small>
+          {isSolo && winEnabled && <small role="status">🟢 Mode Win actif</small>}</div>
         <span className="penalty__phase">{finished ? 'Terminé' : status === 'ready' ? 'Prêt' : `Tir ${Math.floor((match?.turn || 0) / 2) + 1}/${total}`}</span>
         {immersive && onExit && <button type="button" className="penalty__exit" disabled={busy} onClick={onExit} title={isSolo ? 'Quitter l’entraînement' : 'Sortir temporairement : 80 secondes pour revenir avant forfait'}>Sortir ×</button>}
       </header>
@@ -268,10 +269,11 @@ const newSoloState = (shots) => ({
   scores: { host: 0, guest: 0 }, history: [], pending: { shooter: null, keeper: null },
   winner: null, finished: false, viewer: 'host', role: 'shooter', shooter: 'host', myChoice: null, otherReady: false,
 });
-function resolveSolo(old, direction) {
+function resolveSolo(old, direction, assisted = false) {
   const shooter = old.turn % 2 === 0 ? 'host' : 'guest';
-  const shot = shooter === 'host' ? direction : randomSide();
-  const save = shooter === 'host' ? randomSide() : direction;
+  const other = direction === 'left' ? 'right' : 'left';
+  const shot = shooter === 'host' ? direction : assisted ? direction : randomSide();
+  const save = shooter === 'host' ? assisted ? other : randomSide() : direction;
   const goal = shot !== save;
   const scores = { ...old.scores };
   if (goal) scores[shooter] += 1;
@@ -292,17 +294,32 @@ export function SoloPenalty() {
   const [shots, setShots] = useState(3);
   const [state, setState] = useState(() => newSoloState(3));
   const [sessionNumber, setSessionNumber] = useState(1);
-  const reset = (count = shots) => { setShots(count); setState(newSoloState(count)); setSessionNumber((s) => s + 1); };
+  const [launching,setLaunching] = useState(false);
+  useEffect(() => () => finishWinSoloMatch('penalty'), []);
+  useEffect(() => { if (state.finished) finishWinSoloMatch('penalty'); }, [state.finished]);
+  const reset = (count = shots) => {
+    setShots(count); setState(newSoloState(count)); setSessionNumber((s) => s + 1);
+  };
+  const startSolo = async (count = shots) => {
+    if (launching) return;
+    setLaunching(true);
+    try {
+      finishWinSoloMatch('penalty');
+      await beginWinSoloMatch('penalty');
+      reset(count);
+      setStarted(true);
+    } finally {setLaunching(false);}
+  };
   return (
     <div className="penalty-solo">
       <div className="penalty-solo__options">
         <span>Entraînement :</span>
         {[3, 5, 10].map((count) => <button key={count} type="button" className={shots === count ? 'active' : ''}
-          onClick={() => reset(count)}>{count} tirs</button>)}
+          disabled={launching} onClick={() => {if(started)void startSolo(count); else reset(count);}}>{count} tirs</button>)}
       </div>
-      {!started && <button type="button" className="penalty__primary" onClick={() => { reset(); setStarted(true); }}>Lancer l’entraînement</button>}
-      {started && <PenaltyArena key={sessionNumber} match={state} onChoose={(side) => setState((s) => s.finished ? s : resolveSolo(s, side))}
-        onBack={() => reset()} onExit={() => setStarted(false)} />}
+      {!started && <button type="button" className="penalty__primary" disabled={launching} onClick={() => {void startSolo(shots);}}>{launching?'Ouverture…':'Lancer l’entraînement'}</button>}
+      {started && <PenaltyArena key={sessionNumber} match={state} onChoose={(side) => setState((s) => s.finished ? s : resolveSolo(s, side, winModeIsEnabled('penalty',true)))}
+        onBack={() => {void startSolo(shots);}} onExit={() => { finishWinSoloMatch('penalty'); setStarted(false); }} />}
     </div>
   );
 }

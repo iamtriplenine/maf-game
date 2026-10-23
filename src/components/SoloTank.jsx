@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import TankArena from './TankArena';
+import { beginWinSoloMatch, finishWinSoloMatch } from '../utils/winMode';
 import { tankInitial, tankFire } from '../api/tankEngine';
 
 const cloned = x => JSON.parse(JSON.stringify(x));
@@ -24,6 +25,9 @@ export default function SoloTank() {
   const [started,setStarted]=useState(false);
   const [game,setGame]=useState(()=>tankInitial(217));
   const [busy,setBusy]=useState(false);
+  const [launching,setLaunching]=useState(false);
+  useEffect(()=>()=>finishWinSoloMatch('tank'),[]);
+  useEffect(()=>{if(game.finished)finishWinSoloMatch('tank');},[game.finished]);
   useEffect(()=> {
     if(!started || game.finished || game.toMove!=='guest')return undefined;
     setBusy(true);
@@ -42,10 +46,19 @@ export default function SoloTank() {
     serverNow:Date.now(),moveDeadline:null,returnDeadline:null,opponentReturnDeadline:null}),[game]);
   const room=useMemo(()=>({id:0,code:'SOLO',game:'tank',is_host:true,
     status:game.finished?'finished':'playing',host:{pseudo:'Toi'},guest:{pseudo:'Robot'}}),[game.finished]);
-  const reset=()=>{setGame(tankInitial(Math.floor(Date.now()/1000)));setStarted(true);setBusy(false);};
-  if(!started)return <button className="btn btn--sm btn--block" type="button" onClick={reset}>🚀 Jouer contre le robot</button>;
+  const reset=async()=>{
+    if (launching) return;
+    setLaunching(true);
+    try {
+      finishWinSoloMatch('tank');
+      await beginWinSoloMatch('tank');
+      setGame(tankInitial(Math.floor(Date.now()/1000)));
+      setStarted(true);setBusy(false);
+    } finally {setLaunching(false);}
+  };
+  if(!started)return <button className="btn btn--sm btn--block" type="button" disabled={launching} onClick={()=>{void reset();}}>{launching?'Ouverture…':'🚀 Jouer contre le robot'}</button>;
   return <TankArena room={room} match={match} busy={busy}
     onFire={shot=>{setGame(previous=>{if(previous.finished || previous.toMove!=='host')return previous;
       const next=cloned(previous);tankFire(next,'host',shot);return next;});}}
-    onForfeit={()=>setStarted(false)} onExit={()=>setStarted(false)} onBack={()=>setStarted(false)}/>;
+    onForfeit={()=>{finishWinSoloMatch('tank');setStarted(false);}} onExit={()=>{finishWinSoloMatch('tank');setStarted(false);}} onBack={()=>{finishWinSoloMatch('tank');setStarted(false);}}/>;
 }
