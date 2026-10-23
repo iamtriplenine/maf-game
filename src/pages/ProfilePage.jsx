@@ -253,12 +253,6 @@ export default function ProfilePage({ onOpenStudio }) {
                 <IconHistory />
                 <span>Historique</span>
               </button>
-              {session?.pseudo === '999' && ( // MAF_OWNER_PROFILE_V1
-                <button type="button" className="menu-btn" onClick={() => window.dispatchEvent(new CustomEvent('maf:owner-open-admin',{detail:{tab:'deposits'}}))}>
-                  <span aria-hidden="true" style={{fontSize:22}}>▤</span>
-                  <span>Demandes dépôts / retraits</span>
-                </button>
-              )}
               {session?.pseudo === '999' && (
                 <button type="button" className="menu-btn" onClick={() => setSheet('owner-commissions')}>
                   <span aria-hidden="true" style={{fontSize:22}}>◈</span>
