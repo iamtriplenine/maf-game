@@ -107,7 +107,7 @@ const statusText = {
   offline: "Hors ligne",
 };
 
-export default function ProfileIdentity({ pseudo }) {
+export default function ProfileIdentity({ pseudo, clientId }) {
   const { level, state } = useNetworkSignal();
   const characters = Array.from(String(pseudo || ""));
   // Huit signes au total a l'ecran : sept caracteres suivis de "…" si necessaire.
@@ -126,6 +126,7 @@ export default function ProfileIdentity({ pseudo }) {
           {shortPseudo}
         </span>
       ) : <span className="profile-id__guest">Invite</span>}
+      {clientId && <span className="profile-id__caption" style={{marginTop:6,fontVariantNumeric:'tabular-nums'}}>ID : {clientId}</span>}
       <div className={`profile-id__signal profile-id__signal--${state === "checking" ? "pending" : level === 0 || level === 1 ? "red" : level === 2 ? "yellow" : "green"}`}
         role="img" aria-label={`${quality}${state === "measured" ? ` (${level} sur 4 barres)` : ""}`}
         title={quality}>

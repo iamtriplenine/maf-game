@@ -128,7 +128,7 @@ export default function ProfilePage({ onOpenStudio }) {
       <main className="profile">
         <div className="profile__bar">
           <WalletBalances user={session} />
-          <ProfileIdentity pseudo={session?.pseudo} />
+          <ProfileIdentity pseudo={session?.pseudo} clientId={session?.client_id} />
         </div>
 
         <section className="profile__stage" aria-label="Personnage">
