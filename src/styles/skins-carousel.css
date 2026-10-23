@@ -1,0 +1,44 @@
+/* Carrousel 3D des skins : rotation pilotee au doigt (voir SkinCarousel.jsx). */
+.skins-picker .skins-carousel-shell { display: block; }
+.skins-picker .skins-carousel {
+  position: relative;
+  height: 232px;
+  min-height: 232px;
+  perspective: 900px;
+  perspective-origin: 50% 45%;
+  overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: grab;
+  outline: none;
+}
+.skins-picker .skins-carousel:active { cursor: grabbing; }
+.skins-picker .skins-carousel:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.skins-picker .skins-carousel__track {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  transform-style: preserve-3d;
+  transition: none;
+  will-change: transform;
+}
+.skins-picker .skins-carousel .skin-card {
+  transition: none;
+  opacity: 1;
+  cursor: inherit;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform, filter;
+}
+.skins-picker .skins-carousel .skin-card__art { pointer-events: none; }
+.skins-picker .skins-carousel .skin-card > * { pointer-events: none; }
+@media (max-width: 420px) {
+  .skins-picker .skins-carousel,
+  .skins-picker .skins-carousel__track { min-height: 220px; }
+  .skins-picker .skins-carousel { height: 220px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skins-picker .skins-carousel .skin-card { will-change: auto; }
+}

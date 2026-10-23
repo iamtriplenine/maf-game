@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#081a2d">
+  <title>MAF — Ville 3D</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three/build/three.module.js",
+        "three/addons/": "./vendor/three/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="app">
+    <section id="viewport" aria-label="Ville 3D interactive"></section>
+    <header class="top-bar">
+      <div class="branding"><span class="brand-icon">M</span><div><strong>MAF <span>WORLD</span></strong><small>Ville 3D • kit de départ</small></div></div>
+      <div class="top-actions">
+        <button id="homeCamera" class="glass-button" title="Recentrer la caméra">⌖ <span>Recentrer</span></button>
+        <button id="saveMap" class="primary-button" title="Sauvegarder la ville">💾 <span>Sauvegarder</span></button>
+      </div>
+    </header>
+
+    <aside class="palette" aria-label="Outils de construction">
+      <p class="eyebrow">Mode de jeu</p>
+      <button type="button" class="tool active" data-tool="explore"><span class="tool-emoji">🚶</span><span><b>Explorer</b><small>Déplacer le personnage</small></span></button>
+      <p class="eyebrow space">Aménager la ville</p>
+      <button type="button" class="tool" data-tool="house"><span class="tool-emoji">🏠</span><span><b>Maison</b><small>Placer un bâtiment</small></span></button>
+      <button type="button" class="tool" data-tool="tower"><span class="tool-emoji">🏢</span><span><b>Immeuble</b><small>Placer une tour</small></span></button>
+      <button type="button" class="tool" data-tool="shop"><span class="tool-emoji">🏬</span><span><b>Boutique</b><small>Placer un commerce</small></span></button>
+      <button type="button" class="tool" data-tool="tree"><span class="tool-emoji">🌳</span><span><b>Arbre</b><small>Végétation</small></span></button>
+      <button type="button" class="tool" data-tool="car"><span class="tool-emoji">🚙</span><span><b>Voiture</b><small>Sur la chaussée</small></span></button>
+      <button type="button" class="tool" data-tool="erase"><span class="tool-emoji">🧽</span><span><b>Effacer</b><small>Retirer un objet</small></span></button>
+      <div class="separator"></div>
+      <label class="file-button">📁 Importer un personnage GLB <input id="characterFile" type="file" accept=".glb,model/gltf-binary" hidden></label>
+      <div class="scale-row"><label for="characterScale">Taille personnage</label><input id="characterScale" type="range" min="0.5" max="2.5" step="0.1" value="1"><output id="characterScaleLabel">100 %</output></div>
+    </aside>
+
+    <section class="help-panel">
+      <strong>🕹️ Contrôles</strong>
+      <p><b>Tourner :</b> glisser avec la souris ou un doigt</p>
+      <p><b>Zoom :</b> molette ou pincement à deux doigts</p>
+      <p><b>Déplacer la carte :</b> clic droit + glisser, ou deux doigts</p>
+      <p><b>Explorer :</b> toucher une route pour marcher</p>
+      <p><b>Construire :</b> choisir un objet puis toucher une case</p>
+    </section>
+
+    <footer class="bottom-bar">
+      <span id="modeInfo">🚶 Mode exploration</span>
+      <span id="objectCount">Ville initialisée</span>
+      <div class="bottom-actions">
+        <button id="exportMap" title="Exporter la sauvegarde">Exporter</button>
+        <label class="import-label" title="Importer une sauvegarde">Importer <input type="file" id="importMap" accept="application/json,.json" hidden></label>
+        <button id="resetMap" title="Recréer la ville de démonstration">Réinitialiser</button>
+      </div>
+    </footer>
+    <div id="toast" role="status" aria-live="polite"></div>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
+import SkinCarousel from "../components/SkinCarousel";
 import GuidePage from "../components/GuidePage";
 import CommunityLinks from "../components/CommunityLinks";
 import FootballLeaderboard from "../components/FootballLeaderboard";
@@ -64,11 +65,6 @@ export default function ProfilePage({ onOpenStudio }) {
     setSkinError("");
     setDraftSkin(selectedSkin);
     setSheet("personalize");
-  };
-  const rotateSkin = (step) => {
-    const total = SKINS.length || 1;
-    const next = (activeSkinIndex + step + total) % total;
-    setDraftSkin(SKINS[next].id);
   };
   const confirmSkin = async () => {
     const id = draftSkin || selectedSkin;
@@ -302,70 +298,33 @@ export default function ProfilePage({ onOpenStudio }) {
 
       <Sheet open={sheet === "personalize"} title="Personnalisation" onClose={close}>
         <div className="skins-head">
-          <p className="sheet__text">Skins : tourne le carrousel, choisis un personnage, puis confirme.</p>
+          <p className="sheet__text">Skins : glisse le doigt sur les cartes pour tourner, choisis un personnage, puis confirme.</p>
           <span className="skins-free">GRATUIT POUR LE MOMENT</span>
         </div>
         <div className="skins-picker" aria-label="Choisir un skin">
-          <div className="skins-carousel-shell">
-            <button
-              type="button"
-              className="skins-nav skins-nav--prev"
-              onClick={() => rotateSkin(-1)}
-              disabled={skinSaving}
-              aria-label="Personnage precedent"
-            >
-              ‹
-            </button>
-            <div
-              className="skins-carousel"
-              style={{
-                "--skin-count": SKINS.length,
-                "--skin-angle": `${360 / SKINS.length}deg`,
-                "--skin-rotation": `${-activeSkinIndex * 360 / SKINS.length}deg`,
-                "--skin-rotation": `${-360 / SKINS.length}deg`,
-                "--skin-radius": `${Math.round(Math.max(145, (104 / 2) / Math.tan(Math.PI / SKINS.length) + 42))}px`,
-                "--skin-index": activeSkinIndex,
-              }}
-            >
-              <div className="skins-carousel__track">
-                {SKINS.map((skin, index) => {
-                  const isActive = activeSkin === skin.id;
-                  const state = selectedSkin === skin.id
-                    ? (isActive ? "Actif" : "Actuel")
-                    : (isActive ? "Selectionne" : "Choisir");
-                  return (
-                    <button
-                      key={skin.id}
-                      type="button"
-                      className={`skin-card${isActive ? " is-active" : ""}`}
-                      style={{ "--skin-position": index, "--skin-card-angle": `${index * 360 / SKINS.length}deg` }}
-                      aria-pressed={isActive}
-                      disabled={skinSaving}
-                      onClick={() => setDraftSkin(skin.id)}
-                    >
-                      <span className="skin-card__glow" aria-hidden="true" />
-                      <span className="skin-card__art" aria-hidden="true">
-                        {isActive && <ProfileStage skinId={skin.id} compact />}
-                        {!isActive && <IconUserPlus size={24} />}
-                      </span>
-                      <span className="skin-card__name">{skin.name}</span>
-                      <span className="skin-card__move">{skin.movement}</span>
-                      <span className="skin-card__status">{state}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <button
-              type="button"
-              className="skins-nav skins-nav--next"
-              onClick={() => rotateSkin(1)}
-              disabled={skinSaving}
-              aria-label="Personnage suivant"
-            >
-              ›
-            </button>
-          </div>
+          <SkinCarousel
+            skins={SKINS}
+            activeId={activeSkin}
+            disabled={skinSaving}
+            onChange={setDraftSkin}
+            renderCard={(skin, live) => {
+              const isActive = activeSkin === skin.id;
+              const state = selectedSkin === skin.id
+                ? (isActive ? "Actif" : "Actuel")
+                : (isActive ? "Selectionne" : "Choisir");
+              return (
+                <>
+                  <span className="skin-card__glow" aria-hidden="true" />
+                  <span className="skin-card__art" aria-hidden="true">
+                    {live ? <ProfileStage skinId={skin.id} compact /> : <IconUserPlus size={24} />}
+                  </span>
+                  <span className="skin-card__name">{skin.name}</span>
+                  <span className="skin-card__move">{skin.movement}</span>
+                  <span className="skin-card__status">{state}</span>
+                </>
+              );
+            }}
+          />
           <div className="skins-caption">
             <strong>{SKINS[activeSkinIndex]?.name || "Skin"}</strong>
             <small>{SKINS[activeSkinIndex]?.movement || "Animation"}</small>

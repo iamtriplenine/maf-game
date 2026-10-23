@@ -1,0 +1,36 @@
+MAF VILLE 3D — MODELES PERSONNALISES
+
+Cette demo fonctionne sans aucun modele externe : les objets de depart sont
+construits automatiquement avec Three.js (vrais volumes 3D, pas des SVG).
+
+Pour remplacer les objets de demo par des modeles Kenney :
+1. Mettre vos fichiers GLB dans ce dossier :
+      maison.glb
+      immeuble.glb
+      boutique.glb
+      arbre.glb
+      voiture.glb
+2. Modifier manifest.json :
+   "objects": {
+     "house": "models/maison.glb",
+     "tower": "models/immeuble.glb",
+     "shop": "models/boutique.glb",
+     "tree": "models/arbre.glb",
+     "car": "models/voiture.glb"
+   }
+3. Rafraichir la page /maf-ville-3d/index.html.
+
+Pour un personnage anime :
+- Cliquer "Importer un personnage GLB" dans la page ; ou
+- Copier un fichier personnage.glb ici et mettre dans manifest.json :
+      "character": "models/personnage.glb"
+
+Les GLB avec textures incorporees marchent mieux ; le format FBX, USDZ ou OBJ
+exige une conversion prealable en GLB. GLB compresses Draco et KTX2 ne sont
+pas pris en charge par cette petite version (sans decodeurs).
+
+La sauvegarde JSON stocke les positions et types de cases, pas les octets GLB.
+Garder les memes noms de fichiers dans models/ pour conserver la configuration.
+
+Licences et credits de modeles telecharges : consulter les pages originales.
+Les packs Kenney mentionnes sont CC0, mais verifier chaque source.
