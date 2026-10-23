@@ -15,3 +15,4 @@
 @keyframes tank-fly{0%{transform:translate(calc(-50% + var(--sx)),calc(-50% + var(--sy))) scale(.4);opacity:0}15%{opacity:1}60%{transform:translate(-50%,-50%) scale(1.1);opacity:1}100%{transform:translate(-50%,-50%) scale(1.4);opacity:0}}
 @media(max-height:680px){.tank-shell{gap:5px}.tank-scene svg{aspect-ratio:1.5}.tank-controls{gap:4px}}
 @media(prefers-reduced-motion:reduce){.tank-reaction-float{animation:none;display:none}}
+.tank-win{margin:0;padding:7px 9px;border-radius:9px;border:1px solid #3fbf6f;background:#12351f;color:#bff5cf;font-size:12px;font-weight:700}

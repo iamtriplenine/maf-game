@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { TANK_WEAPONS, tankSurface } from '../api/tankEngine';
+import { TANK_WEAPONS, tankSurface, tankSimulate } from '../api/tankEngine';
+import { tankSolve } from '../api/tankSolver';
+import { winModeIsEnabled, onWinModeChange } from '../utils/winMode';
 import { WeaponIcon, WeaponShape, WEAPON_INFO } from './TankWeaponArt';
 import '../styles/tank-arena.css';
 
 const clamp = (n, a, b) => Math.max(a, Math.min(b,n));
 const FLIGHT = .7;          // part de l'animation consacree au vol (le reste = explosion)
 const SHOT_MS = 1900;       // duree totale de l'animation d'un tir
+const ANGLE_PER_PX = .45;   // visee au doigt : degres d'angle par pixel (haut/bas)
+const POWER_PER_PX = .4;    // visee au doigt : % de puissance par pixel (gauche/droite)
 const VIEW = '0 6 100 90';  // zone visible de la scene (sans deformation)
 const timeLeft = (deadline, serverNow, receivedAt, now) => deadline == null ? null
   : Math.max(0, Math.ceil((deadline - serverNow - (now - receivedAt)) / 1000));
@@ -124,23 +128,35 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
   },[match?.emote?.id]);
   useEffect(()=>()=>timers.current.forEach(clearTimeout),[]);
   const minAngle=TANK_WEAPONS[weapon]?.minAngle||0;
-  const aimWithPointer=e=>{
-    if(!canPlay || !svgRef.current || !match.tanks?.[viewer])return;
-    const ctm=svgRef.current.getScreenCTM();
-    if(!ctm)return;
-    const pt=svgRef.current.createSVGPoint();
-    pt.x=e.clientX;pt.y=e.clientY;
-    const local=pt.matrixTransform(ctm.inverse());
-    const px=local.x;
-    const py=local.y;
-    const x=match.tanks[viewer].x+drive;
-    const y=tankSurface(match.terrain,x)-4;
-    const dir=viewer==='host'?1:-1;
-    const dx=(px-x)*dir;
-    const dy=y-py;
-    setAngle(Math.round(clamp(Math.atan2(Math.max(0,dy),Math.max(.2,dx))*180/Math.PI,minAngle,89)));
-    setPower(Math.round(clamp(Math.hypot(dx,dy)*1.5,20,100)));
+  // Visee RELATIVE : le canon garde sa position ; glisser le deplace a partir de la ou il est.
+  const aimStart=useRef(null);
+  const beginAim=e=>{
+    if(!canPlay)return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    aimStart.current={x:e.clientX,y:e.clientY,angle:Math.max(angle,minAngle),power};
   };
+  const moveAim=e=>{
+    const start=aimStart.current;
+    if(!start || !canPlay)return;
+    const dir=viewer==='host'?1:-1;
+    setAngle(Math.round(clamp(start.angle+(start.y-e.clientY)*ANGLE_PER_PX,minAngle,89)));
+    setPower(Math.round(clamp(start.power+dir*(e.clientX-start.x)*POWER_PER_PX,20,100)));
+  };
+  const endAim=()=>{aimStart.current=null;};
+  // Mode Win (compte proprietaire) : trajectoire exacte, modifiable ensuite a la main.
+  const [winEnabled,setWinEnabled]=useState(winModeIsEnabled);
+  useEffect(()=>onWinModeChange(()=>setWinEnabled(winModeIsEnabled())),[]);
+  const winTurn=winEnabled && active && !!match?.myTurn && !finished && !!match?.tanks;
+  const winSolution=useMemo(()=>winTurn?tankSolve(match,viewer,weapon):null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [winTurn,match?.round,match?.toMove,weapon,viewer]);
+  useEffect(()=>{
+    if(!winSolution)return;
+    setAngle(winSolution.angle);setPower(winSolution.power);setDrive(0);
+  },[winSolution]);
+  const winPreview=useMemo(()=>winTurn?tankSimulate(match,viewer,{weapon,angle:Math.max(angle,minAngle),power,drive}):null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [winTurn,match?.round,weapon,angle,power,drive,viewer,minAngle]);
   const sendEmote=kind=>{
     if(!active || finished)return;
     if(solo){const id='local-'+Date.now();setReaction({id,side:viewer,icon:EMOTES.find(x=>x[0]===kind)?.[1]});
@@ -165,8 +181,7 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
       <div className="tank-turn" role="status">{finished ? (match.draw?'🤝 Match nul — mises remboursées':match.winner===viewer?'🏆 Victoire !':'Défaite.')
         : match.toMove===viewer ? `À toi de jouer · ${moveDeadline ?? 120} s` : `Au tour de ${sideName(room,match.toMove)} · ${moveDeadline??120} s`}</div>
       <div className="tank-scene"><svg ref={svgRef} viewBox={VIEW} role="img" aria-label="Terrain destructible et deux chars" preserveAspectRatio="xMidYMax slice"
-        onPointerDown={e=>{if(canPlay){e.currentTarget.setPointerCapture?.(e.pointerId);aimWithPointer(e);}}}
-        onPointerMove={e=>{if(e.buttons && canPlay) aimWithPointer(e);}}>
+        onPointerDown={beginAim} onPointerMove={moveAim} onPointerUp={endAim} onPointerCancel={endAim}>
         <defs><linearGradient id="tank-sky" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#152b52"/><stop offset="1" stopColor="#478f9e"/></linearGradient>
           <linearGradient id="tank-ground" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#9ac86e"/><stop offset=".08" stopColor="#6e9551"/><stop offset="1" stopColor="#4c392e"/></linearGradient></defs>
         <rect x="0" y="0" width="100" height="100" fill="url(#tank-sky)"/>
@@ -177,6 +192,10 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
           angle={viewer===side && canPlay ? angle : match?.lastShot?.side===side ? match.lastShot.angle : 20}/>)}
         {canPlay && (()=>{const dir=viewer==='host'?1:-1;const x=match.tanks[viewer].x+drive;const y=tankSurface(match.terrain,x)-4;const r=angle*Math.PI/180;
           return <g pointerEvents="none"><path d={`M${x},${y} l${dir*Math.cos(r)*14},${-Math.sin(r)*14}`} stroke="#fff3b0" strokeDasharray="1.3 1" strokeWidth=".5" fill="none"/></g>;})()}
+        {winPreview && !animation && <g pointerEvents="none">
+          <path d={'M '+winPreview.points.map(pt=>`${pt.x} ${pt.y}`).join(' L ')} fill="none" stroke="#6dff9a" strokeWidth=".6" strokeDasharray="1.4 1.1" strokeLinecap="round"/>
+          <circle cx={winPreview.impact.x} cy={winPreview.impact.y} r="1.6" fill="none" stroke="#6dff9a" strokeWidth=".6"/>
+        </g>}
         {animation && shotPoint && !exploded && <g pointerEvents="none">
           {shot.points.slice(Math.max(0,shotIndex-6),shotIndex).map((pt,k,arr)=>
             <circle key={k} cx={pt.x} cy={pt.y} r={.35+k/arr.length*.8} fill="#e8eef3" opacity={k/arr.length*.5}/>)}
@@ -192,7 +211,7 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
               textAnchor="middle" fontSize="4.4" fontWeight="800" fill="#ffe08a" stroke="#6b2a12" strokeWidth=".5" paintOrder="stroke"
               opacity={Math.max(0,1.4-boom)} pointerEvents="none">-{shot.damage[side]}</text>)}
         </>}
-      </svg><div className="tank-scene__hint">Glisse sur le terrain pour viser</div></div>
+      </svg><div className="tank-scene__hint">Glisse : haut/bas = angle · gauche/droite = puissance</div></div>
       {error && <p className="tank-error" role="alert">{error}</p>}
       {rivalDeadline!=null&&!finished && <p className="tank-alert">⚠️ L'adversaire est sorti : {rivalDeadline} s avant forfait.</p>}
       {ownDeadline!=null&&!finished && <p className="tank-alert">⚠️ Retour nécessaire dans {ownDeadline} s.</p>}
@@ -203,6 +222,9 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
             onClick={()=>{setWeapon(key);setAngle(a=>Math.max(a,TANK_WEAPONS[key].minAngle||0));}} className={`${weapon===key?'selected':''}${empty?' is-empty':''}`}>
             <WeaponIcon kind={key}/><span className="tank-weapon-name">{WEAPON_INFO[key]?.short||w.label}</span>
             <small>{w.ammo===null?'∞':`×${left}`}</small></button>;})}</div>
+        {winTurn && <p className="tank-win" role="status">🟢 Mode Win : {winSolution
+          ? `trajectoire exacte appliquée (${winSolution.angle}° · ${winSolution.power}%). Dégâts prévus : ${winPreview?.damage?.[viewer==='host'?'guest':'host']??0}`
+          : 'aucun tir exact possible avec cette arme ici, essaie une autre arme.'}</p>}
         <p className="tank-weapon-hint"><strong>{TANK_WEAPONS[weapon].label}</strong> · dégâts {TANK_WEAPONS[weapon].damage} · zone {TANK_WEAPONS[weapon].radius}
           {WEAPON_INFO[weapon]?` — ${WEAPON_INFO[weapon].hint}`:''}</p>
         <label>↗️ Angle : <strong>{angle}°</strong><input type="range" min={minAngle} max="89" value={Math.max(angle,minAngle)} disabled={!canPlay} onChange={e=>setAngle(Number(e.target.value))}/></label>
