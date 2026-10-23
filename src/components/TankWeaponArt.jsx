@@ -5,7 +5,7 @@ export const WEAPON_INFO = {
   heavy: { short: 'Missile lourd', hint: 'Gros degats et grande explosion.' },
   stone: { short: 'Bombe ronde', hint: 'Lourde : elle retombe tres vite.' },
   direct: { short: 'Missile direct', hint: 'Trajectoire tendue, presque droite.' },
-  sky: { short: 'Missile vertical', hint: 'Monte, survole, puis plonge sur la cible.' },
+  sky: { short: 'Missile vertical', hint: 'Monte tres haut puis retombe : regle la hauteur (angle min 55) et la puissance.' },
   cluster: { short: 'Fragmentation', hint: 'Eclate en 3 explosions.' },
 };
 

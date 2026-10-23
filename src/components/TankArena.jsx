@@ -93,9 +93,11 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
   const weaponLeft=match?.tanks?.[viewer]?.ammo?.[weapon];
   useEffect(()=> {if(weaponLeft===0)setWeapon('shell');},[weaponLeft]);
   useEffect(()=> {
+    // Au montage : on memorise le dernier tir deja joue (pas de rejeu), ou 'aucun' s'il n'y en a pas encore,
+    // pour que le tout premier tir de la partie soit bien anime.
+    if (started.current === null) started.current = match?.lastShot && match?.round != null ? `${room?.id}:${match.round}` : 'aucun';
     if(!match?.lastShot || match?.round == null) return;
     const key = `${room?.id}:${match.round}`;
-    if (started.current === null) {started.current=key;return;}
     if(started.current===key) return;
     started.current=key;
     const last=match.lastShot;
@@ -121,6 +123,7 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
     return ()=>clearTimeout(id);
   },[match?.emote?.id]);
   useEffect(()=>()=>timers.current.forEach(clearTimeout),[]);
+  const minAngle=TANK_WEAPONS[weapon]?.minAngle||0;
   const aimWithPointer=e=>{
     if(!canPlay || !svgRef.current || !match.tanks?.[viewer])return;
     const ctm=svgRef.current.getScreenCTM();
@@ -135,7 +138,7 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
     const dir=viewer==='host'?1:-1;
     const dx=(px-x)*dir;
     const dy=y-py;
-    setAngle(Math.round(clamp(Math.atan2(Math.max(0,dy),Math.max(.2,dx))*180/Math.PI,0,89)));
+    setAngle(Math.round(clamp(Math.atan2(Math.max(0,dy),Math.max(.2,dx))*180/Math.PI,minAngle,89)));
     setPower(Math.round(clamp(Math.hypot(dx,dy)*1.5,20,100)));
   };
   const sendEmote=kind=>{
@@ -144,7 +147,7 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
       timers.current.push(setTimeout(()=>setReaction(old=>old?.id===id?null:old),1700));}
     else onReact?.(kind);
   };
-  const fire=()=>{if(canPlay)onFire?.({weapon,angle,power,drive});};
+  const fire=()=>{if(canPlay)onFire?.({weapon,angle:Math.max(angle,minAngle),power,drive});};
   if(room?.status==='ready')return <div className="tank-ready">
     <strong>🚀 TANK BATTLE</strong><p>Deux chars, des missiles et un terrain destructible. Le créateur lance le combat.</p>
     {room.is_host ? <button className="btn btn--primary" type="button" disabled={busy} onClick={onStart}>Démarrer le combat</button> : <p>En attente du créateur...</p>}
@@ -197,12 +200,12 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
         <div className="tank-weapon-list" role="radiogroup" aria-label="Munitions">{Object.entries(TANK_WEAPONS).map(([key,w])=>{
           const left=match.tanks[viewer].ammo[key];const empty=left===0;
           return <button type="button" key={key} role="radio" aria-checked={weapon===key} disabled={!canPlay || empty}
-            onClick={()=>setWeapon(key)} className={`${weapon===key?'selected':''}${empty?' is-empty':''}`}>
+            onClick={()=>{setWeapon(key);setAngle(a=>Math.max(a,TANK_WEAPONS[key].minAngle||0));}} className={`${weapon===key?'selected':''}${empty?' is-empty':''}`}>
             <WeaponIcon kind={key}/><span className="tank-weapon-name">{WEAPON_INFO[key]?.short||w.label}</span>
             <small>{w.ammo===null?'∞':`×${left}`}</small></button>;})}</div>
         <p className="tank-weapon-hint"><strong>{TANK_WEAPONS[weapon].label}</strong> · dégâts {TANK_WEAPONS[weapon].damage} · zone {TANK_WEAPONS[weapon].radius}
           {WEAPON_INFO[weapon]?` — ${WEAPON_INFO[weapon].hint}`:''}</p>
-        <label>↗️ Angle : <strong>{angle}°</strong><input type="range" min="0" max="89" value={angle} disabled={!canPlay} onChange={e=>setAngle(Number(e.target.value))}/></label>
+        <label>↗️ Angle : <strong>{angle}°</strong><input type="range" min={minAngle} max="89" value={Math.max(angle,minAngle)} disabled={!canPlay} onChange={e=>setAngle(Number(e.target.value))}/></label>
         <label>💥 Puissance : <strong>{power}%</strong><input type="range" min="20" max="100" value={power} disabled={!canPlay} onChange={e=>setPower(Number(e.target.value))}/></label>
         <label>⛽ Déplacement : <strong>{drive>0?'+':''}{drive} m</strong><input type="range" min="-8" max="8" step="1" value={drive} disabled={!canPlay} onChange={e=>setDrive(Number(e.target.value))}/></label>
         <button className="tank-fire" type="button" disabled={!canPlay} onClick={fire}>🚀 TIRER</button>
