@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { TANK_WEAPONS, tankSurface } from '../api/tankEngine';
+import { WeaponIcon, WeaponShape, WEAPON_INFO } from './TankWeaponArt';
 import '../styles/tank-arena.css';
 
 const clamp = (n, a, b) => Math.max(a, Math.min(b,n));
+const FLIGHT = .7;          // part de l'animation consacree au vol (le reste = explosion)
+const SHOT_MS = 1900;       // duree totale de l'animation d'un tir
+const VIEW = '0 6 100 90';  // zone visible de la scene (sans deformation)
 const timeLeft = (deadline, serverNow, receivedAt, now) => deadline == null ? null
   : Math.max(0, Math.ceil((deadline - serverNow - (now - receivedAt)) / 1000));
 const other = side => side === 'host' ? 'guest' : 'host';
@@ -11,6 +15,22 @@ const EMOTES = [['laugh','😂'],['smirk','😏'],['clap','👏']];
 const sideName = (room,side) => side === 'host' ? room?.host?.pseudo || 'Blanc' : room?.guest?.pseudo || 'Noir';
 const terrainPath = terrain => !Array.isArray(terrain) ? ''
   : `M 0 ${terrain[0]} ` + terrain.slice(1).map((y,x)=>`L ${x+1} ${y}`).join(' ')+ ' L 100 101 L 0 101 Z';
+
+function Blast({x,y,radius,t}) {
+  const ease = 1 - (1 - t) ** 3;
+  const r = radius * (.35 + .75 * ease);
+  const fade = Math.max(0, 1 - t * t);
+  return <g pointerEvents="none" opacity={fade}>
+    <circle cx={x} cy={y} r={r * 1.15} fill="#ff6a2b" opacity=".55"/>
+    <circle cx={x} cy={y} r={r * .8} fill="#ffb13d"/>
+    <circle cx={x} cy={y} r={r * .45} fill="#fff1a8"/>
+    {Array.from({length:10},(_,k)=>{const a=k*Math.PI/5;
+      return <line key={k} x1={x+Math.cos(a)*r*.9} y1={y+Math.sin(a)*r*.9}
+        x2={x+Math.cos(a)*r*(1.3+.35*(k%2))} y2={y+Math.sin(a)*r*(1.3+.35*(k%2))}
+        stroke="#ffd36a" strokeWidth=".6" strokeLinecap="round"/>;})}
+    <circle cx={x} cy={y - r * ease * .9} r={r * .5 * ease} fill="#3a3f45" opacity={.35 * fade}/>
+  </g>;
+}
 
 function TankDrawing({tank,terrain,side,isMe,angle=20}) {
   if (!tank || !terrain) return null;
@@ -50,10 +70,17 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
   const active=room?.status==='playing' && !!match;
   const canPlay=active && match.myTurn && !busy && !finished && !match.returnDeadline && !animation;
   const motion=animation?.progress ?? null;
-  const displayTerrain=animation?.beforeTerrain || match?.terrain;
-  const displayTanks=animation?.beforeTanks || match?.tanks;
   const shot=animation?.shot;
-  const shotPoint=shot?.points?.[Math.min(shot.points.length-1,Math.floor((motion ?? 0)*(shot.points.length-1)))];
+  const flight=motion==null?0:Math.min(1,motion/FLIGHT);
+  const boom=motion==null?0:clamp((motion-FLIGHT)/(1-FLIGHT),0,1);
+  const exploded=!!animation && motion>=FLIGHT;
+  const displayTerrain=animation && !exploded ? animation.beforeTerrain : match?.terrain;
+  const displayTanks=animation?.beforeTanks || match?.tanks;
+  const shotIndex=shot?Math.min(shot.points.length-1,Math.floor(flight*(shot.points.length-1))):0;
+  const shotPoint=shot?.points?.[shotIndex];
+  const shotPrev=shot?.points?.[Math.max(0,shotIndex-1)];
+  const shotDeg=shotPoint&&shotPrev&&(shotPoint.x!==shotPrev.x||shotPoint.y!==shotPrev.y)
+    ?Math.atan2(shotPoint.y-shotPrev.y,shotPoint.x-shotPrev.x)*180/Math.PI:(viewer==='host'?-30:-150);
   const players=useMemo(()=>[['host',room?.host?.pseudo||'Joueur 1'],['guest',room?.guest?.pseudo||'Joueur 2']], [room?.host?.pseudo,room?.guest?.pseudo]);
   const ownName=sideName(room,viewer);
   const drawOffer=match?.drawOffer;
@@ -63,6 +90,8 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
   useEffect(()=> {const id=setInterval(()=>setNow(Date.now()),500);return ()=>clearInterval(id);},[]);
   useEffect(()=> {setReceivedAt(Date.now());},[match?.serverNow]);
   useEffect(()=> {setDrive(0);setDrawConfirm(false);},[match?.round,match?.drawOffer]);
+  const weaponLeft=match?.tanks?.[viewer]?.ammo?.[weapon];
+  useEffect(()=> {if(weaponLeft===0)setWeapon('shell');},[weaponLeft]);
   useEffect(()=> {
     if(!match?.lastShot || match?.round == null) return;
     const key = `${room?.id}:${match.round}`;
@@ -75,7 +104,7 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
     let frame=0;
     const start=performance.now();
     const tick=(time)=>{
-      const p=Math.min(1,(time-start)/1550);
+      const p=Math.min(1,(time-start)/SHOT_MS);
       setAnimation(current=> current?.shot?.at===last.at ? {...current,progress:p}:current);
       if(p<1) frame=requestAnimationFrame(tick);
       else setAnimation(current=>current?.shot?.at===last.at?null:current);
@@ -94,9 +123,13 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
   useEffect(()=>()=>timers.current.forEach(clearTimeout),[]);
   const aimWithPointer=e=>{
     if(!canPlay || !svgRef.current || !match.tanks?.[viewer])return;
-    const rect=svgRef.current.getBoundingClientRect();
-    const px=100*(e.clientX-rect.left)/rect.width;
-    const py=100*(e.clientY-rect.top)/rect.height;
+    const ctm=svgRef.current.getScreenCTM();
+    if(!ctm)return;
+    const pt=svgRef.current.createSVGPoint();
+    pt.x=e.clientX;pt.y=e.clientY;
+    const local=pt.matrixTransform(ctm.inverse());
+    const px=local.x;
+    const py=local.y;
     const x=match.tanks[viewer].x+drive;
     const y=tankSurface(match.terrain,x)-4;
     const dir=viewer==='host'?1:-1;
@@ -128,7 +161,7 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
       </div>)}</div>
       <div className="tank-turn" role="status">{finished ? (match.draw?'🤝 Match nul — mises remboursées':match.winner===viewer?'🏆 Victoire !':'Défaite.')
         : match.toMove===viewer ? `À toi de jouer · ${moveDeadline ?? 120} s` : `Au tour de ${sideName(room,match.toMove)} · ${moveDeadline??120} s`}</div>
-      <div className="tank-scene"><svg ref={svgRef} viewBox="0 0 100 100" role="img" aria-label="Terrain destructible et deux chars" preserveAspectRatio="none"
+      <div className="tank-scene"><svg ref={svgRef} viewBox={VIEW} role="img" aria-label="Terrain destructible et deux chars" preserveAspectRatio="xMidYMax slice"
         onPointerDown={e=>{if(canPlay){e.currentTarget.setPointerCapture?.(e.pointerId);aimWithPointer(e);}}}
         onPointerMove={e=>{if(e.buttons && canPlay) aimWithPointer(e);}}>
         <defs><linearGradient id="tank-sky" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#152b52"/><stop offset="1" stopColor="#478f9e"/></linearGradient>
@@ -141,15 +174,34 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
           angle={viewer===side && canPlay ? angle : match?.lastShot?.side===side ? match.lastShot.angle : 20}/>)}
         {canPlay && (()=>{const dir=viewer==='host'?1:-1;const x=match.tanks[viewer].x+drive;const y=tankSurface(match.terrain,x)-4;const r=angle*Math.PI/180;
           return <g pointerEvents="none"><path d={`M${x},${y} l${dir*Math.cos(r)*14},${-Math.sin(r)*14}`} stroke="#fff3b0" strokeDasharray="1.3 1" strokeWidth=".5" fill="none"/></g>;})()}
-        {shotPoint && <circle cx={shotPoint.x} cy={shotPoint.y} r="1.2" fill="#ffe18a" stroke="#ffffff" strokeWidth=".4"/>}
-        {animation && motion>.77 && <circle cx={shot?.impact.x} cy={shot?.impact.y} r={(motion-.75)*17} fill="#ffcb61" opacity={Math.max(0,1-motion)*2.9}/>}
+        {animation && shotPoint && !exploded && <g pointerEvents="none">
+          {shot.points.slice(Math.max(0,shotIndex-6),shotIndex).map((pt,k,arr)=>
+            <circle key={k} cx={pt.x} cy={pt.y} r={.35+k/arr.length*.8} fill="#e8eef3" opacity={k/arr.length*.5}/>)}
+          <g transform={`translate(${shotPoint.x} ${shotPoint.y}) rotate(${shotDeg}) scale(.11) translate(-24 -12)`}>
+            <WeaponShape kind={shot.weapon}/>
+          </g>
+        </g>}
+        {exploded && shot && <>
+          <Blast x={shot.impact.x} y={shot.impact.y} radius={TANK_WEAPONS[shot.weapon]?.radius||8} t={boom}/>
+          {shot.weapon==='cluster' && [-4,4].map(o=><Blast key={o} x={clamp(shot.impact.x+o,0,100)} y={shot.impact.y} radius={4} t={boom}/>)}
+          {['host','guest'].map(side=>shot.damage?.[side]>0 && displayTanks?.[side] && displayTerrain &&
+            <text key={side} x={displayTanks[side].x} y={tankSurface(displayTerrain,displayTanks[side].x)-9-boom*6}
+              textAnchor="middle" fontSize="4.4" fontWeight="800" fill="#ffe08a" stroke="#6b2a12" strokeWidth=".5" paintOrder="stroke"
+              opacity={Math.max(0,1.4-boom)} pointerEvents="none">-{shot.damage[side]}</text>)}
+        </>}
       </svg><div className="tank-scene__hint">Glisse sur le terrain pour viser</div></div>
       {error && <p className="tank-error" role="alert">{error}</p>}
       {rivalDeadline!=null&&!finished && <p className="tank-alert">⚠️ L'adversaire est sorti : {rivalDeadline} s avant forfait.</p>}
       {ownDeadline!=null&&!finished && <p className="tank-alert">⚠️ Retour nécessaire dans {ownDeadline} s.</p>}
       {!finished && <div className="tank-controls">
-        <div className="tank-weapon-list">{Object.entries(TANK_WEAPONS).map(([key,w])=><button type="button" key={key} disabled={!canPlay || (match.tanks[viewer].ammo[key]===0)}
-            onClick={()=>setWeapon(key)} className={weapon===key?'selected':''}>{w.label}<small>{w.ammo===null?'∞':`×${match.tanks[viewer].ammo[key]}`}</small></button>)}</div>
+        <div className="tank-weapon-list" role="radiogroup" aria-label="Munitions">{Object.entries(TANK_WEAPONS).map(([key,w])=>{
+          const left=match.tanks[viewer].ammo[key];const empty=left===0;
+          return <button type="button" key={key} role="radio" aria-checked={weapon===key} disabled={!canPlay || empty}
+            onClick={()=>setWeapon(key)} className={`${weapon===key?'selected':''}${empty?' is-empty':''}`}>
+            <WeaponIcon kind={key}/><span className="tank-weapon-name">{WEAPON_INFO[key]?.short||w.label}</span>
+            <small>{w.ammo===null?'∞':`×${left}`}</small></button>;})}</div>
+        <p className="tank-weapon-hint"><strong>{TANK_WEAPONS[weapon].label}</strong> · dégâts {TANK_WEAPONS[weapon].damage} · zone {TANK_WEAPONS[weapon].radius}
+          {WEAPON_INFO[weapon]?` — ${WEAPON_INFO[weapon].hint}`:''}</p>
         <label>↗️ Angle : <strong>{angle}°</strong><input type="range" min="0" max="89" value={angle} disabled={!canPlay} onChange={e=>setAngle(Number(e.target.value))}/></label>
         <label>💥 Puissance : <strong>{power}%</strong><input type="range" min="20" max="100" value={power} disabled={!canPlay} onChange={e=>setPower(Number(e.target.value))}/></label>
         <label>⛽ Déplacement : <strong>{drive>0?'+':''}{drive} m</strong><input type="range" min="-8" max="8" step="1" value={drive} disabled={!canPlay} onChange={e=>setDrive(Number(e.target.value))}/></label>
