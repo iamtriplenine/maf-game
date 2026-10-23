@@ -151,6 +151,49 @@ function FbxCharacter(props) {
   );
 }
 
+// Les deux FBX Mutant portent le meme squelette Mixamo : un seul modele
+// apparait dans le Studio et les deux mouvements restent selectionnables.
+function MutantCharacter(props) {
+  const run = useLoader(
+    FBXLoader,
+    `${import.meta.env.BASE_URL}${props.character.file}`
+  );
+  const attack = useLoader(
+    FBXLoader,
+    `${import.meta.env.BASE_URL}${props.character.attackFile}`
+  );
+  const clips = useMemo(() => {
+    const movement = (source, name) => {
+      const valid = source.animations.filter((clip) =>
+        clip.duration > 0 && clip.tracks.length > 0
+      );
+      if (!valid.length) return [];
+      const main = valid.reduce((best, clip) =>
+        clip.tracks.length > best.tracks.length ? clip : best
+      );
+      const copy = main.clone();
+      copy.name = name;
+      // Garder le mutant dans le cadre pendant ses deux mouvements.
+      for (const track of copy.tracks) {
+        if (!/mixamorigHips\.position$/.test(track.name)) continue;
+        const x = track.values[0];
+        const z = track.values[2];
+        for (let index = 0; index < track.values.length; index += 3) {
+          track.values[index] = x;
+          track.values[index + 2] = z;
+        }
+      }
+      return [copy];
+    };
+    return [
+      ...movement(run, "Courir"),
+      ...movement(attack, "Saut-attaque"),
+    ];
+  }, [run, attack]);
+
+  return <AnimatedModel {...props} source={run} clips={clips} />;
+}
+
 function label(name, character, count) {
   if (character.id === "samba" && count === 1) return "Danser";
   const key = name.toLowerCase().replace(/[^a-z]/g, "");
@@ -170,9 +213,9 @@ export default function CharacterViewer({ character }) {
   const [autoRotate, setAutoRotate] = useState(false);
   const [viewKey, setViewKey] = useState(0);
 
-  const Character = character.format === "fbx"
-    ? FbxCharacter
-    : GlbCharacter;
+  const Character = character.id === "mutant"
+    ? MutantCharacter
+    : character.format === "fbx" ? FbxCharacter : GlbCharacter;
 
   return (
     <section className="viewer-panel">

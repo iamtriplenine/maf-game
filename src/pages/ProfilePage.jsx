@@ -312,8 +312,8 @@ export default function ProfilePage({ onOpenStudio }) {
         {skinSaving && <p className="skins-message" role="status">Enregistrement de ton skin...</p>}
         {skinError && <p className="sheet__error" role="alert">{skinError}</p>}
         <p className="skins-footnote">
-          Chaque skin garde son animation d'origine : marche, defile ou danse.
-          Messi reste statique car son fichier n'a pas d'animation.
+          Chaque skin garde son animation d'origine : marche, defile, danse,
+          course ou saut-attaque. Messi reste statique car son fichier n'a pas d'animation.
           {session ? " Ton choix est conserve dans ton compte." : " Sans connexion, ton choix reste sur cet appareil."}
           {" "}Les themes et d'autres options arriveront ici plus tard.
         </p>

@@ -80,6 +80,24 @@ function chooseAnimation(clips, skin) {
   if (skin.movementType === "none") return null;
   const valid = clips.filter((clip) => clip.duration > 0 && clip.tracks.length > 0);
   if (!valid.length) return null;
+  if (skin.movementType === "run" || skin.movementType === "attack") {
+    // Certains exports Mixamo contiennent un Take vide en plus du vrai mouvement.
+    const main = valid.reduce((best, clip) => (
+      clip.tracks.length > best.tracks.length ? clip : best
+    ));
+    const copy = main.clone();
+    // Garder le personnage visible sur le profil meme si sa course avance.
+    for (const track of copy.tracks) {
+      if (!/mixamorigHips\.position$/.test(track.name)) continue;
+      const x = track.values[0];
+      const z = track.values[2];
+      for (let index = 0; index < track.values.length; index += 3) {
+        track.values[index] = x;
+        track.values[index + 2] = z;
+      }
+    }
+    return copy;
+  }
   if (skin.movementType === "dance") {
     return valid.find((clip) => /danc|samba|danse/i.test(clip.name)) || valid[0];
   }

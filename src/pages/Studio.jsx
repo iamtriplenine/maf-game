@@ -5,9 +5,10 @@ import ThemeToggle from "../components/ThemeToggle";
 import loki from "../characters/loki/character.json";
 import samba from "../characters/samba/character.json";
 import bailarina from "../characters/bailarina/character.json";
+import mutant from "../characters/mutant/character.json";
 import "../App.css";
 
-const characters = [loki, samba, messi, bailarina];
+const characters = [loki, samba, messi, bailarina, mutant];
 const statics = ["messi"];
 
 export default function Studio({ onBack }) {
@@ -46,13 +47,6 @@ export default function Studio({ onBack }) {
           </button>
         ))}
 
-        {[5].map((number) => (
-          <div className="character-card empty" key={number}>
-            <span className="card-number">0{number}</span>
-            <strong>A ajouter</strong>
-            <span>Emplacement disponible</span>
-          </div>
-        ))}
       </section>
 
       {statics.includes(selected.id) && (

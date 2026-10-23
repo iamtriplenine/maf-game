@@ -1,0 +1,9 @@
+{
+  "id": "mutant",
+  "name": "Mutant",
+  "description": "Personnage Mixamo · course et saut-attaque",
+  "format": "fbx",
+  "file": "characters/mutant/run.fbx",
+  "attackFile": "characters/mutant/jump-attack.fbx",
+  "rotation": 0
+}
