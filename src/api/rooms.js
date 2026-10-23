@@ -22,6 +22,8 @@ async function openRequest(path) {
 
 export const footballLeaderboard = async () => openRequest('/api/rooms/leaderboard/football');
 export const listRooms = async () => (await openRequest('/api/rooms')).rooms || [];
+export const myRooms = async () => currentSession()
+  ? (await walletRequest('/api/rooms/mine/all')).rooms || [] : []; // MAF_MULTIROOM_V1
 export const myRoom = async () => currentSession()
   ? (await walletRequest('/api/rooms/mine')).room : null;
 export const roomById = async (id) =>

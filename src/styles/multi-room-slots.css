@@ -1,0 +1,17 @@
+/* Section isolee : aucune modification des styles des jeux existants. */
+.maf-slots { display:grid; gap:12px; padding:16px; background:var(--glass); border:1px solid var(--border); border-radius:16px; }
+.maf-slots__heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+.maf-slots__heading h2 { font-size:16px; margin:0; }
+.maf-slots__counter { display:inline-block; font-size:12px; margin-left:6px; padding:4px 9px; border-radius:12px; color:var(--accent-2); background:var(--accent-soft); }
+.maf-slots__tip, .maf-slots__foot, .maf-slots__empty { margin:0; font-size:12px; line-height:1.5; color:var(--text-dim); }
+.maf-slots__list { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr)); gap:9px; }
+.maf-slots__item { display:flex; align-items:center; gap:10px; min-width:0; padding:12px; text-align:left; background:var(--bg-2); color:var(--text); border:1px solid var(--border); border-radius:12px; cursor:pointer; }
+.maf-slots__item:hover { border-color:var(--accent); }
+.maf-slots__item:disabled { opacity:.6; cursor:wait; }
+.maf-slots__icon { font-size:22px; }
+.maf-slots__info { min-width:0; display:grid; gap:4px; flex:1; }
+.maf-slots__info strong { font-size:13px; overflow-wrap:anywhere; }
+.maf-slots__info small { font-size:11px; line-height:1.3; color:var(--text-dim); }
+.maf-slots__arrow { color:var(--accent-2); }
+.salon-row--host-busy { border-left-color:#8993a6; opacity:.8; }
+.maf-room-busy { width:100%; padding:11px 13px; color:var(--text); border:1px solid var(--border); background:var(--bg-2); border-radius:11px; font-size:13px; line-height:1.5; }
