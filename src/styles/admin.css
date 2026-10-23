@@ -76,3 +76,35 @@
 
 .admin-tabs { overflow-x: auto; }
 .admin-tabs button { flex-shrink: 0; }
+
+/* Compact administration, scoped to this panel. */
+.admin-panel .admin-header { padding-top:max(10px,env(safe-area-inset-top)); padding-bottom:10px; }
+.admin-panel .admin-header h1 { font-size:20px; }
+.admin-panel .admin-main { padding-top:12px; }
+.admin-panel .admin-stats { gap:6px; margin-bottom:12px; }
+.admin-panel .admin-stats>div { padding:9px; gap:4px; border-radius:12px; }
+.admin-panel .admin-stats span { font-size:10px; min-height:0; }
+.admin-panel .admin-stats strong { font-size:20px; }
+.admin-panel .admin-tabs { gap:0; margin-bottom:12px; }
+.admin-panel .admin-tabs button { flex:1 0 auto; padding:12px 10px; font-size:12px; }
+.admin-panel .admin-toolbar { gap:8px; margin-bottom:10px; }
+.admin-panel .admin-card { padding:12px; border-radius:12px; }
+.admin-panel .admin-results { gap:8px; }
+.admin-panel .admin-card__bottom { margin-top:10px; }
+.admin-panel .admin-info-grid { gap:12px; margin-top:12px; }
+.admin-panel .admin-fields { gap:12px; margin:12px 0; }
+.admin-panel .admin-btn { padding:8px 10px; border-radius:10px; }
+.admin-panel .admin-results--users { grid-template-columns:1fr; gap:5px; }
+.admin-panel .admin-user-row { padding:0; }
+.admin-user-row summary { display:flex; align-items:center; gap:8px; padding:8px 10px; min-height:52px; cursor:pointer; list-style:none; }
+.admin-user-row summary::-webkit-details-marker { display:none; }
+.admin-user-row summary:focus-visible { outline:2px solid var(--accent-2); outline-offset:-2px; border-radius:12px; }
+.admin-user-name { flex:1; min-width:0; display:grid; gap:2px; }
+.admin-user-name strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
+.admin-user-name .admin-muted { margin:0; font-size:10px; }
+.admin-user-balances { display:grid; gap:2px; text-align:right; font-variant-numeric:tabular-nums; font-size:12px; }
+.admin-user-balances span { color:var(--text-dim); font-size:11px; }
+.admin-user-chevron { color:var(--text-dim); }
+.admin-user-row[open] .admin-user-chevron { transform:rotate(180deg); }
+.admin-panel .admin-user-row .admin-info-grid { padding:0 10px 12px; margin-top:2px; }
+@media(max-width:380px) { .admin-panel .admin-search { flex-wrap:wrap; } .admin-panel .admin-search label { flex-basis:100%; } }

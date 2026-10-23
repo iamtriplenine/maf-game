@@ -98,7 +98,7 @@ export default function AdminPanel({onClose,initialTab='deposits',initialTransac
     const key=e=>{
       if(e.key==='Escape' && !acting) {e.preventDefault();onClose();}
       if(e.key!=='Tab') return;
-      const controls=[...root.current.querySelectorAll('button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),a[href]')];
+      const controls=[...root.current.querySelectorAll('button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),a[href],summary')];
       if(!controls.length) {e.preventDefault();root.current.focus();return;}
       const first=controls[0],last=controls.at(-1);
       if(e.shiftKey && (document.activeElement===first || document.activeElement===root.current)) {e.preventDefault();last.focus();}
@@ -131,14 +131,14 @@ export default function AdminPanel({onClose,initialTab='deposits',initialTransac
           <button className="admin-btn" type="button" disabled={loading} onClick={()=>setRevision(n=>n+1)}>Actualiser</button>
         </div>
         {error && <p className="admin-error" role="alert">{error}</p>}
-        <section className="admin-results" aria-label={tab==='deposits'?'Liste des dépôts':'Liste des utilisateurs'} aria-busy={loading}>
+        <section className={'admin-results'+(tab==='users'?' admin-results--users':'')} aria-label={tab==='deposits'?'Liste des dépôts':'Liste des utilisateurs'} aria-busy={loading}>
           {loading ? <HourglassLoader/> : !error && rows.length===0 ? <div className="admin-empty">{tab==='deposits'?'Aucun dépôt pour ce filtre.':'Aucun utilisateur trouvé.'}</div> : rows.map(row=>tab==='deposits' ? <article className="admin-card admin-deposit" key={row.id}>
             <div className="admin-card__top"><div><strong>{row.pseudo}</strong><p className="admin-muted">{row.phone}</p></div><Status value={row.status}/></div>
             <div className="admin-card__bottom"><div className="admin-amount">{money(row.amount)} <small>F CFA</small><time>{date(row.created_at)}</time></div><button type="button" className="admin-btn admin-btn--primary" onClick={()=>{setSelected(row);setFlash('');}}>Examiner</button></div>
-          </article> : <article className="admin-card" key={row.id}>
-            <div className="admin-card__top"><div className="admin-user"><span className="admin-avatar" aria-hidden="true">{row.pseudo.slice(0,2).toUpperCase()}</span><div><strong>{row.pseudo}</strong><p className="admin-muted">Compte #{row.id}</p></div></div><span className="admin-muted">{row.phone_verified_at?'Numéro vérifié':row.phone?'À vérifier':'Sans numéro'}</span></div>
-            <dl className="admin-info-grid"><Info label="Téléphone">{row.phone}</Info><Info label="Inscription">{date(row.created_at)}</Info><Info label="Solde F CFA">{money(row.balance)}</Info><Info label="Bonus V">{money(row.bonus_balance)}</Info>{row.phone && !row.phone_verified_at && <Info label="Vérification avant">{date(row.phone_verification_deadline)}</Info>}</dl>
-          </article>)}
+          </article> : <details className="admin-card admin-user-row" key={row.id}>
+            <summary><span className="admin-user-name"><strong>{row.pseudo}</strong><span className="admin-muted">Compte #{row.id}</span></span><span className="admin-user-balances"><strong>{money(row.balance)} F</strong><span>{money(row.bonus_balance)} V</span></span><span className="admin-user-chevron" aria-hidden="true">⌄</span></summary>
+            <dl className="admin-info-grid"><Info label="Téléphone">{row.phone}</Info><Info label="Inscription">{date(row.created_at)}</Info><Info label="Vérification">{row.phone_verified_at?'Numéro vérifié':row.phone?'À vérifier':'Sans numéro'}</Info><Info label="Numéro vérifié le">{date(row.phone_verified_at)}</Info>{row.phone && !row.phone_verified_at && <Info label="Vérification avant">{date(row.phone_verification_deadline)}</Info>}</dl>
+          </details>)}
         </section>
         {!loading && !error && total>0 && <div className="admin-pagination"><button type="button" className="admin-btn" disabled={offset===0} onClick={()=>setOffset(n=>Math.max(0,n-PAGE))}>Précédent</button><span>{Math.min(offset+1,total)}–{Math.min(offset+PAGE,total)} / {total}</span><button type="button" className="admin-btn" disabled={offset+PAGE>=total} onClick={()=>setOffset(n=>n+PAGE)}>Suivant</button></div>}
       </>}
