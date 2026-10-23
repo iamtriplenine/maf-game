@@ -154,8 +154,17 @@ export function setAdminAccess(access) {
 export function clearAdminAccess() { adminAccess=null; }
 export async function adminRequest(path,options={}) {
   const stored=readStored();
-  // MAF_OWNER_ADMIN_V1 : l'acces reel est controle par le serveur, pas par cette condition.
-  if (stored?.user?.pseudo === '999') return request('/api/admin'+path,{...options,token:stored.token});
+  // MAF_OWNER_ADMIN_V1 : acces direct proprietaire conserve.
+  // MAF_ADMIN_MESSAGES_COUPON_V1 : transmettre le jeton Coupons aux routes Messages.
+  if (stored?.user?.pseudo === '999') return request('/api/admin'+path,{
+    ...options,
+    token:stored.token,
+    headers:{
+      ...(options.headers || {}),
+      ...(adminAccess?.userId === stored.user.id && adminAccess.expires_at > Date.now()
+        ? {'X-Admin-Session':adminAccess.token} : {})
+    }
+  });
   if (!stored || !adminAccess || adminAccess.userId!==stored.user.id || adminAccess.expires_at<=Date.now()) {
     clearAdminAccess();
     throw new Error('Acces administrateur expire. Rouvre le panel depuis Coupons.');
