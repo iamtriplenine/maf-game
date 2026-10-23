@@ -1,0 +1,13 @@
+.maf-owner-alert {position:fixed;z-index:12100;left:50%;transform:translateX(-50%);top:max(8px,env(safe-area-inset-top));width:min(460px,calc(100vw - 18px));box-sizing:border-box;padding:13px 46px 14px 16px;border:2px solid #ff6666;border-radius:16px;background:linear-gradient(135deg,#701b2d,#320c1b 85%);box-shadow:0 10px 44px #09020fe3,0 0 20px #fc354855;color:#fff;font-family:system-ui,sans-serif;display:grid;gap:7px;text-align:left;}
+.maf-owner-alert__tag {font-size:11px;letter-spacing:.11em;font-weight:850;color:#ffd7d9;}
+.maf-owner-alert__title {font-size:17px;font-weight:800;overflow-wrap:anywhere;}
+.maf-owner-alert__caption {font-size:12px;line-height:1.35;color:#ffd9dc;}
+.maf-owner-alert__count {font-size:12px;color:#ffc3ce;font-weight:700;}
+.maf-owner-alert__close {position:absolute;right:8px;top:8px;width:34px;height:34px;border:1px solid #ffa1ac;background:#4b0a19;color:white;border-radius:10px;font-size:24px;cursor:pointer;}
+.maf-owner-alert__view {min-height:42px;border:0;border-radius:10px;background:#fff1f2;color:#86172b;padding:8px 12px;font-size:13px;font-weight:850;cursor:pointer;}
+.maf-owner-alert__close:disabled,.maf-owner-alert__view:disabled {opacity:.6;cursor:wait;}
+.maf-owner-alert__error {margin:0;color:#ffe0e5;font-size:12px;}
+.maf-owner-alert button:focus-visible{outline:3px solid white;outline-offset:2px;}
+@media(max-height:620px){.maf-owner-alert{gap:4px;padding-top:9px;padding-bottom:9px}.maf-owner-alert__caption{font-size:11px}}
+/* Lorsqu'une demande est ouverte, le panel passe devant toutes les alertes. */
+.admin-panel {z-index:13000;}

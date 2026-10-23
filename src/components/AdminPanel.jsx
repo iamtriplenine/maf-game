@@ -78,12 +78,12 @@ function DepositDetail({transaction:t,onBack,onDone,onBusy}) {
   </section>;
 }
 
-export default function AdminPanel({onClose}) {
-  const [tab,setTab]=useState('deposits'), [filter,setFilter]=useState('pending');
+export default function AdminPanel({onClose,initialTab='deposits',initialTransaction=null}) { // MAF_OWNER_PANEL_V1
+  const [tab,setTab]=useState(initialTab), [filter,setFilter]=useState('pending');
   const [search,setSearch]=useState(''), [draft,setDraft]=useState(''), [offset,setOffset]=useState(0);
   const [result,setResult]=useState({key:null,rows:[],total:0,summary:null,error:''});
   const [flash,setFlash]=useState('');
-  const [revision,setRevision]=useState(0), [selected,setSelected]=useState(null), [acting,setActing]=useState(false);
+  const [revision,setRevision]=useState(0), [selected,setSelected]=useState(initialTransaction?.kind === 'deposit' ? initialTransaction : null), [acting,setActing]=useState(false);
   const requestKey=JSON.stringify([tab,filter,search,offset,revision]);
   const loading=result.key!==requestKey;
   const rows=loading?[]:result.rows, total=result.total, summary=result.summary;
@@ -125,7 +125,7 @@ export default function AdminPanel({onClose}) {
       <div className="admin-stats"><div><span>Utilisateurs</span><strong>{summary?money(summary.users):'—'}</strong></div><div><span>Dépôts à vérifier</span><strong>{summary?money(pending?.count):'—'}</strong></div><div><span>Dépôts confirmés · F CFA</span><strong>{summary?money(approved?.amount):'—'}</strong></div></div>
       <nav className="admin-tabs" aria-label="Sections du panel"><button type="button" aria-pressed={tab==='deposits'} disabled={acting} onClick={()=>changeTab('deposits')}>Dépôts</button><button type="button" aria-pressed={tab==='withdrawals'} disabled={acting} onClick={()=>changeTab('withdrawals')}>Retraits</button><button type="button" aria-pressed={tab==='coupons'} disabled={acting} onClick={()=>changeTab('coupons')}>Coupons</button><button type="button" aria-pressed={tab==='users'} disabled={acting} onClick={()=>changeTab('users')}>Utilisateurs</button><button type="button" aria-pressed={tab==='chat'} disabled={acting} onClick={()=>changeTab('chat')}>Messages</button></nav>
       {flash && <p className="admin-success" role="status">{flash}</p>}
-      {tab==='coupons' ? <AdminCoupons onBusy={setActing}/> : tab==='withdrawals' ? <WithdrawalAdmin onBusy={setActing}/> : tab==='chat' ? <AdminChat onBusy={setActing}/> : selected ? <DepositDetail key={selected.id} transaction={selected} onBusy={setActing} onBack={()=>setSelected(null)} onDone={message=>{setFlash(message);setSelected(null);setRevision(n=>n+1);}}/> : <>
+      {tab==='coupons' ? <AdminCoupons onBusy={setActing}/> : tab==='withdrawals' ? <WithdrawalAdmin onBusy={setActing} initialTransaction={initialTransaction?.kind === 'withdrawal' ? initialTransaction : null}/> : tab==='chat' ? <AdminChat onBusy={setActing}/> : selected ? <DepositDetail key={selected.id} transaction={selected} onBusy={setActing} onBack={()=>setSelected(null)} onDone={message=>{setFlash(message);setSelected(null);setRevision(n=>n+1);}}/> : <>
         <div className="admin-toolbar">
           {tab==='deposits' ? <label>État du dépôt<select value={filter} onChange={e=>{setFilter(e.target.value);setOffset(0);}}><option value="pending">À vérifier</option><option value="awaiting_payment">Capture attendue</option><option value="approved">Confirmés</option><option value="rejected">Refusés</option><option value="">Tous les dépôts</option></select></label> : <form onSubmit={e=>{e.preventDefault();setSearch(draft.trim());setOffset(0);}} className="admin-search"><label>Rechercher un utilisateur<input placeholder="Pseudo, numéro ou identifiant" value={draft} maxLength={80} onChange={e=>setDraft(e.target.value)}/></label><button className="admin-btn" type="submit">Rechercher</button></form>}
           <button className="admin-btn" type="button" disabled={loading} onClick={()=>setRevision(n=>n+1)}>Actualiser</button>

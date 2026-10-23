@@ -56,9 +56,9 @@ function Detail({ transaction:t,onBack,onDone,onBusy }) {
     </div>}
   </section>;
 }
-export default function WithdrawalAdmin({ onBusy }) {
+export default function WithdrawalAdmin({ onBusy, initialTransaction=null }) { // MAF_OWNER_WITHDRAWAL_V1
   const [filter,setFilter] = useState('pending'), [offset,setOffset] = useState(0), [revision,setRevision] = useState(0);
-  const [selected,setSelected] = useState(null), [flash,setFlash] = useState('');
+  const [selected,setSelected] = useState(initialTransaction), [flash,setFlash] = useState('');
   const [result,setResult] = useState({ key:null,rows:[],total:0,error:'' });
   const requestKey = JSON.stringify([filter,offset,revision]);
   const loading = requestKey !== result.key;

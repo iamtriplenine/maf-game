@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import ProfilePage from "./pages/ProfilePage";
 import GamePage from "./pages/GamePage";
 import MatchReturnAlert from "./components/MatchReturnAlert";
+import OwnerRequestAlerts from "./components/OwnerRequestAlerts"; // MAF_OWNER_ALERTS_V1
+import AdminPanel from "./components/AdminPanel";
 import Studio from "./pages/Studio";
 
 const HASHES = { studio: "#studio", game: "#game", profile: "#profil" };
@@ -22,7 +24,13 @@ const readView = () => {
 
 export default function App() {
   const [view, setView] = useState(readView);
+  const [ownerPanel,setOwnerPanel] = useState(null);
   const previous = useRef(view);
+  useEffect(() => {
+    const open = event => setOwnerPanel(event.detail || {tab:'deposits'});
+    window.addEventListener('maf:owner-open-admin',open);
+    return () => window.removeEventListener('maf:owner-open-admin',open);
+  }, []);
 
   useEffect(() => {
     const sync = () => setView(readView());
@@ -53,11 +61,13 @@ export default function App() {
       <RefreshCube />
       <RoomJoinAlert />
       <MatchReturnAlert />
+      <OwnerRequestAlerts />
       <div key={view} className={`page page--${direction}`}>
         {view === "studio" && <Studio onBack={() => go("profile")} />}
         {view === "game" && <GamePage />}
         {view === "profile" && <ProfilePage onOpenStudio={() => go("studio")} />}
       </div>
+      {ownerPanel && <AdminPanel key={ownerPanel.transaction?.id || ownerPanel.tab} initialTab={ownerPanel.tab || 'deposits'} initialTransaction={ownerPanel.transaction || null} onClose={()=>setOwnerPanel(null)} />}
       {showNav && (
         <div className="dock">
           <BottomNav value={view} onChange={go} />
