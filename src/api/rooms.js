@@ -30,8 +30,8 @@ export const roomById = async (id) =>
   (await (currentSession() ? walletRequest(`/api/rooms/${id}`) : openRequest(`/api/rooms/${id}`))).room;
 export const roomByCode = async (code) =>
   (await (currentSession() ? walletRequest(`/api/rooms/code/${code}`) : openRequest(`/api/rooms/code/${code}`))).room;
-export const createRoom = async ({ game, stake, shots }) =>
-  (await walletRequest('/api/rooms', { method: 'POST', body: { game, stake, shots } })).room;
+export const createRoom = async ({ game, stake, shots, diceCount, diceMode }) => // MAF_DICE_API_V1
+  (await walletRequest('/api/rooms', { method: 'POST', body: { game, stake, shots, diceCount, diceMode } })).room;
 export const joinRoom = async (id) =>
   (await walletRequest(`/api/rooms/${id}/join`, { method: 'POST' })).room;
 export const acceptRoom = async (id) =>
@@ -45,6 +45,7 @@ export const getMatch = async (id) =>
   walletRequest(`/api/rooms/${id}/match`);
 export const startMatch = async (id) =>
   walletRequest(`/api/rooms/${id}/match/start`, { method: 'POST' });
+export const rollDice = (id) => walletRequest(`/api/rooms/${id}/match/dice/roll`, { method:'POST' });
 export const chooseDirection = async (id, direction) =>
   walletRequest(`/api/rooms/${id}/match/choose`, { method: 'POST', body: { direction } });
 export const forfeitMatch = async (id) =>

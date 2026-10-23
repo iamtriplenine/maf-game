@@ -4,6 +4,7 @@ import { PenaltyArena, SoloPenalty } from '../components/PenaltyArena';
 import CheckersArena from '../components/CheckersArena';
 import SoloCheckers from '../components/SoloCheckers';
 import TankArena from '../components/TankArena';
+import DiceArena from '../components/DiceArena'; // MAF_DICE_GAMEPAGE_V1
 import SoloTank from '../components/SoloTank';
 // MAF_TANK_GAMEPAGE_V1
 import { useSession } from '../auth/useSession';
@@ -14,6 +15,7 @@ import { syncWallet } from '../api/accounts';
 import '../styles/game-rooms.css';
 import '../styles/game-cards.css';
 import '../styles/game-salon.css';
+import '../styles/dice-arena.css';
 import '../styles/multi-room-slots.css';
 
 const localRoomDeadline = room => room ? {
@@ -21,9 +23,12 @@ const localRoomDeadline = room => room ? {
 } : null;
 
 const money = (value) => `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`;
-const gameName = (game) => game === 'tank' ? 'Tank Battle' : game === 'checkers' ? 'Dames' : 'Tir au but';
-const gameSymbol = (game) => game === 'tank' ? '🚀' : game === 'checkers' ? '♛' : '⚽';
+const gameName = (game) => game === 'dice' ? 'Lancer de dés' : game === 'tank' ? 'Tank Battle' : game === 'checkers' ? 'Dames' : 'Tir au but';
+const gameSymbol = (game) => game === 'dice' ? '🎲' : game === 'tank' ? '🚀' : game === 'checkers' ? '♛' : '⚽';
 const GAMES = [
+  { id:'dice', emoji:'🎲', name:'Lancer de dés',
+    about:'Défie un autre joueur avec 1 ou 2 dés, sur 1, 3, 5 ou 10 coups. En manches séparées ou en points cumulés.',
+    tags:['1 ou 2 dés', '1 / 3 / 5 / 10 coups', 'Manches ou total', '2 joueurs'] },
   {
     id: 'penalty', emoji: '⚽', name: 'Tir au but',
     about: 'Face à face tireur / gardien. Vise à gauche, au milieu ou à droite. Tu changes de rôle après chaque tir et tu comptes tes buts.',
@@ -55,6 +60,9 @@ export default function GamePage() {
   const selectedId = useRef(null);
   const [code, setCode] = useState('');
   const [shots, setShots] = useState(3);
+  const [diceCount, setDiceCount] = useState(1);
+  const [diceRounds, setDiceRounds] = useState(3);
+  const [diceMode, setDiceMode] = useState('separate');
   const [stake, setStake] = useState('500');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -275,7 +283,9 @@ export default function GamePage() {
       return;
     }
     void (async () => {
-      const ok = await action(() => roomsApi.createRoom({ game: currentGame?.id || 'penalty', shots: currentGame?.id === 'penalty' ? shots : null, stake: value }),
+      const ok = await action(() => roomsApi.createRoom({ game: currentGame?.id || 'penalty',
+        shots: currentGame?.id === 'penalty' ? shots : currentGame?.id === 'dice' ? diceRounds : null,
+        diceCount: currentGame?.id === 'dice' ? diceCount : null, diceMode: currentGame?.id === 'dice' ? (diceRounds === 1 ? 'separate' : diceMode) : null, stake: value }),
         'Ton salon est public ! Partage son code a 4 chiffres.');
       if (ok) { setGameId(null); setTab('salon'); }
     })();
@@ -356,7 +366,7 @@ export default function GamePage() {
               <span className="salon-row__code">#{room.code}</span>
               <span className="salon-row__main">
                 <strong>{room.host.pseudo}</strong>
-                <small>{gameSymbol(room.game)} {gameName(room.game)}{room.game === 'penalty' ? ` · ${room.shots} tirs` : ''} · {room.host_busy && room.status === 'open' ? 'Createur occupe' : statusLabel[room.status]}</small>
+                <small>{gameSymbol(room.game)} {gameName(room.game)}{room.game === 'penalty' ? ` · ${room.shots} tirs` : room.game === 'dice' ? ` · ${room.dice_count} dé(s) · ${room.shots} coup(s)` : ''} · {room.host_busy && room.status === 'open' ? 'Createur occupe' : statusLabel[room.status]}</small>
               </span>
               <span className="salon-row__stake">{money(room.stake)}</span>
             </button>)}
@@ -371,7 +381,7 @@ export default function GamePage() {
                 <button type="button" className="game-hub__close" onClick={() => chooseRoom(null)} aria-label="Masquer ce salon">×</button>
               </div>
               <div className="game-hub__facts">
-                <span>{gameSymbol(selected.game)} {gameName(selected.game)}</span>{selected.game === 'penalty' ? <span>{selected.shots} tirs / joueur</span> : <span>10 × 10 · 20 pions / joueur</span>}
+                <span>{gameSymbol(selected.game)} {gameName(selected.game)}</span>{selected.game === 'penalty' ? <span>{selected.shots} tirs / joueur</span> : selected.game === 'dice' ? <span>{selected.dice_count} dé(s) · {selected.shots} coup(s) · {selected.dice_mode === 'cumulative' ? 'Cumul' : 'Manches'}</span> : selected.game === 'tank' ? <span>2 chars · armes tactiques</span> : <span>10 × 10 · 20 pions / joueur</span>}
                 <span>Mise : {money(selected.stake)} par joueur</span><span>Gain : {money(selected.stake * 2)}</span>
                 {selected.escrow > 0 && selected.status !== 'finished' && <span>Cagnotte retenue : {money(selected.escrow)}</span>}
               </div>
@@ -430,6 +440,11 @@ export default function GamePage() {
                     onDraw={(action,accept) => void matchAction(() => roomsApi.tankDrawAction(selected.id,action,accept))}
                     onReact={(emote) => void matchAction(() => roomsApi.tankReaction(selected.id,emote))}
                     onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}
+                    onBack={() => chooseRoom(null)} /> : selected.game === 'dice' ? <DiceArena
+                    room={selected} match={match} busy={busy} error={error} onExit={() => void exitArena()}
+                    onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
+                    onRoll={() => void matchAction(() => roomsApi.rollDice(selected.id))}
+                    onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}
                     onBack={() => chooseRoom(null)} /> : <PenaltyArena
                     room={selected} match={match} busy={busy} error={error} onExit={() => void exitArena()}
                     onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
@@ -463,7 +478,7 @@ export default function GamePage() {
               <span>{gameSymbol(room.game)} Salon #{room.code} · {gameName(room.game)}{room.game === 'penalty' ? ` · ${room.shots} tirs` : ''}</span>
               <strong className={room.result.draw ? '' : room.result.winner === (session?.id === room.host.id ? 'host' : 'guest') ? 'is-win' : 'is-loss'}>
                 {room.result.draw ? '🤝 Match nul' : room.result.winner === (session?.id === room.host.id ? 'host' : 'guest') ? '🏆 Victoire' : 'Défaite'}
-                {room.game === 'penalty' ? ` · ${room.result.scores?.host ?? 0} - ${room.result.scores?.guest ?? 0}` : ''}
+                {room.game === 'penalty' ? ` · ${room.result.scores?.host ?? 0} - ${room.result.scores?.guest ?? 0}` : room.game === 'dice' ? ` · ${room.result.dice?.[room.result.dice.mode === 'cumulative' ? 'totals' : 'wins']?.host ?? 0} - ${room.result.dice?.[room.result.dice.mode === 'cumulative' ? 'totals' : 'wins']?.guest ?? 0}` : ''}
               </strong>
               <span>Voir →</span>
             </button>)}
@@ -504,7 +519,19 @@ export default function GamePage() {
                     {[3, 5, 10].map((n) => <label key={n} className={shots === n ? 'is-checked' : ''}>
                       <input type="radio" name="shots" value={n} checked={shots === n} onChange={() => setShots(n)} />{n} tirs
                     </label>)}
-                  </fieldset> : <p className="game-hub__muted">{currentGame.id === 'tank' ? 'Tank Battle · 100 PV · 6 armes · carburant · 2 minutes maximum par tour.' : 'Dames · 10 × 10 · prises obligatoires · 2 minutes par coup.'}</p>}
+                  </fieldset> : currentGame.id === 'dice' ? <>
+                    <fieldset className="game-hub__shots"><legend>Nombre de dés</legend>
+                      {[1,2].map(n => <label key={n} className={diceCount===n?'is-checked':''}><input type="radio" name="dice-count" checked={diceCount===n} onChange={() => setDiceCount(n)} />{n} dé{n>1?'s':''}</label>)}
+                    </fieldset>
+                    <fieldset className="game-hub__shots"><legend>Nombre de coups par joueur</legend>
+                      {[1,3,5,10].map(n => <label key={n} className={diceRounds===n?'is-checked':''}><input type="radio" name="dice-rounds" checked={diceRounds===n} onChange={() => setDiceRounds(n)} />{n} coup{n>1?'s':''}</label>)}
+                    </fieldset>
+                    {diceRounds>1 && <fieldset className="game-hub__shots"><legend>Comment choisir le gagnant ?</legend>
+                      <label className={diceMode==='separate'?'is-checked':''}><input type="radio" name="dice-mode" checked={diceMode==='separate'} onChange={() => setDiceMode('separate')} />Manches séparées</label>
+                      <label className={diceMode==='cumulative'?'is-checked':''}><input type="radio" name="dice-mode" checked={diceMode==='cumulative'} onChange={() => setDiceMode('cumulative')} />Résultats cumulés</label>
+                    </fieldset>}
+                    <p className="game-hub__muted">{diceRounds===1 ? 'Un seul lancer chacun : le plus grand résultat gagne.' : diceMode==='separate' ? 'Chaque coup est une manche indépendante. Celui qui gagne le plus de manches gagne le duel.' : 'Les points des coups sont additionnés. Le plus grand total gagne à la fin.'} En cas d’égalité finale, le match est nul et les mises sont remboursées.</p>
+                  </> : <p className="game-hub__muted">{currentGame.id === 'tank' ? 'Tank Battle · 100 PV · 6 armes · carburant · 2 minutes maximum par tour.' : 'Dames · 10 × 10 · prises obligatoires · 2 minutes par coup.'}</p>}
                   <label>Mise par joueur (F CFA)
                     <input type="text" inputMode="numeric" pattern="[0-9]+" required maxLength={7}
                       value={stake} onChange={(e) => setStake(e.target.value.replace(/\D/g, '').slice(0, 7))}
@@ -517,11 +544,11 @@ export default function GamePage() {
                 </form>
               </section>
               <button type="button" className="btn btn--sm btn--block" onClick={() => setTab('salon')}>Voir les salons ouverts</button>
-              <section className="game-detail__training" aria-label="Entraînement">
+              {currentGame.id !== 'dice' && <section className="game-detail__training" aria-label="Entraînement">
                 <span className="game-hub__eyebrow">ENTRAINEMENT</span>
                 <p className="game-hub__muted">Entraîne-toi contre le robot avant de défier un autre joueur. Aucune mise en jeu.</p>
                 {currentGame.id === 'penalty' ? <SoloPenalty /> : currentGame.id === 'checkers' ? <SoloCheckers /> : <SoloTank />}
-              </section>
+              </section>}
             </article>
           )}
         </section>
