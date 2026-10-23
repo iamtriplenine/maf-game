@@ -80,7 +80,7 @@ function chooseAnimation(clips, skin) {
   if (skin.movementType === "none") return null;
   const valid = clips.filter((clip) => clip.duration > 0 && clip.tracks.length > 0);
   if (!valid.length) return null;
-  if (skin.movementType === "run" || skin.movementType === "attack") {
+  if (skin.movementType === "run" || skin.movementType === "attack" || skin.movementType === "swipe") {
     // Certains exports Mixamo contiennent un Take vide en plus du vrai mouvement.
     const main = valid.reduce((best, clip) => (
       clip.tracks.length > best.tracks.length ? clip : best
@@ -149,8 +149,18 @@ function GlbSkin({ skin }) {
   return <AnimatedSkin source={data.scene} clips={data.animations} skin={skin} />;
 }
 
+function FbxMotionSkin({ skin, source }) {
+  // On charge le FBX de mouvement uniquement pour le skin qui le demande.
+  // Le corps affiche reste toujours le vrai mutant, jamais Beta_Surface.
+  const motion = useLoader(FBXLoader, `${import.meta.env.BASE_URL}${skin.animationFile}`);
+  return <AnimatedSkin source={source} clips={motion.animations} skin={skin} />;
+}
+
 function FbxSkin({ skin }) {
   const data = useLoader(FBXLoader, `${import.meta.env.BASE_URL}${skin.file}`);
+  if (skin.animationFile) {
+    return <FbxMotionSkin skin={skin} source={data} />;
+  }
   return <AnimatedSkin source={data} clips={data.animations} skin={skin} />;
 }
 

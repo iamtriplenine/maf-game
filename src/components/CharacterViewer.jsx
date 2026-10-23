@@ -5,7 +5,7 @@ import {
 } from "react";
 import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { Html, OrbitControls } from "@react-three/drei";
-import { AnimationMixer, Box3, Vector3 } from "three";
+import { AnimationClip, AnimationMixer, Box3, Vector3 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 import { clone } from "three/addons/utils/SkeletonUtils.js";
@@ -151,29 +151,50 @@ function FbxCharacter(props) {
   );
 }
 
-// Les deux FBX Mutant portent le meme squelette Mixamo : un seul modele
-// apparait dans le Studio et les deux mouvements restent selectionnables.
+// Le FBX principal est le VRAI monstre (MutantMesh + textures turquoise).
+// Les mouvements supplementaires sont charges seulement lorsque l'utilisateur
+// clique dessus : aucun telechargement inutile sur le reseau mobile.
 function MutantCharacter(props) {
-  const run = useLoader(
+  const mutant = useLoader(
     FBXLoader,
     `${import.meta.env.BASE_URL}${props.character.file}`
   );
-  const attack = useLoader(
-    FBXLoader,
-    `${import.meta.env.BASE_URL}${props.character.attackFile}`
-  );
+  const [run, setRun] = useState(null);
+  const [attack, setAttack] = useState(null);
+
+  useEffect(() => {
+    const isRun = props.active === 1;
+    const isAttack = props.active === 2;
+    if ((!isRun && !isAttack) || (isRun && run) || (isAttack && attack)) return;
+
+    const url = isRun ? props.character.runFile : props.character.attackFile;
+    let mounted = true;
+    new FBXLoader().load(
+      `${import.meta.env.BASE_URL}${url}`,
+      (data) => {
+        if (!mounted) return;
+        if (isRun) setRun(data);
+        else setAttack(data);
+      },
+      undefined,
+      (error) => console.error("Chargement animation du mutant impossible", error)
+    );
+    return () => { mounted = false; };
+  }, [props.active, props.character.runFile, props.character.attackFile, run, attack]);
+
   const clips = useMemo(() => {
     const movement = (source, name) => {
+      if (!source) return [new AnimationClip(name, 1, [])];
       const valid = source.animations.filter((clip) =>
         clip.duration > 0 && clip.tracks.length > 0
       );
-      if (!valid.length) return [];
+      if (!valid.length) return [new AnimationClip(name, 1, [])];
       const main = valid.reduce((best, clip) =>
         clip.tracks.length > best.tracks.length ? clip : best
       );
       const copy = main.clone();
       copy.name = name;
-      // Garder le mutant dans le cadre pendant ses deux mouvements.
+      // Restituer une animation sur place, sans translation hors du cadre.
       for (const track of copy.tracks) {
         if (!/mixamorigHips\.position$/.test(track.name)) continue;
         const x = track.values[0];
@@ -186,12 +207,13 @@ function MutantCharacter(props) {
       return [copy];
     };
     return [
+      ...movement(mutant, "Balayage"),
       ...movement(run, "Courir"),
       ...movement(attack, "Saut-attaque"),
     ];
-  }, [run, attack]);
+  }, [mutant, run, attack]);
 
-  return <AnimatedModel {...props} source={run} clips={clips} />;
+  return <AnimatedModel {...props} source={mutant} clips={clips} />;
 }
 
 function label(name, character, count) {

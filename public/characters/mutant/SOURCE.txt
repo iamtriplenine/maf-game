@@ -1,0 +1,3 @@
+Vrai personnage : MutantMesh, fichier original Mutant Swiping.fbx (Mixamo).
+Optimisation mobile : 2 images incorporees reduites de 2048 a 512 px, JPEG ; squelette, geometrie et courbes de Swiping conserves.
+run.fbx et jump-attack.fbx : mouvements Mixamo precedents, dont le mannequin Beta n est PAS affiche.
