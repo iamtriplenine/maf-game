@@ -1,3 +1,5 @@
+import RoomCountdown from '../components/RoomCountdown'; // MAF_ROOM_30M_POLICY_V1
+import '../styles/room-countdown.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { IconGamepad } from '../components/Icons';
 import { PenaltyArena, SoloPenalty } from '../components/PenaltyArena';
@@ -374,7 +376,7 @@ export default function GamePage() {
                 <strong>{room.host.pseudo}</strong>
                 <small>{gameSymbol(room.game)} {gameName(room.game)}{room.game === 'penalty' ? ` · ${room.shots} tirs` : room.game === 'dice' ? ` · ${room.dice_count} dé(s) · ${room.shots} coup(s)` : ''} · {room.host_busy && ['open','pending'].includes(room.status) ? 'En partie, veuillez patienter' : statusLabel[room.status]}</small>
               </span>
-              <span className="salon-row__stake">{money(room.stake)}</span>
+              <span className="salon-row__stake">{money(room.stake)}<RoomCountdown room={room} prefix="" /></span>
             </button>)}
           </div>
           {selected && (
@@ -390,6 +392,7 @@ export default function GamePage() {
                 <span>{gameSymbol(selected.game)} {gameName(selected.game)}</span>{selected.game === 'penalty' ? <span>{selected.shots} tirs / joueur</span> : selected.game === 'dice' ? <span>{selected.dice_count} dé(s) · {selected.shots} coup(s) · {selected.dice_mode === 'cumulative' ? 'Cumul' : 'Manches'}</span> : selected.game === 'tank' ? <span>2 chars · armes tactiques</span> : <span>10 × 10 · 20 pions / joueur</span>}
                 <span>Mise : {money(selected.stake)} par joueur</span><span>Gain : {money(selected.stake * 2)}</span>
                 {selected.escrow > 0 && selected.status !== 'finished' && <span>Cagnotte retenue : {money(selected.escrow)}</span>}
+                <RoomCountdown room={selected} />
               </div>
               {selected.host_busy && ['open','pending'].includes(selected.status) && (
                 <p role="status" className="maf-room-busy">🔒 En partie, veuillez patienter. Le createur joue deja une autre partie.</p>

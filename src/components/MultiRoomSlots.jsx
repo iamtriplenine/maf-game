@@ -1,3 +1,4 @@
+import RoomCountdown from './RoomCountdown'; // MAF_ROOM_30M_POLICY_V1
 const stateName = {
   open: 'Disponible', pending: 'Demande recue', ready: 'Pret a jouer',
   playing: 'Partie en cours', finished: 'Termine',
@@ -20,6 +21,7 @@ export default function MultiRoomSlots({ rooms, busy, onOpen, gameName, gameSymb
               <strong>{gameName(room.game)}</strong>
               <small>Salon #{room.code} · {room.host_busy && ['open','pending'].includes(room.status) ? 'En partie, veuillez patienter' : stateName[room.status] || room.status}{/* MAF_ROOMS_FREE_UNTIL_ACCEPTED_V1 */}</small>
             </span>
+            <RoomCountdown room={room} prefix="" />
             <span className="maf-slots__arrow" aria-hidden="true">→</span>
           </button>)}
         </div>

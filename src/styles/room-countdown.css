@@ -1,0 +1,4 @@
+/* MAF_ROOM_30M_POLICY_V1: chronometre visible, sans modifier le style des jeux. */
+.maf-room-countdown { display:inline-block; font-variant-numeric:tabular-nums; font-size:12px; font-weight:700; color:#fbc56a; line-height:1.5; }
+.maf-room-countdown--urgent { color:#ff6f76; }
+.maf-room-countdown--detail { margin:8px 0; }
