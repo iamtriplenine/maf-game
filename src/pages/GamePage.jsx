@@ -5,6 +5,7 @@ import CheckersArena from '../components/CheckersArena';
 import SoloCheckers from '../components/SoloCheckers';
 import TankArena from '../components/TankArena';
 import DiceArena from '../components/DiceArena'; // MAF_DICE_GAMEPAGE_V1
+import SoloDice from '../components/SoloDice'; // MAF_DICE_PRACTICE_V1
 import SoloTank from '../components/SoloTank';
 // MAF_TANK_GAMEPAGE_V1
 import { useSession } from '../auth/useSession';
@@ -16,6 +17,7 @@ import '../styles/game-rooms.css';
 import '../styles/game-cards.css';
 import '../styles/game-salon.css';
 import '../styles/dice-arena.css';
+import '../styles/dice-training.css';
 import '../styles/multi-room-slots.css';
 
 const localRoomDeadline = room => room ? {
@@ -26,9 +28,6 @@ const money = (value) => `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`
 const gameName = (game) => game === 'dice' ? 'Lancer de dés' : game === 'tank' ? 'Tank Battle' : game === 'checkers' ? 'Dames' : 'Tir au but';
 const gameSymbol = (game) => game === 'dice' ? '🎲' : game === 'tank' ? '🚀' : game === 'checkers' ? '♛' : '⚽';
 const GAMES = [
-  { id:'dice', emoji:'🎲', name:'Lancer de dés',
-    about:'Défie un autre joueur avec 1 ou 2 dés, sur 1, 3, 5 ou 10 coups. En manches séparées ou en points cumulés.',
-    tags:['1 ou 2 dés', '1 / 3 / 5 / 10 coups', 'Manches ou total', '2 joueurs'] },
   {
     id: 'penalty', emoji: '⚽', name: 'Tir au but',
     about: 'Face à face tireur / gardien. Vise à gauche, au milieu ou à droite. Tu changes de rôle après chaque tir et tu comptes tes buts.',
@@ -42,6 +41,9 @@ const GAMES = [
   { id:'tank', emoji:'🚀', name:'Tank Battle',
     about:'Deux chars, six armes, tir tactique, carburant et terrain destructible.',
     tags:['2 joueurs','Terrain destructible','Missiles','Carburant'] },
+  { id:'dice', emoji:'🎲', name:'Lancer de dés',
+    about:'Défie un autre joueur avec 1 ou 2 dés, sur 1, 3, 5 ou 10 coups. En manches séparées ou en points cumulés.',
+    tags:['1 ou 2 dés', '1 / 3 / 5 / 10 coups', 'Manches ou total', '2 joueurs'] },
 ];
 const statusLabel = { open: 'Ouvert', pending: 'Demande en cours', ready: 'Pret a jouer', playing: 'Match en cours', finished: 'Termine' };
 
@@ -544,11 +546,11 @@ export default function GamePage() {
                 </form>
               </section>
               <button type="button" className="btn btn--sm btn--block" onClick={() => setTab('salon')}>Voir les salons ouverts</button>
-              {currentGame.id !== 'dice' && <section className="game-detail__training" aria-label="Entraînement">
+              <section className="game-detail__training" aria-label="Entraînement">
                 <span className="game-hub__eyebrow">ENTRAINEMENT</span>
                 <p className="game-hub__muted">Entraîne-toi contre le robot avant de défier un autre joueur. Aucune mise en jeu.</p>
-                {currentGame.id === 'penalty' ? <SoloPenalty /> : currentGame.id === 'checkers' ? <SoloCheckers /> : <SoloTank />}
-              </section>}
+                {currentGame.id === 'penalty' ? <SoloPenalty /> : currentGame.id === 'checkers' ? <SoloCheckers /> : currentGame.id === 'dice' ? <SoloDice key={`${diceCount}-${diceRounds}-${diceRounds === 1 ? 'separate' : diceMode}`} diceCount={diceCount} rounds={diceRounds} mode={diceRounds === 1 ? 'separate' : diceMode} /> : <SoloTank />}
+              </section>
             </article>
           )}
         </section>
