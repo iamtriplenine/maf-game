@@ -61,6 +61,8 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
   const [power,setPower]=useState(75);
   const [drive,setDrive]=useState(0);
   const [weapon,setWeapon]=useState('shell');
+  const [weaponHint,setWeaponHint]=useState(null);
+  const weaponListRef=useRef(null);
   const [confirmExit,setConfirmExit]=useState(false);
   const [drawConfirm,setDrawConfirm]=useState(false);
   const [now,setNow]=useState(Date.now);
@@ -94,6 +96,20 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
   useEffect(()=> {const id=setInterval(()=>setNow(Date.now()),500);return ()=>clearInterval(id);},[]);
   useEffect(()=> {setReceivedAt(Date.now());},[match?.serverNow]);
   useEffect(()=> {setDrive(0);setDrawConfirm(false);},[match?.round,match?.drawOffer]);
+  // A new object also restarts the timer when the selected ammunition is tapped again.
+  useEffect(()=>{
+    if(!weaponHint)return undefined;
+    const timeout=setTimeout(()=>setWeaponHint(null),3000);
+    return ()=>clearTimeout(timeout);
+  },[weaponHint]);
+  useEffect(()=>{
+    const list=weaponListRef.current;
+    const selected=list?.querySelector('[aria-checked="true"]');
+    if(!selected)return;
+    const bounds=list.getBoundingClientRect(),item=selected.getBoundingClientRect();
+    if(item.left<bounds.left)list.scrollLeft-=bounds.left-item.left;
+    else if(item.right>bounds.right)list.scrollLeft+=item.right-bounds.right;
+  },[weapon]);
   const weaponLeft=match?.tanks?.[viewer]?.ammo?.[weapon];
   useEffect(()=> {if(weaponLeft===0)setWeapon('shell');},[weaponLeft]);
   useEffect(()=> {
@@ -211,26 +227,30 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
               textAnchor="middle" fontSize="4.4" fontWeight="800" fill="#ffe08a" stroke="#6b2a12" strokeWidth=".5" paintOrder="stroke"
               opacity={Math.max(0,1.4-boom)} pointerEvents="none">-{shot.damage[side]}</text>)}
         </>}
-      </svg><div className="tank-scene__hint">Glisse : haut/bas = angle · gauche/droite = puissance</div></div>
+      </svg>
+      {!finished && weaponHint?.key===weapon && <div className="tank-scene__weapon" role="status" aria-live="polite" aria-atomic="true">
+        <strong>{TANK_WEAPONS[weapon].label}</strong>
+        <span>Dégâts {TANK_WEAPONS[weapon].damage} · Zone {TANK_WEAPONS[weapon].radius}</span>
+        {WEAPON_INFO[weapon] && <span>{WEAPON_INFO[weapon].hint}</span>}
+      </div>}
+      <div className="tank-scene__hint">Glisse : haut/bas = angle · gauche/droite = puissance</div></div>
       {error && <p className="tank-error" role="alert">{error}</p>}
       {rivalDeadline!=null&&!finished && <p className="tank-alert">⚠️ L'adversaire est sorti : {rivalDeadline} s avant forfait.</p>}
       {ownDeadline!=null&&!finished && <p className="tank-alert">⚠️ Retour nécessaire dans {ownDeadline} s.</p>}
       {!finished && <div className="tank-controls">
-        <div className="tank-weapon-list" role="radiogroup" aria-label="Munitions">{Object.entries(TANK_WEAPONS).map(([key,w])=>{
+        <div ref={weaponListRef} className="tank-weapon-list" role="radiogroup" aria-label="Munitions — glisser horizontalement">{Object.entries(TANK_WEAPONS).map(([key,w])=>{
           const left=match.tanks[viewer].ammo[key];const empty=left===0;
           return <button type="button" key={key} role="radio" aria-checked={weapon===key} disabled={!canPlay || empty}
-            onClick={()=>{setWeapon(key);setAngle(a=>Math.max(a,TANK_WEAPONS[key].minAngle||0));}} className={`${weapon===key?'selected':''}${empty?' is-empty':''}`}>
+            onClick={()=>{setWeapon(key);setWeaponHint({key});setAngle(a=>Math.max(a,TANK_WEAPONS[key].minAngle||0));}} className={`${weapon===key?'selected':''}${empty?' is-empty':''}`}>
             <WeaponIcon kind={key}/><span className="tank-weapon-name">{WEAPON_INFO[key]?.short||w.label}</span>
             <small>{w.ammo===null?'∞':`×${left}`}</small></button>;})}</div>
+        <button className="tank-fire" type="button" disabled={!canPlay} onClick={fire}>🚀 TIRER</button>
         {winTurn && <p className="tank-win" role="status">🟢 Mode Win : {winSolution
           ? `trajectoire exacte appliquée (${winSolution.angle}° · ${winSolution.power}%). Dégâts prévus : ${winPreview?.damage?.[viewer==='host'?'guest':'host']??0}`
           : 'aucun tir exact possible avec cette arme ici, essaie une autre arme.'}</p>}
-        <p className="tank-weapon-hint"><strong>{TANK_WEAPONS[weapon].label}</strong> · dégâts {TANK_WEAPONS[weapon].damage} · zone {TANK_WEAPONS[weapon].radius}
-          {WEAPON_INFO[weapon]?` — ${WEAPON_INFO[weapon].hint}`:''}</p>
         <label>↗️ Angle : <strong>{angle}°</strong><input type="range" min={minAngle} max="89" value={Math.max(angle,minAngle)} disabled={!canPlay} onChange={e=>setAngle(Number(e.target.value))}/></label>
         <label>💥 Puissance : <strong>{power}%</strong><input type="range" min="20" max="100" value={power} disabled={!canPlay} onChange={e=>setPower(Number(e.target.value))}/></label>
         <label>⛽ Déplacement : <strong>{drive>0?'+':''}{drive} m</strong><input type="range" min="-8" max="8" step="1" value={drive} disabled={!canPlay} onChange={e=>setDrive(Number(e.target.value))}/></label>
-        <button className="tank-fire" type="button" disabled={!canPlay} onClick={fire}>🚀 TIRER</button>
       </div>}
       {!finished && <div className="tank-foot">
         <div className="tank-reactions">{EMOTES.map(([kind,icon])=><button type="button" key={kind} onClick={()=>sendEmote(kind)}>{icon}</button>)}</div>
