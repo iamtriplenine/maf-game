@@ -1,6 +1,6 @@
 /* Salon / Jeux : conserve les tokens du theme actif */
 .game-hub { max-width: 1060px; margin: 0 auto; }
-.game-hub__tabs { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; padding: 5px; margin: 8px 0 24px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--glass); }
+.game-hub__tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 5px; padding: 5px; margin: 8px 0 24px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--glass); }
 .game-hub__tabs button { min-height: 48px; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--text-dim); font-weight: 700; font-size: 14px; letter-spacing: .04em; transition: background .2s, color .2s; }
 .game-hub__tabs button.is-current { background: var(--accent-grad); color: var(--on-accent); box-shadow: var(--accent-glow); }
 .game-hub__content { display: grid; gap: 17px; animation: game-hub-in .24s ease-out; }

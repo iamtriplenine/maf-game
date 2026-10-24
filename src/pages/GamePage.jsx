@@ -309,7 +309,9 @@ export default function GamePage() {
     const dx = touch.clientX - start.x;
     const dy = touch.clientY - start.y;
     if (Math.abs(dx) >= 70 && Math.abs(dx) > Math.abs(dy) * 1.35) {
-      setTab(dx < 0 ? 'salon' : 'jeux');
+      const tabs = ['jeux', 'tournoi', 'salon'];
+      const nextIndex = Math.max(0, Math.min(tabs.length - 1, tabs.indexOf(tab) + (dx < 0 ? 1 : -1)));
+      setTab(tabs[nextIndex]);
     }
   };
 
@@ -340,12 +342,20 @@ export default function GamePage() {
         <button id="game-tab-jeux" type="button" role="tab" aria-controls="game-panel-jeux"
           aria-selected={tab === 'jeux'} className={tab === 'jeux' ? 'is-current' : ''}
           onClick={() => setTab('jeux')}>Game</button>
+        <button id="game-tab-tournoi" type="button" role="tab" aria-controls="game-panel-tournoi"
+          aria-selected={tab === 'tournoi'} className={tab === 'tournoi' ? 'is-current' : ''}
+          onClick={() => setTab('tournoi')}>Tournoi</button>
         <button id="game-tab-salon" type="button" role="tab" aria-controls="game-panel-salon"
           aria-selected={tab === 'salon'} className={tab === 'salon' ? 'is-current' : ''}
           onClick={() => setTab('salon')}>Salon</button>
       </div>
 
-      {tab === 'salon' ? (
+      {tab === 'tournoi' ? (
+        <section id="game-panel-tournoi" role="tabpanel" aria-labelledby="game-tab-tournoi" className="game-hub__content">
+          <div className="game-hub__line"><h2>Tournoi</h2></div>
+          <p className="game-hub__empty">Les tournois seront disponibles ici prochainement.</p>
+        </section>
+      ) : tab === 'salon' ? (
         <section id="game-panel-salon" role="tabpanel" aria-labelledby="game-tab-salon" className="game-hub__content">
           <div className="game-hub__line">
             <h2>Salons disponibles <span className="game-hub__count">{rooms.length}</span></h2>
