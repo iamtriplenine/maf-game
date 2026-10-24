@@ -52,7 +52,7 @@ const GAMES = [
   {
     id: 'tankrun', emoji: '🕹️', name: 'Tank Run',
     about: 'Combat de chars a rotation automatique. Appuie pour tirer ou maintiens pour avancer.',
-    tags: ['2 a 4 chars', 'Joueurs sur le meme appareil', 'Robots', 'Mode local'],
+    tags: ['2 joueurs en ligne', 'Salons', 'Choix du char', 'Choix du terrain'],
   },
 ];
 const statusLabel = { open: 'Ouvert', pending: 'Demande en cours', ready: 'Pret a jouer', playing: 'Match en cours', finished: 'Termine' };
@@ -63,6 +63,7 @@ export default function GamePage() {
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const [tab, setTab] = useState('jeux');
   const [gameId, setGameId] = useState(null);
+  const [tankRunTraining, setTankRunTraining] = useState(false); // MAF_TANKRUN_SALONS_FIX_V1
   const [rooms, setRooms] = useState([]);
   const [mine, setMine] = useState(null);
   const [myRooms, setMyRooms] = useState([]);
@@ -188,6 +189,7 @@ export default function GamePage() {
     setError('');
     setNotice('');
     setGameId(id);
+    setTankRunTraining(false);
   };
   const visibleGames = GAMES;
   const currentGame = visibleGames.find((g) => g.id === gameId) || null;
@@ -548,9 +550,9 @@ export default function GamePage() {
                 </div>
               </div>
               {error && <p role="alert" className="game-hub__error">{error}</p>}
-              {currentGame.id === 'tankrun' ? (
+              {currentGame.id === 'tankrun' && tankRunTraining ? (
                 <Suspense fallback={<p role="status">Chargement de Tank Run...</p>}>
-                  <TankRun onExit={() => openGame(null)} />
+                  <TankRun onExit={() => setTankRunTraining(false)} />
                 </Suspense>
               ) : (
                 <>
@@ -590,7 +592,7 @@ export default function GamePage() {
               <section className="game-detail__training" aria-label="Entraînement">
                 <span className="game-hub__eyebrow">ENTRAINEMENT</span>
                 <p className="game-hub__muted">Entraîne-toi contre le robot avant de défier un autre joueur. Aucune mise en jeu.</p>
-                {currentGame.id === 'penalty' ? <SoloPenalty /> : currentGame.id === 'checkers' ? <SoloCheckers /> : currentGame.id === 'dice' ? <SoloDice key={`${diceCount}-${diceRounds}-${diceRounds === 1 ? 'separate' : diceMode}`} diceCount={diceCount} rounds={diceRounds} mode={diceRounds === 1 ? 'separate' : diceMode} /> : <SoloTank />}
+                {currentGame.id === 'tankrun' ? <button type="button" className="btn btn--sm btn--block" onClick={() => setTankRunTraining(true)}>Lancer un entraînement local (sans salon)</button> : currentGame.id === 'penalty' ? <SoloPenalty /> : currentGame.id === 'checkers' ? <SoloCheckers /> : currentGame.id === 'dice' ? <SoloDice key={`${diceCount}-${diceRounds}-${diceRounds === 1 ? 'separate' : diceMode}`} diceCount={diceCount} rounds={diceRounds} mode={diceRounds === 1 ? 'separate' : diceMode} /> : <SoloTank />}
               </section>
                 </>
               )}
