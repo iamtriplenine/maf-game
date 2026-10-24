@@ -123,25 +123,61 @@ export default function TankRunOnline({room,match,onStart,onExit,onForfeit,busy}
 
   if(room.status==='ready')return (
     <section className="tr-prep" aria-label="Préparation du duel Tank Run">
-      <h3>Tank Run · préparation</h3>
-      <p>Choisis ton char et propose un terrain. Chaque joueur décide pour lui-même.</p>
-      <label>Mon char
-        <select value={skin} onChange={e=>setSkin(e.target.value)}>{SKINS.map(k=><option key={k} value={k}>{SKIN_LABELS[k]}</option>)}</select>
-      </label>
-      <label>Terrain proposé
-        <select value={terrain} onChange={e=>setTerrain(e.target.value)}>{LAND.map(k=><option key={k} value={k}>{LABELS[k]}</option>)}</select>
-      </label>
-      <button disabled={saving||busy} onClick={async()=>{
-        setSaving(true);setMessage('');
-        try{await setTankRunSetup(room.id,{arena:terrain,skin});setMessage('Choix envoyé. Attends la confirmation de ton adversaire.');}
-        catch(e){setMessage(e.message)}finally{setSaving(false)}
-      }}>Enregistrer mon choix</button>
-      <p>Toi : {own?`${SKIN_LABELS[own.skin]} · ${LABELS[own.arena]}`:'en attente'}<br/>
-         Adversaire : {opponent?`${SKIN_LABELS[opponent.skin]} · ${LABELS[opponent.arena]}`:'en attente'}.</p>
-      {own&&opponent&&room.is_host&&<button disabled={busy} onClick={onStart}>Lancer le duel</button>}
-      {own&&opponent&&!room.is_host&&<p>Le créateur peut lancer le duel.</p>}
-      {message&&<p role="status">{message}</p>}
-      <button onClick={onExit}>Retour au salon</button>
+      <div className="tr-prep__hero">
+        <div>
+          <p className="tr-prep__eyebrow">Tank Run · salon privé</p>
+          <h3>Préparez votre duel</h3>
+          <p className="tr-prep__lede">Choisis ton char, propose un terrain et attends la validation de l'adversaire avant de lancer la partie.</p>
+        </div>
+        <div className={`tr-prep__badge ${own && opponent ? 'is-ready' : 'is-waiting'}`}>
+          {own && opponent ? 'Prêt à lancer' : 'Préparation en cours'}
+        </div>
+      </div>
+
+      <div className="tr-prep__layout">
+        <div className="tr-prep__panel tr-prep__panel--form">
+          <p className="tr-prep__panel-title">Mon choix</p>
+          <label className="tr-prep__field">
+            <span>Char</span>
+            <select value={skin} onChange={e=>setSkin(e.target.value)}>
+              {SKINS.map(k=><option key={k} value={k}>{SKIN_LABELS[k]}</option>)}
+            </select>
+          </label>
+          <label className="tr-prep__field">
+            <span>Terrain proposé</span>
+            <select value={terrain} onChange={e=>setTerrain(e.target.value)}>
+              {LAND.map(k=><option key={k} value={k}>{LABELS[k]}</option>)}
+            </select>
+          </label>
+          <button className="btn btn--primary btn--block" disabled={saving||busy} onClick={async()=>{
+            setSaving(true);setMessage('');
+            try{await setTankRunSetup(room.id,{arena:terrain,skin});setMessage('Choix envoyé. Attends la confirmation de ton adversaire.');}
+            catch(e){setMessage(e.message)}finally{setSaving(false)}
+          }}>{saving ? 'Enregistrement…' : 'Valider mon choix'}</button>
+          <p className="tr-prep__helper">Tu peux modifier ton char et ton terrain tant que le duel n'a pas été lancé.</p>
+          {message&&<p className="tr-prep__message" role="status">{message}</p>}
+        </div>
+
+        <div className="tr-prep__panel tr-prep__panel--summary">
+          <p className="tr-prep__panel-title">Résumé du duel</p>
+          <div className="tr-choice-grid">
+            <article className={`tr-choice-card ${own ? 'is-ready' : 'is-waiting'}`}>
+              <span className="tr-choice-card__tag">Toi</span>
+              <strong>{own ? SKIN_LABELS[own.skin] : 'Choix en attente'}</strong>
+              <small>{own ? LABELS[own.arena] : 'Aucun terrain proposé'}</small>
+            </article>
+            <article className={`tr-choice-card ${opponent ? 'is-ready' : 'is-waiting'}`}>
+              <span className="tr-choice-card__tag">Adversaire</span>
+              <strong>{opponent ? SKIN_LABELS[opponent.skin] : 'Choix en attente'}</strong>
+              <small>{opponent ? LABELS[opponent.arena] : 'Aucun terrain proposé'}</small>
+            </article>
+          </div>
+          {!(own&&opponent)&&<p className="tr-prep__helper">Chaque joueur doit valider son choix avant le lancement de la partie.</p>}
+          {own&&opponent&&room.is_host&&<button className="btn btn--primary btn--block" disabled={busy} onClick={onStart}>Lancer le duel</button>}
+          {own&&opponent&&!room.is_host&&<p className="tr-prep__helper">Le créateur du salon peut maintenant lancer le duel.</p>}
+          <button className="btn btn--glass btn--sm btn--block" onClick={onExit}>Retour au salon</button>
+        </div>
+      </div>
     </section>
   );
 
