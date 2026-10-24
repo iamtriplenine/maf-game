@@ -63,11 +63,13 @@ export default function TankRunOnline({room,match,onStart,onExit,onForfeit,busy}
     const view={W:0,H:0,dpr:1,scale:1,ox:0,oy:0,bg:null,humans:0};
     let oldArena='';
     const resize=()=>{
-      const b=wrap.getBoundingClientRect();if(!b.width||!b.height)return;
-      view.W=b.width;view.H=b.height;view.dpr=Math.min(window.devicePixelRatio||1,2.5);
-      canvas.width=Math.round(b.width*view.dpr);canvas.height=Math.round(b.height*view.dpr);
-      view.scale=Math.min(b.width/800,b.height/480)*0.97;
-      view.ox=(b.width-800*view.scale)/2;view.oy=(b.height-480*view.scale)/2;
+      // MAF_TANKRUN_DISPLAY_FIT_V1 : taille de layout (avant transform:rotate).
+      const width=wrap.clientWidth,height=wrap.clientHeight;
+      if(!width||!height)return;
+      view.W=width;view.H=height;view.dpr=Math.min(window.devicePixelRatio||1,2.5);
+      canvas.width=Math.round(width*view.dpr);canvas.height=Math.round(height*view.dpr);
+      view.scale=Math.min(width/800,height/480)*0.99;
+      view.ox=(width-800*view.scale)/2;view.oy=(height-480*view.scale)/2;
       oldArena='';
     };
     const obs=typeof ResizeObserver!=='undefined'?new ResizeObserver(resize):null;

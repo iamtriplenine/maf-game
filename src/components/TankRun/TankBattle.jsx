@@ -70,15 +70,19 @@ export default function TankBattle({ onExit, config, fullscreen = true, classNam
     const view = { W: 0, H: 0, dpr: 1, scale: 1, ox: 0, oy: 0, bg: null, humans: h };
 
     const resize = () => {
-      const r = wrap.getBoundingClientRect();
-      if (!r.width || !r.height) return;
+      // MAF_TANKRUN_DISPLAY_FIT_V1 : mesurer le Canvas AVANT la rotation CSS.
+      // getBoundingClientRect() renvoie les dimensions inversees a 90 degres.
+      const width = wrap.clientWidth;
+      const height = wrap.clientHeight;
+      if (!width || !height) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-      canvas.width = Math.round(r.width * dpr);
-      canvas.height = Math.round(r.height * dpr);
-      view.W = r.width; view.H = r.height; view.dpr = dpr;
-      view.scale = Math.min(r.width / game.w, r.height / game.h) * 0.97;
-      view.ox = (r.width - game.w * view.scale) / 2;
-      view.oy = (r.height - game.h * view.scale) / 2;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      view.W = width; view.H = height; view.dpr = dpr;
+      // Conserver le ratio du terrain, remplir la hauteur si elle est limitante.
+      view.scale = Math.min(width / game.w, height / game.h) * 0.99;
+      view.ox = (width - game.w * view.scale) / 2;
+      view.oy = (height - game.h * view.scale) / 2;
       view.bg = buildBackground(game, view.scale, dpr);
     };
     resize();
@@ -139,8 +143,13 @@ export default function TankBattle({ onExit, config, fullscreen = true, classNam
     if (screen !== 'game' || !game) return;
     if (e.target.closest && e.target.closest('[data-ui]')) return;
     const r = wrapRef.current.getBoundingClientRect();
-    const fx = (e.clientX - r.left) / r.width;
-    const fy = (e.clientY - r.top) / r.height;
+    const virtualLandscape = orientation === 'landscape' && window.matchMedia('(orientation: portrait)').matches;
+    const fx = virtualLandscape
+      ? (e.clientY - r.top) / wrapRef.current.clientWidth
+      : (e.clientX - r.left) / r.width;
+    const fy = virtualLandscape
+      ? (r.right - e.clientX) / wrapRef.current.clientHeight
+      : (e.clientY - r.top) / r.height;
     const zones = getZones(startedRef.current.humans);
     const idx = zones.findIndex((z) => fx >= z.x0 && fx < z.x1 && fy >= z.y0 && fy < z.y1);
     if (idx < 0) return;
