@@ -37,6 +37,34 @@ export function winModeIsEnabled(game = null, solo = false) {
     (grant.kind === 'duration' || (solo ? grant.playing === game :
       grant.matches_left === 1 || grant.matches_left === 0));
 }
+// La boule signale toute autorisation Win encore valide pour ce joueur,
+// sans limiter l'indicateur au compte proprietaire ou a un jeu donne.
+export function winModeIndicatorIsEnabled() {
+  if (currentSession()?.pseudo === '999') {
+    try { if (sessionStorage.getItem(KEY) === '1') return true; }
+    catch { /* facultatif */ }
+  }
+  const grant = readGrant();
+  if (!grant || !Number.isFinite(Date.parse(grant.expires_at)) ||
+      Date.parse(grant.expires_at) <= Date.now()) return false;
+  return grant.kind === 'duration' ||
+    (grant.kind === 'match' && (grant.matches_left === 1 || !!grant.playing));
+}
+
+// Un coupon "une partie" cesse d'allumer la boule a la fin du duel concerne.
+// Les coupons a duree et le mode proprietaire restent inchanges.
+export function finishWinRoomMatch(game) {
+  if (!['tank','penalty'].includes(game)) return;
+  const grant = readGrant();
+  if (!grant || grant.kind !== 'match' ||
+      (grant.game !== 'all' && grant.game !== game) ||
+      grant.matches_left !== 1) return;
+  try {
+    sessionStorage.setItem(ACCESS_KEY, JSON.stringify({...grant, matches_left: 0, playing: null}));
+  } catch { /* stockage facultatif */ }
+  event();
+}
+
 export function setWinModeActive(active) {
   if (currentSession()?.pseudo !== '999') return false;
   try { sessionStorage.setItem(KEY, active ? '1' : '0'); } catch { /* facultatif */ }

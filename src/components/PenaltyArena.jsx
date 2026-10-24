@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import '../styles/penalty-arena.css';
-import { winModeIsEnabled, onWinModeChange, beginWinSoloMatch, finishWinSoloMatch } from '../utils/winMode';
+import { winModeIsEnabled, onWinModeChange, beginWinSoloMatch, finishWinSoloMatch, finishWinRoomMatch } from '../utils/winMode';
 
 const SIDES = [
   { id: 'left', title: 'Gauche', icon: '↖' },
@@ -139,6 +139,10 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
   const isWinner = match?.winner === viewer;
   const awaiting = !!match?.myChoice;
   const finished = !!match?.finished || status === 'finished';
+  // Pour les coupons valables une seule partie, revenir a la boule normale apres le duel.
+  useEffect(() => {
+    if (!isSolo && room?.id && finished) finishWinRoomMatch('penalty');
+  }, [isSolo, room?.id, finished]);
   const total = match?.totalPerPlayer || room?.shots || 3;
   // Apres chaque tir : on voit le resultat, compte a rebours 5 -> 0, puis le ballon revient au point de penalty.
   const lastNumber = last?.number ?? 0;

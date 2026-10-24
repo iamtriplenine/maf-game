@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { TANK_WEAPONS, tankSurface, tankSimulate } from '../api/tankEngine';
 import { tankSolve } from '../api/tankSolver';
-import { winModeIsEnabled, onWinModeChange } from '../utils/winMode';
+import { winModeIsEnabled, onWinModeChange, finishWinRoomMatch } from '../utils/winMode';
 import { WeaponIcon, WeaponShape, WEAPON_INFO } from './TankWeaponArt';
 import '../styles/tank-arena.css';
 
@@ -73,6 +73,10 @@ export default function TankArena({room,match,busy=false,error='',onExit,onBack,
   const started=useRef(null);
   const svgRef=useRef(null);
   const solo=room?.id===0;
+  // Eteindre l'indicateur apres la partie de duel payee par un code "une partie".
+  useEffect(() => {
+    if (!solo && room?.id && finished) finishWinRoomMatch('tank');
+  }, [solo, room?.id, finished]);
   const active=room?.status==='playing' && !!match;
   const canPlay=active && match.myTurn && !busy && !finished && !match.returnDeadline && !animation;
   const motion=animation?.progress ?? null;

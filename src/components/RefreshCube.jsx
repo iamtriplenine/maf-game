@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { refreshData } from '../api/refresh';
 import { currentSession } from '../api/accounts';
-import { winModeIsEnabled, setWinModeActive, onWinModeChange } from '../utils/winMode';
+import { winModeIsEnabled, winModeIndicatorIsEnabled, setWinModeActive, onWinModeChange } from '../utils/winMode';
 import '../styles/refresh.css';
 
 const KEY = 'maf-refresh-position';
@@ -22,7 +22,7 @@ export default function RefreshCube() {
   const [now, setNow] = useState(Date.now);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const [winEnabled, setWinEnabled] = useState(winModeIsEnabled);
+  const [winEnabled, setWinEnabled] = useState(winModeIndicatorIsEnabled);
   const [owner, setOwner] = useState(() => currentSession()?.pseudo === '999');
   const holdTimer = useRef(null), suppressClick = useRef(false);
   const lock = useRef(false), drag = useRef(null), moved = useRef(false), mounted = useRef(false);
@@ -68,7 +68,7 @@ export default function RefreshCube() {
     return () => clearTimeout(timer);
   }, [message]);
   useEffect(() => {
-    const sync = () => { setOwner(currentSession()?.pseudo === '999'); setWinEnabled(winModeIsEnabled()); };
+    const sync = () => { setOwner(currentSession()?.pseudo === '999'); setWinEnabled(winModeIndicatorIsEnabled()); };
     window.addEventListener('maf:session', sync);
     const off = onWinModeChange(sync);
     return () => { window.removeEventListener('maf:session', sync); off(); clearTimeout(holdTimer.current); };
@@ -89,7 +89,7 @@ export default function RefreshCube() {
     save(KEY, position);
   }
   return createPortal(<div className="refresh-control" style={{ left: position.x, top: position.y }}>
-    <button type="button" className={`refresh-control__button ${busy ? 'is-busy' : ''} ${owner && winEnabled ? 'is-win' : ''}`}
+    <button type="button" className={`refresh-control__button ${busy ? 'is-busy' : ''} ${winEnabled ? 'is-win' : ''}`}
       aria-label="Actualiser les données" aria-busy={busy}
       title="Actualiser · Fais glisser pour déplacer · Flèches au clavier"
       onClick={click}
