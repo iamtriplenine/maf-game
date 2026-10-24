@@ -6,6 +6,7 @@ import { PenaltyArena, SoloPenalty } from '../components/PenaltyArena';
 import CheckersArena from '../components/CheckersArena';
 import SoloCheckers from '../components/SoloCheckers';
 import TankArena from '../components/TankArena';
+import TankRunOnline from '../components/TankRunOnline'; // MAF_TANKRUN_STAGE_4
 import DiceArena from '../components/DiceArena'; // MAF_DICE_GAMEPAGE_V1
 import SoloDice from '../components/SoloDice'; // MAF_DICE_PRACTICE_V1
 import SoloTank from '../components/SoloTank';
@@ -22,15 +23,15 @@ import '../styles/game-salon.css';
 import '../styles/dice-arena.css';
 import '../styles/dice-training.css';
 import '../styles/multi-room-slots.css';
-const TankBattle = lazy(() => import('../components/TankBattle')); // MAF_TANK_OWNER_ONLY_V1
+const TankRun = lazy(() => import('../components/TankRun')); // MAF_TANK_OWNER_ONLY_V1
 
 const localRoomDeadline = room => room ? {
   ...room, localReturnDeadline:room.return_deadline ? Date.now() + room.return_deadline - (room.server_now || Date.now()) : null,
 } : null;
 
 const money = (value) => `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`;
-const gameName = (game) => game === 'dice' ? 'Lancer de dés' : game === 'tank' ? 'Tank Battle' : game === 'checkers' ? 'Dames' : 'Tir au but';
-const gameSymbol = (game) => game === 'dice' ? '🎲' : game === 'tank' ? '🚀' : game === 'checkers' ? '♛' : '⚽';
+const gameName = (game) => game === 'tankrun' ? 'Tank Run' : game === 'dice' ? 'Lancer de dés' : game === 'tank' ? 'Tank Battle' : game === 'checkers' ? 'Dames' : 'Tir au but';
+const gameSymbol = (game) => game === 'tankrun' ? '🏎️' : game === 'dice' ? '🎲' : game === 'tank' ? '🚀' : game === 'checkers' ? '♛' : '⚽';
 const GAMES = [
   {
     id: 'penalty', emoji: '⚽', name: 'Tir au but',
@@ -49,7 +50,7 @@ const GAMES = [
     about:'Défie un autre joueur avec 1 ou 2 dés, sur 1, 3, 5 ou 10 coups. En manches séparées ou en points cumulés.',
     tags:['1 ou 2 dés', '1 / 3 / 5 / 10 coups', 'Manches ou total', '2 joueurs'] },
   {
-    id: 'tank-spin', emoji: '🕹️', name: 'Tank Battle 2D',
+    id: 'tankrun', emoji: '🕹️', name: 'Tank Run',
     about: 'Combat de chars a rotation automatique. Appuie pour tirer ou maintiens pour avancer.',
     tags: ['2 a 4 chars', 'Joueurs sur le meme appareil', 'Robots', 'Mode local'],
   },
@@ -183,12 +184,12 @@ export default function GamePage() {
   }, [selected?.id, tab]);
 
   const openGame = (id) => {
-    if (id === 'tank-spin' && session?.pseudo !== '999') { setGameId(null); return; }
+    // Tank Run disponible pour tous les comptes.
     setError('');
     setNotice('');
     setGameId(id);
   };
-  const visibleGames = session?.pseudo === '999' ? GAMES : GAMES.filter((g) => g.id !== 'tank-spin');
+  const visibleGames = GAMES;
   const currentGame = visibleGames.find((g) => g.id === gameId) || null;
 
   const matchAction = async (run) => {
@@ -455,6 +456,11 @@ export default function GamePage() {
                 </button>}
               </div>
               {isParticipant && ['ready', 'playing', 'finished'].includes(selected.status) && (
+                selected.game === 'tankrun' ? <TankRunOnline
+                  room={selected} match={match} busy={busy}
+                  onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
+                  onExit={() => void exitArena()}
+                  onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))} /> :
                 selected.game === 'checkers' ? <CheckersArena
                   room={selected} match={match} busy={busy} error={error} onExit={() => void exitArena()}
                   onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
@@ -542,9 +548,9 @@ export default function GamePage() {
                 </div>
               </div>
               {error && <p role="alert" className="game-hub__error">{error}</p>}
-              {currentGame.id === 'tank-spin' ? (
-                <Suspense fallback={<p role="status">Chargement de Tank Battle 2D...</p>}>
-                  <TankBattle onExit={() => openGame(null)} />
+              {currentGame.id === 'tankrun' ? (
+                <Suspense fallback={<p role="status">Chargement de Tank Run...</p>}>
+                  <TankRun onExit={() => openGame(null)} />
                 </Suspense>
               ) : (
                 <>
@@ -568,7 +574,7 @@ export default function GamePage() {
                       <label className={diceMode==='cumulative'?'is-checked':''}><input type="radio" name="dice-mode" checked={diceMode==='cumulative'} onChange={() => setDiceMode('cumulative')} />Résultats cumulés</label>
                     </fieldset>}
                     <p className="game-hub__muted">{diceRounds===1 ? 'Un seul lancer chacun : le plus grand résultat gagne.' : diceMode==='separate' ? 'Chaque coup est une manche indépendante. Celui qui gagne le plus de manches gagne le duel.' : 'Les points des coups sont additionnés. Le plus grand total gagne à la fin.'} En cas d’égalité finale, le match est nul et les mises sont remboursées.</p>
-                  </> : <p className="game-hub__muted">{currentGame.id === 'tank' ? 'Tank Battle · 100 PV · 6 armes · carburant · 2 minutes maximum par tour.' : 'Dames · 10 × 10 · prises obligatoires · 2 minutes par coup.'}</p>}
+                  </> : <p className="game-hub__muted">{currentGame.id === 'tankrun' ? 'Tank Run · deux joueurs à distance · choix du char et du terrain dans le salon.' : currentGame.id === 'tank' ? 'Tank Battle · 100 PV · 6 armes · carburant · 2 minutes maximum par tour.' : 'Dames · 10 × 10 · prises obligatoires · 2 minutes par coup.'}</p>}
                   <label>Mise par joueur (F CFA)
                     <input type="text" inputMode="numeric" pattern="[0-9]+" required maxLength={7}
                       value={stake} onChange={(e) => setStake(e.target.value.replace(/\D/g, '').slice(0, 7))}
@@ -595,3 +601,7 @@ export default function GamePage() {
     </main>
   );
 }
+
+// MAF_TANKRUN_STAGE_1
+
+// MAF_TANKRUN_STAGE_4

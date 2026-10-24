@@ -1,0 +1,7 @@
+/* MAF_TANKRUN_ONLINE_V1 */
+.tr-prep {display:flex;flex-direction:column;gap:10px;padding:14px;background:rgba(0,0,0,.1);border-radius:12px;}
+.tr-prep label {display:flex;flex-direction:column;gap:5px;font-size:13px;}
+.tr-prep select {width:100%;min-height:43px;border-radius:8px;padding:8px;background:#201b32;color:white;}
+.tr-prep button {padding:10px;border-radius:9px;min-height:38px;}
+.tr-net-status {position:absolute;top:20%;left:15%;right:15%;padding:10px;color:#fff;background:#451919cc;pointer-events:none;text-align:center;}
+.tr-root .tr-forfeit {position:relative;color:#fff;border:0;background:transparent;font-size:10px;opacity:.6;}
