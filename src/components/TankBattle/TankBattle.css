@@ -1,0 +1,140 @@
+.tb-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #05030f;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #fff;
+}
+.tb-fixed {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 50;
+}
+.tb-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.tb-topbtn {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(5, 3, 15, 0.65);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tb-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 3, 15, 0.86);
+  padding: 12px;
+  overflow: auto;
+}
+.tb-over { background: rgba(5, 3, 15, 0.5); }
+.tb-card {
+  width: min(92vw, 380px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.tb-title {
+  margin: 0 0 4px;
+  font: 900 clamp(40px, 11vh, 64px) / 0.95 Impact, "Arial Black", system-ui, sans-serif;
+  color: #fff;
+  -webkit-text-stroke: 3px #3b1a8c;
+  paint-order: stroke fill;
+  letter-spacing: 1px;
+  text-shadow: 0 4px 0 #3b1a8c;
+}
+.tb-win {
+  margin: 0 0 6px;
+  font: 900 clamp(28px, 7vh, 44px) / 1.1 Impact, "Arial Black", system-ui, sans-serif;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.6);
+}
+.tb-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.tb-row > span { width: 76px; text-align: right; font-size: 14px; opacity: 0.85; }
+.tb-chip {
+  width: 44px;
+  height: 40px;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tb-chip.on { background: #ffb703; border-color: #ffb703; color: #1a1200; }
+.tb-small { margin: 0; font-size: 12px; opacity: 0.65; }
+.tb-rules {
+  margin: 2px 0 4px;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.5;
+  opacity: 0.92;
+}
+.tb-play {
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(#ffc93c, #ff9f1c);
+  color: #1a1200;
+  font: 900 20px Impact, "Arial Black", system-ui, sans-serif;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #b36b00;
+}
+.tb-play:active { transform: translateY(2px); box-shadow: 0 2px 0 #b36b00; }
+.tb-ghost {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+/* Laisser le jeu au-dessus de la barre de navigation de MAF GAME. */
+.tb-fixed { z-index: 20000; }
+
+/* MAF_TANK_EXTRAS_LOCAL_V1 : personnalisation avant match */
+.tb-card-setup { max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; padding: 8px; box-sizing: border-box; width: min(94vw, 440px); scrollbar-width: thin; }
+.tb-card-setup .tb-title { font-size: clamp(34px, 8vh, 56px); }
+.tb-customization { width: 100%; display: flex; flex-direction: column; gap: 8px; text-align: left; padding: 12px; border: 1px solid rgba(255,255,255,.16); border-radius: 14px; background: rgba(255,255,255,.045); box-sizing: border-box; }
+.tb-choice-title { display: block; margin: 0; color: #ffcf5c; font-size: 14px; font-weight: 800; }
+.tb-choice { box-sizing: border-box; width: 100%; min-width: 0; padding: 8px 9px; background: #19172b; color: #fff; border-radius: 9px; border: 1px solid #5f5776; font: 500 12px system-ui, sans-serif; cursor: pointer; }
+.tb-choice:focus-visible { outline: 2px solid #ffb703; outline-offset: 1px; }
+.tb-loadout { display: flex; flex-direction: column; gap: 5px; padding: 8px; border-radius: 10px; background: rgba(8,6,23,.75); }
+.tb-loadout strong { font-size: 12px; }
+.tb-loadout-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; }
+.tb-loadout-row label { display: flex; flex-direction: column; min-width: 0; gap: 3px; }
+.tb-loadout-row label > span { opacity: .75; font-size: 11px; }
+@media (max-width: 370px) { .tb-loadout-row { grid-template-columns: 1fr; } }

@@ -1,6 +1,6 @@
 import RoomCountdown from '../components/RoomCountdown'; // MAF_ROOM_30M_POLICY_V1
 import '../styles/room-countdown.css';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { IconGamepad } from '../components/Icons';
 import { PenaltyArena, SoloPenalty } from '../components/PenaltyArena';
 import CheckersArena from '../components/CheckersArena';
@@ -9,6 +9,7 @@ import TankArena from '../components/TankArena';
 import DiceArena from '../components/DiceArena'; // MAF_DICE_GAMEPAGE_V1
 import SoloDice from '../components/SoloDice'; // MAF_DICE_PRACTICE_V1
 import SoloTank from '../components/SoloTank';
+// MAF_TANK_ROTATION_LOCAL_V1 / module charge seulement au lancement proprietaire
 // MAF_TANK_GAMEPAGE_V1
 import { useSession } from '../auth/useSession';
 import * as roomsApi from '../api/rooms';
@@ -21,6 +22,7 @@ import '../styles/game-salon.css';
 import '../styles/dice-arena.css';
 import '../styles/dice-training.css';
 import '../styles/multi-room-slots.css';
+const TankBattle = lazy(() => import('../components/TankBattle')); // MAF_TANK_OWNER_ONLY_V1
 
 const localRoomDeadline = room => room ? {
   ...room, localReturnDeadline:room.return_deadline ? Date.now() + room.return_deadline - (room.server_now || Date.now()) : null,
@@ -46,6 +48,11 @@ const GAMES = [
   { id:'dice', emoji:'🎲', name:'Lancer de dés',
     about:'Défie un autre joueur avec 1 ou 2 dés, sur 1, 3, 5 ou 10 coups. En manches séparées ou en points cumulés.',
     tags:['1 ou 2 dés', '1 / 3 / 5 / 10 coups', 'Manches ou total', '2 joueurs'] },
+  {
+    id: 'tank-spin', emoji: '🕹️', name: 'Tank Battle 2D',
+    about: 'Combat de chars a rotation automatique. Appuie pour tirer ou maintiens pour avancer.',
+    tags: ['2 a 4 chars', 'Joueurs sur le meme appareil', 'Robots', 'Mode local'],
+  },
 ];
 const statusLabel = { open: 'Ouvert', pending: 'Demande en cours', ready: 'Pret a jouer', playing: 'Match en cours', finished: 'Termine' };
 
@@ -176,11 +183,13 @@ export default function GamePage() {
   }, [selected?.id, tab]);
 
   const openGame = (id) => {
+    if (id === 'tank-spin' && session?.pseudo !== '999') { setGameId(null); return; }
     setError('');
     setNotice('');
     setGameId(id);
   };
-  const currentGame = GAMES.find((g) => g.id === gameId) || null;
+  const visibleGames = session?.pseudo === '999' ? GAMES : GAMES.filter((g) => g.id !== 'tank-spin');
+  const currentGame = visibleGames.find((g) => g.id === gameId) || null;
 
   const matchAction = async (run) => {
     if (busy) return;
@@ -510,9 +519,9 @@ export default function GamePage() {
         <section id="game-panel-jeux" role="tabpanel" aria-labelledby="game-tab-jeux" className="game-hub__content">
           {!currentGame ? (
             <>
-              <div className="game-hub__line"><h2>Les jeux</h2><span className="game-hub__count">{GAMES.length} disponible{GAMES.length > 1 ? 's' : ''}</span></div>
+              <div className="game-hub__line"><h2>Les jeux</h2><span className="game-hub__count">{visibleGames.length} disponible{visibleGames.length > 1 ? 's' : ''}</span></div>
               <div className="game-grid">
-                {GAMES.map((game) => (
+                {visibleGames.map((game) => (
                   <button key={game.id} type="button" className="game-card" onClick={() => openGame(game.id)}>
                     <span className="game-card__emoji" aria-hidden="true">{game.emoji}</span>
                     <span className="game-card__name">{game.name}</span>
@@ -533,6 +542,12 @@ export default function GamePage() {
                 </div>
               </div>
               {error && <p role="alert" className="game-hub__error">{error}</p>}
+              {currentGame.id === 'tank-spin' ? (
+                <Suspense fallback={<p role="status">Chargement de Tank Battle 2D...</p>}>
+                  <TankBattle onExit={() => openGame(null)} />
+                </Suspense>
+              ) : (
+                <>
               <section className="game-hub__panel" aria-label="Créer un salon">
                 <span className="game-hub__eyebrow">JOUER A DEUX</span>
                 <h3>Créer un salon pour ce jeu</h3>
@@ -571,6 +586,8 @@ export default function GamePage() {
                 <p className="game-hub__muted">Entraîne-toi contre le robot avant de défier un autre joueur. Aucune mise en jeu.</p>
                 {currentGame.id === 'penalty' ? <SoloPenalty /> : currentGame.id === 'checkers' ? <SoloCheckers /> : currentGame.id === 'dice' ? <SoloDice key={`${diceCount}-${diceRounds}-${diceRounds === 1 ? 'separate' : diceMode}`} diceCount={diceCount} rounds={diceRounds} mode={diceRounds === 1 ? 'separate' : diceMode} /> : <SoloTank />}
               </section>
+                </>
+              )}
             </article>
           )}
         </section>
