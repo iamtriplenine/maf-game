@@ -31,8 +31,8 @@
 
 /* Partie Monopoly : le plateau occupe l'ecran, pas la zone de details des salons. */
 body:has(.game-hub__detail--monopoly-fullscreen) { overflow:hidden; }
-body:has(.game-hub__detail--monopoly-fullscreen) .dock,
-body:has(.game-hub__detail--monopoly-fullscreen) .refresh-control { display:none; }
+body:has(.game-hub__detail--monopoly-fullscreen) .dock { display:none; }
+/* MAF_MONOPOLY_REFRESH_V1 : le bouton d'actualisation reste visible pendant la partie. */
 .game-hub__detail--monopoly-fullscreen {
   position:fixed !important; inset:0; z-index:100;
   display:block; width:100%; max-width:none; min-height:100dvh;
