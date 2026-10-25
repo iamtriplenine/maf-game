@@ -4,6 +4,7 @@ import { useSession } from '../auth/useSession';
 import { syncWallet } from '../api/accounts';
 import * as api from '../api/monopolyOnline';
 import MonopolyBoard from './MonopolyBoard';
+import MonopolyActionIcon from './MonopolyActionIcon';
 import MonopolyActivity from './MonopolyActivity';
 import MonopolySheet from './MonopolySheet';
 import usePawnTravel from '../games/monopoly/usePawnTravel';
@@ -57,15 +58,15 @@ function BoardMatch({room, session, busy, send}) {
           </div>:<>
             <p className="mono-hint">{hint}</p>
             <div className="mono-actions">
-              <button type="button" className="btn btn--primary btn--sm" disabled={!canAct||game.phase!=='roll'} onClick={()=>onAction('roll')}>🎲 Lancer</button>
-              <button type="button" className="btn btn--sm" disabled={!allowedBuy} onClick={()=>onAction('buy')}>🏷️ Acheter</button>
-              <button type="button" className="btn btn--sm" disabled={!canAct||game.phase!=='after'} onClick={()=>onAction('end')}>⏭ Fin du tour</button>
+              <button type="button" className="btn btn--primary btn--sm" disabled={!canAct||game.phase!=='roll'} onClick={()=>onAction('roll')}><MonopolyActionIcon name="roll"/><span>Lancer</span></button>
+              <button type="button" className="btn btn--sm" disabled={!allowedBuy} onClick={()=>onAction('buy')}><MonopolyActionIcon name="buy"/><span>Acheter</span></button>
+              <button type="button" className="btn btn--sm" disabled={!canAct||game.phase!=='after'} onClick={()=>onAction('end')}><MonopolyActionIcon name="end"/><span>Fin</span></button>
             </div>
             <div className="mono-secondary-actions">
-              <button type="button" className="btn btn--sm" disabled={!canAct||!builds.length} onClick={()=>setPanel('build')}>🏠 Construire</button>
-              <button type="button" className="btn btn--sm" disabled={!canAct||!sells.length} onClick={()=>setPanel('sell')}>🏷️ Vendre</button>
-              <button type="button" className="btn btn--sm" disabled={!cameraReady} onClick={()=>setFocused(f=>!f)}>{focused?'🗺️ Plateau':'🎯 Mon pion'}</button>
-              <button type="button" className="btn btn--sm" onClick={()=>setPanel('more')}>••• Plus</button>
+              <button type="button" className="btn btn--sm" disabled={!canAct||!builds.length} onClick={()=>setPanel('build')}><MonopolyActionIcon name="build"/><span>Maison</span></button>
+              <button type="button" className="btn btn--sm" disabled={!canAct||!sells.length} onClick={()=>setPanel('sell')}><MonopolyActionIcon name="sell"/><span>Vendre</span></button>
+              <button type="button" className="btn btn--sm" disabled={!cameraReady} onClick={()=>setFocused(f=>!f)}><MonopolyActionIcon name={focused?"map":"target"}/><span>{focused?"Plateau":"Mon pion"}</span></button>
+              <button type="button" className="btn btn--sm" onClick={()=>setPanel('more')}><MonopolyActionIcon name="more"/><span>Plus</span></button>
             </div>
           </>}
         </div>

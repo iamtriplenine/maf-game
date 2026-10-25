@@ -160,3 +160,13 @@ body:has(.game-hub--monopoly-playing) .refresh-control { display:none; }
 .mono-magnifier__caption { position:absolute; bottom:0; left:0; right:0; padding:4px 6px; text-align:center; font:700 clamp(10px,2.7cqw,13px)/1.2 var(--font-ui); color:white; background:rgba(8,30,21,.75); }
 @keyframes mono-magnifier-open { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
 @media(prefers-reduced-motion:reduce) { .mono-magnifier { animation:none; } }
+
+/* Commandes Monopoly compactes, icones SVG coherentes en mode solo et en ligne. */
+.mono-console .mono-actions {grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}
+.mono-console .mono-secondary-actions {grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
+.mono-console .mono-actions .btn,.mono-console .mono-secondary-actions .btn{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;min-width:0;padding:7px 3px;line-height:1.1;text-align:center;border-radius:15px;white-space:normal;overflow:hidden;text-overflow:ellipsis;}
+.mono-console .mono-actions .btn{min-height:58px;font-size:12px;}
+.mono-console .mono-secondary-actions .btn{min-height:54px;font-size:10px;}
+.mono-console .btn svg{width:20px;height:20px;flex:none;display:block;}
+.mono-console .btn span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+@media (max-width:370px) { .mono-console .mono-actions .btn{font-size:11px;} .mono-console .mono-secondary-actions .btn{font-size:9.5px;} .mono-console .btn svg{width:19px;height:19px;} }

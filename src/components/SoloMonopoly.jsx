@@ -1,6 +1,7 @@
 // MAF_MONOPOLY_V1_SOLO (etape 4) : Monopoly - mode entrainement (un seul ecran, aucun serveur, aucune mise)
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MonopolyBoard from './MonopolyBoard';
+import MonopolyActionIcon from './MonopolyActionIcon';
 import MonopolyActivity from './MonopolyActivity';
 import MonopolySheet from './MonopolySheet';
 import useMonopolyViewport from '../games/monopoly/useMonopolyViewport';
@@ -194,20 +195,20 @@ export default function SoloMonopoly({ onPlayingChange }) {
           ) : <>
             <p className={`mono-hint${game.phase === 'debt' ? ' mono-hint--warn' : ''}`} title={hint}>{hint}</p>
             <div className="mono-actions">
-              <button type="button" className="btn btn--primary btn--sm" disabled={game.phase !== 'roll' || rolling || walking} onClick={onRoll}>🎲 Lancer</button>
-              <button type="button" className="btn btn--sm" disabled={!canBuy(game) || walking || rolling} onClick={onBuy}>🏷️ Acheter{canBuy(game) ? ` (${usd(SQUARES[me.location].price)})` : ''}</button>
-              <button type="button" className="btn btn--sm" disabled={game.phase !== 'after' || walking || rolling} onClick={() => setGame(g => endTurn(g))}>⏭️ Fin du tour</button>
+              <button type="button" className="btn btn--primary btn--sm" disabled={game.phase !== 'roll' || rolling || walking} onClick={onRoll}><MonopolyActionIcon name="roll"/><span>Lancer</span></button>
+              <button type="button" className="btn btn--sm" disabled={!canBuy(game) || walking || rolling} onClick={onBuy}><MonopolyActionIcon name="buy"/><span>Acheter</span></button>
+              <button type="button" className="btn btn--sm" disabled={game.phase !== 'after' || walking || rolling} onClick={() => setGame(g => endTurn(g))}><MonopolyActionIcon name="end"/><span>Fin</span></button>
             </div>
             <div className="mono-secondary-actions">
-              <button type="button" className="btn btn--sm" disabled={!builds.length || walking || rolling} onClick={() => setPanel('build')}>🏠 Construire</button>
-              <button type="button" className="btn btn--sm" disabled={(!sells.length && game.phase !== 'debt') || walking || rolling} onClick={() => setPanel('sell')}>🏷️ Vendre</button>
+              <button type="button" className="btn btn--sm" disabled={!builds.length || walking || rolling} onClick={() => setPanel('build')}><MonopolyActionIcon name="build"/><span>Maison</span></button>
+              <button type="button" className="btn btn--sm" disabled={(!sells.length && game.phase !== 'debt') || walking || rolling} onClick={() => setPanel('sell')}><MonopolyActionIcon name="sell"/><span>Vendre</span></button>
               <button type="button" className={`btn btn--sm${cameraFocused ? ' btn--primary' : ''}`}
                 disabled={!cameraReady} aria-pressed={cameraFocused}
                 title={cameraFocused ? 'Revenir à la vue générale du plateau' : 'Centrer la caméra sur le pion du joueur actif'}
                 onClick={() => setCameraFocused((focused) => !focused)}>
-                {cameraFocused ? '🗺️ Vue plateau' : '🎯 Mon pion'}
+                <MonopolyActionIcon name={cameraFocused?'map':'target'}/><span>{cameraFocused?'Plateau':'Mon pion'}</span>
               </button>
-              <button type="button" className="btn btn--sm" onClick={() => setPanel('more')}>••• Plus</button>
+              <button type="button" className="btn btn--sm" onClick={() => setPanel('more')}><MonopolyActionIcon name="more"/><span>Plus</span></button>
             </div>
           </>}
         </div>
