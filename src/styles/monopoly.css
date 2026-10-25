@@ -85,3 +85,11 @@
 .mono-dice3d { width:100%; height:30cqw; max-height:190px; pointer-events:none; }
 .mono-dice3d canvas { display:block; width:100%; height:100%; }
 .mono-dice-result { color:#162a1a; font-size:clamp(11px,2.6cqw,16px); font-weight:700; text-shadow:0 1px 3px #fff; }
+
+/* MAF_MONOPOLY_PAWNS_3D_V1 : pions du ZIP et suivi automatique de camera. */
+.mono-scene3d { position:absolute; inset:0; opacity:0; pointer-events:none; }
+.mono-scene3d canvas { width:100%; height:100%; display:block; }
+.mono-board.is-3d .mono-scene3d { opacity:1; pointer-events:auto; }
+.mono-board.is-3d > .mono-board__img, .mono-board.is-3d > .mono-sq, .mono-board.is-3d > .mono-pawn { visibility:hidden; }
+.mono-board.is-travelling .mono-dice-stage { visibility:hidden; }
+.mono-case-picker { position:absolute; z-index:5; left:2%; top:2%; max-width:52%; padding:7px 9px; border:1px solid #8ba492; border-radius:8px; background:#f6fff4ed; color:#17321f; font:600 11px system-ui; }

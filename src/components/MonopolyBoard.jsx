@@ -1,6 +1,8 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 // MAF_MONOPOLY_V1_BOARD (etape 4) : plateau 2D (image du projet Unity) + pions, proprietes et maisons
 import { SQUARES, PIECES } from '../games/monopoly/data';
+
+const MonopolyBoard3D = lazy(() => import('./MonopolyBoard3D'));
 
 const MonopolyDice3D = lazy(() => import('./MonopolyDice3D'));
 
@@ -23,7 +25,9 @@ const INNER = { bottom: [0, -1], top: [0, 1], left: [1, 0], right: [-1, 0], corn
 const pct = (v) => `${(v * 100).toFixed(3)}%`;
 const OFFSETS = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0], [-1, 0], [1, 0]];
 
-export default function MonopolyBoard({ game, selected, onSelect, rolling, diceFaces, renderCenter, positions }) {
+export default function MonopolyBoard({ game, selected, onSelect, rolling, diceFaces, renderCenter, positions, travel }) {
+  const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
   const locOf = (p, idx) => (positions && positions[idx] !== undefined ? positions[idx] : p.location);
   const pawnsBySquare = {};
   game.players.forEach((p, idx) => {
@@ -31,7 +35,11 @@ export default function MonopolyBoard({ game, selected, onSelect, rolling, diceF
     (pawnsBySquare[locOf(p, idx)] ||= []).push(p);
   });
   return (
-    <div className="mono-board" role="group" aria-label="Plateau de Monopoly">
+    <div className={`mono-board${ready && !failed ? ' is-3d' : ''}${travel ? ' is-travelling' : ''}`} role="group" aria-label="Plateau de Monopoly">
+      {!failed && <Suspense fallback={null}><MonopolyBoard3D game={game} positions={positions} travel={travel} selected={selected} onSelect={onSelect} onReady={() => setReady(true)} onFail={() => {setReady(false);setFailed(true);}} /></Suspense>}
+      {ready && !failed && <select className="mono-case-picker" aria-label="Choisir une case du plateau" value={selected ?? ''} onChange={e => onSelect?.(e.target.value === '' ? null : Number(e.target.value))}>
+        <option value="">Examiner une case</option>{SQUARES.map(q => <option key={q.id} value={q.id}>{q.name}</option>)}
+      </select>}
       <img className="mono-board__img" src="/games/monopoly/board.jpg" alt="" draggable="false" />
 
       {SQUARES.map((q) => {

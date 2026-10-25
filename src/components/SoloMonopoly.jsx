@@ -1,6 +1,7 @@
 // MAF_MONOPOLY_V1_SOLO (etape 4) : Monopoly - mode entrainement (un seul ecran, aucun serveur, aucune mise)
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MonopolyBoard from './MonopolyBoard';
+import usePawnTravel from '../games/monopoly/usePawnTravel';
 import '../styles/monopoly.css';
 import { SQUARES, PIECES, GROUP_COLORS } from '../games/monopoly/data';
 import {
@@ -16,23 +17,6 @@ const loadSaved = () => {
     return v && v.version === 1 && Array.isArray(v.players) && v.players.length >= 2 ? v : null;
   } catch { return null; }
 };
-
-// Les pions "marchent" case par case (la regle est deja calculee, seul l'affichage est progressif)
-function useWalking(players) {
-  const target = players.map((p) => p.location).join(',');
-  const [shown, setShown] = useState(() => players.map((p) => p.location));
-  const goal = target.split(',').map(Number);
-  const cur = shown.length === goal.length ? shown : goal;
-  useEffect(() => {
-    const idx = goal.findIndex((g, i) => g !== cur[i]);
-    if (idx === -1) return undefined;
-    const dist = (goal[idx] - cur[idx] + 40) % 40;
-    const id = setTimeout(() => setShown((s) => (s.length === goal.length ? s : goal).map((v, i) => (i === idx ? (dist <= 12 ? (v + 1) % 40 : goal[idx]) : v))), dist <= 12 ? 170 : 400);
-    return () => clearTimeout(id);
-  }, [target, cur.join(',')]); // eslint-disable-line
-  const walking = goal.some((g, i) => g !== cur[i]);
-  return { shown: cur, walking };
-}
 
 const RULES = [
   'Chaque joueur commence avec 1 500 $. On lance le dé, on avance, et la case décide : acheter, payer un loyer, une taxe ou tirer une carte.',
@@ -117,7 +101,7 @@ export default function SoloMonopoly() {
     } catch { /* stockage indisponible : pas grave */ }
   }, [game]);
 
-  const { shown, walking } = useWalking(game ? game.players : []);
+  const { shown, walking, travel } = usePawnTravel(game);
 
   const start = () => {
     setAuto(false);
@@ -149,10 +133,10 @@ export default function SoloMonopoly() {
 
   // Mode automatique : joue les tours tout seul pour voir les debits d'argent
   useEffect(() => {
-    if (!auto || !game || game.phase === 'over') return undefined;
+    if (!auto || !game || game.phase === 'over' || walking || rolling) return undefined;
     const id = setTimeout(() => setGame((g) => autoTurn(g)), 900);
     return () => clearTimeout(id);
-  }, [auto, game]);
+  }, [auto, game, walking, rolling]);
 
   if (!game) {
     return (
@@ -198,7 +182,7 @@ export default function SoloMonopoly() {
       </div>
 
       <MonopolyBoard game={game} selected={selected} onSelect={(i) => setSelected((s) => (s === i ? null : i))}
-        rolling={rolling} diceFaces={faces} positions={shown}
+        rolling={rolling} diceFaces={faces} positions={shown} travel={travel}
         renderCenter={() => cardOpen && (
           <div className={`mono-cardpop${game.card.deck === 'chest' ? ' is-chest' : ''}`} role="dialog" aria-label="Carte tirée">
             <strong>{game.card.deck === 'chest' ? 'CAISSE DE COMMUNAUTÉ' : 'CHANCE'}</strong>
@@ -303,7 +287,7 @@ export default function SoloMonopoly() {
             <button type="button" className="btn btn--sm" onClick={() => setGame((g) => grantProperty(g, Number(testSquare)))}>Donner à {me.name}</button>
           </div>
           <div className="mono__row">
-            <button type="button" className="btn btn--sm" disabled={auto} onClick={() => setGame((g) => autoTurn(g))}>▶️ Jouer ce tour</button>
+            <button type="button" className="btn btn--sm" disabled={auto || walking || rolling} onClick={() => setGame((g) => autoTurn(g))}>▶️ Jouer ce tour</button>
             <button type="button" className={`btn btn--sm${auto ? ' btn--primary' : ''}`} onClick={() => setAuto((a) => !a)}>{auto ? '⏸️ Arrêter l\'auto' : '⏩ Partie automatique'}</button>
           </div>
         </details>
