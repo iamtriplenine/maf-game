@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { PIECES } from '../games/monopoly/data';
+import { overviewHeight, renderPixelRatio } from '../games/monopoly/cameraQuality';
 import { BOARD_SIZE, squareCenter, squarePosition, pickSquare, sampleTravel } from '../games/monopoly/pawnMotion';
 
 const OFFSETS=[[-.6,-.6],[.6,-.6],[-.6,.6],[.6,.6],[0,0],[-.6,0],[.6,0]];
@@ -14,7 +15,7 @@ export default function MonopolyBoard3D({ game, positions, travel, selected, onS
   let stopped=false,renderer,observer,raf=0,dirty=true,textureReady=false,failed=false;
   const scene=new THREE.Scene();
   const camera=new THREE.PerspectiveCamera(46,1,.1,150);
-  const overview=new THREE.Vector3(0,26.5,7),look=new THREE.Vector3(0,0,0);
+  const overview=new THREE.Vector3(0,overviewHeight(camera.fov),.0001),look=new THREE.Vector3(0,0,0);
   camera.position.copy(overview);camera.lookAt(look);
   const resources=new Set(),loaded=new Map(),pawns=new Map(),pending=new Set();
   const keep=o=>{resources.add(o);return o;};
@@ -32,14 +33,14 @@ export default function MonopolyBoard3D({ game, positions, travel, selected, onS
   const selectedMat=keep(new THREE.MeshBasicMaterial({color:0xffd35c,transparent:true,opacity:.45,depthWrite:false}));
   const selection=new THREE.Mesh(keep(new THREE.PlaneGeometry(1,1)),selectedMat);
   selection.rotation.x=-Math.PI/2;selection.position.y=.045;selection.visible=false;scene.add(selection);
-  const texture=new THREE.TextureLoader().load('/games/monopoly/board.jpg',()=>{if(stopped)return;texture.colorSpace=THREE.SRGBColorSpace;board.material.map=texture;board.material.needsUpdate=true;textureReady=true;dirty=true;},undefined,fail);keep(texture);
+  const texture=new THREE.TextureLoader().load('/games/monopoly/board.jpg',()=>{if(stopped)return;texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=Math.min(8,renderer?.capabilities.getMaxAnisotropy()||1);board.material.map=texture;board.material.needsUpdate=true;textureReady=true;dirty=true;},undefined,fail);keep(texture);
   const ray=new THREE.Raycaster(),point=new THREE.Vector2();
   const click=e=>{
    const rect=el.getBoundingClientRect();point.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);
    ray.setFromCamera(point,camera);const hit=ray.intersectObject(board)[0];
    if(hit){const id=pickSquare(hit.point.x,hit.point.z);if(id!==null)latest.current.onSelect?.(id);}
   };
-  const resize=()=>{const w=el.clientWidth,h=el.clientHeight;if(!w||!h||!renderer)return;renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();dirty=true;};
+  const resize=()=>{const w=el.clientWidth,h=el.clientHeight;if(!w||!h||!renderer)return;renderer.setPixelRatio(renderPixelRatio(window.devicePixelRatio));renderer.setSize(w,h,false);camera.aspect=w/h;overview.y=overviewHeight(camera.fov,camera.aspect);if(!latest.current.travel){camera.position.copy(overview);camera.lookAt(0,0,0);}camera.updateProjectionMatrix();dirty=true;};
   const lost=e=>{e.preventDefault();fail();};
   try{
    renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});renderer.setClearColor(0,0);
@@ -79,6 +80,9 @@ export default function MonopolyBoard3D({ game, positions, travel, selected, onS
     previousSelected=props.selected;selection.visible=props.selected!==null;
     if(selection.visible){const p=squarePosition(props.selected),c=squareCenter(props.selected);selection.position.set(p.x,.045,p.z);selection.scale.set((c.side==='left'||c.side==='right'||c.side==='corner'? .1328:(1-2*.1328)/9)*BOARD_SIZE,(c.side==='bottom'||c.side==='top'||c.side==='corner'?.1328:(1-2*.1328)/9)*BOARD_SIZE,1);}dirty=true;
    }
+   // Au repos, l image HTML reste nette sous les pions 3D. Le plateau texture
+   // reprend le relais uniquement pendant le travelling (la perspective autorise des marges).
+   board.material.colorWrite=!!props.travel;base.visible=!!props.travel;
    const motion=props.travel,sample=motion?sampleTravel(motion,now-motion.start):null;
    const active=!!sample&&!sample.done;
    const changedMotion=motion!==previousMotion;previousMotion=motion;
