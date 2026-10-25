@@ -101,7 +101,9 @@ export default function TankRunOnline({room,match,onStart,onExit,onForfeit,busy}
     const resize=()=>{
       const width=wrap.clientWidth,height=wrap.clientHeight;
       if(!width||!height)return;
-      view.W=width;view.H=height;view.dpr=Math.min(window.devicePixelRatio||1,2.5);
+      const dpr=Math.min(window.devicePixelRatio||1,2);
+      if(view.W===width&&view.H===height&&view.dpr===dpr)return;
+      view.W=width;view.H=height;view.dpr=dpr;
       canvas.width=Math.round(width*view.dpr);canvas.height=Math.round(height*view.dpr);
       view.scale=Math.min(width/800,height/480)*0.99;
       view.ox=(width-800*view.scale)/2;view.oy=(height-480*view.scale)/2;
@@ -299,7 +301,7 @@ export default function TankRunOnline({room,match,onStart,onExit,onForfeit,busy}
   );
 
   return <div className={`tb-root tb-fixed tr-root tr-${orientation}`} ref={wrapRef}
-    onPointerDown={handleDown} onPointerUp={handleUp} onPointerCancel={handleUp}
+    onPointerDown={handleDown} onPointerUp={handleUp} onPointerCancel={handleUp} onLostPointerCapture={handleUp}
     onContextMenu={e=>e.preventDefault()}>
     <canvas ref={canvasRef} className="tb-canvas" />
     <button data-ui className="tr-rotate" onClick={()=>setOrientation(o=>o==='portrait'?'landscape':'portrait')}>⤾ {orientation==='portrait'?'Horizontal':'Vertical'}</button>

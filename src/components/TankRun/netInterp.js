@@ -37,8 +37,13 @@ export class SnapshotBuffer {
   push(snap, now) {
     const last = this.snaps[this.snaps.length - 1];
     if (last) {
-      if (snap.t <= last.t) return false;
-      if (snap.t < last.t - 1) this.reset(); // simulation relancee cote serveur
+      if (Number.isFinite(snap.serverNow) && Number.isFinite(last.serverNow) &&
+          snap.serverNow < last.serverNow) return false;
+      // Une reponse HTTP ancienne ne doit jamais faire reculer le jeu.
+      // Un checkpoint plus ancien peut toutefois etre restaure apres redemarrage.
+      if (snap.t < last.t - 0.5 && Number.isFinite(snap.serverNow) &&
+          Number.isFinite(last.serverNow) && snap.serverNow > last.serverNow) this.reset();
+      else if (snap.t <= last.t) return false;
     }
     if (this.lastArrival) {
       const gap = Math.min(500, now - this.lastArrival);
@@ -74,7 +79,8 @@ export class SnapshotBuffer {
       rt = newest;
     } else if (now - this.lastStarve > 1500 && this.delay > target) this.delay = Math.max(target, this.delay - 0.3);
     else if (this.delay < target) this.delay = Math.min(target, this.delay + 2);
-    if (rt < this.lastRt && this.lastRt - rt < 1000) rt = this.lastRt;
+    // Une pause d'onglet ne permet ni retour arriere ni depassement du serveur.
+    rt = Math.min(newest, Math.max(this.snaps[0].t * 1000, this.lastRt, rt));
     this.lastRt = rt;
     return rt / 1000;
   }
@@ -102,12 +108,14 @@ export class SnapshotBuffer {
     }
     const span = b.t - a.t;
     const k = span > 1e-6 ? Math.min(1, Math.max(0, (rt - a.t) / span)) : 1;
-    const near = k < 0.5 ? a : b;
-    const dt = rt - near.t;
+    // Les etats discrets et les effets viennent du PASSE uniquement. Utiliser
+    // l'image future ressuscitait GO et agrandissait les anneaux a rayon negatif.
+    const near = a;
+    const dt = Math.max(0, rt - near.t);
 
     const tanks = b.tanks.map((tb, i) => {
       const ta = a.tanks[i] || tb;
-      const c = k < 0.5 ? ta : tb;
+      const c = ta;
       const x = lerp(ta.x, tb.x, k), y = lerp(ta.y, tb.y, k);
       let angle = ta.angle + angDiff(ta.angle, tb.angle) * k;
       if (ownAngle != null && i === ownIndex && c.alive) angle = ownAngle;
@@ -122,22 +130,24 @@ export class SnapshotBuffer {
       let x, y;
       if (p) { x = lerp(p.x, q.x, k); y = lerp(p.y, q.y, k); }
       else { x = q.x - q.vx * (b.t - rt); y = q.y - q.vy * (b.t - rt); }
-      bullets.push({ ...q, x, y, px: x, py: y });
+      if (!p && a !== b && k < 1) continue;
+      const life = Number.isFinite(q.life) ? Math.max(0, q.life + b.t - rt) : rt;
+      bullets.push({ ...q, x, y, px: x, py: y, life });
     }
-    if (a !== b && k < 0.5) {
+    if (a !== b && k < 1) {
       const now = new Set(b.bullets.map((q) => q.id));
       for (const p of a.bullets) {
         if (now.has(p.id)) continue;
         const x = p.x + p.vx * (rt - a.t), y = p.y + p.vy * (rt - a.t);
-        bullets.push({ ...p, x, y, px: x, py: y });
+        bullets.push({ ...p, x, y, px: x, py: y, life: Number.isFinite(p.life) ? Math.max(0, p.life - (rt - a.t)) : rt });
       }
     }
 
     const particles = [];
     for (const p of near.particles) {
       const life = p.life - dt;
-      if (life <= 0) continue;
-      particles.push({ ...p, x: p.x + p.vx * dt, y: p.y + p.vy * dt, life, rot: p.rot + p.vr * dt });
+      if (!Number.isFinite(life) || life <= 0 || !(p.max > 0)) continue;
+      particles.push({ ...p, x: p.x + p.vx * dt, y: p.y + p.vy * dt, life: Math.min(p.max, life), rot: (p.rot || 0) + (p.vr || 0) * dt });
     }
     const flashes = [];
     for (const f of near.flashes) {
@@ -150,7 +160,7 @@ export class SnapshotBuffer {
       tanks, bullets, particles, flashes,
       time: rt, phase: near.phase,
       countdown: near.phase === 'countdown' ? Math.max(0, near.countdown - dt) : near.countdown,
-      goTimer: Math.max(0, near.goTimer - dt),
+      goTimer: near.goTimer > 0 ? Math.max(0, near.goTimer - dt) : 0,
       shake: Math.max(0, near.shake - dt * 2.2),
       winner: near.winner,
     };
