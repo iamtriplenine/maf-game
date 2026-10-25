@@ -1,4 +1,4 @@
-/* MAF_MONOPOLY_V1_CSS : Monopoly (mode entrainement) */
+/* MAF_MONOPOLY_V1_CSS (etape 3) : Monopoly (mode entrainement) */
 .mono { display:grid; gap:14px; }
 .mono__setup { display:grid; gap:14px; padding:18px; border:1px solid var(--border); border-radius:var(--r-lg); background:var(--glass); }
 .mono__setup h3 { margin:0; font:700 16px/1.3 var(--font-tech); }
@@ -63,3 +63,14 @@
 .mono-info { display:grid; gap:4px; font-size:13px; line-height:1.5; }
 .mono-win { text-align:center; padding:22px 14px; border:2px solid var(--accent); border-radius:var(--r-lg); background:var(--accent-soft); display:grid; gap:10px; }
 .mono-win h3 { margin:0; font:700 20px/1.3 var(--font-tech); }
+
+/* Carte Chance / Caisse de communaute (fenetre au centre du plateau) */
+.mono-cardpop { position:absolute; left:6%; right:6%; top:16%; z-index:6; display:grid; gap:2cqw; padding:3cqw; text-align:center; color:#2a1a00; background:#ffe3b0; border:.7cqw solid #f59a23; border-radius:2cqw; box-shadow:0 2cqw 5cqw rgba(0,0,0,.55); animation:mono-flip .45s var(--ease); }
+.mono-cardpop.is-chest { background:#cfeeff; border-color:#1b9bd8; color:#06263a; }
+.mono-cardpop strong { font:700 2.6cqw/1.2 var(--font-tech); letter-spacing:.06em; }
+.mono-cardpop p { margin:0; font-size:3.4cqw; line-height:1.35; font-weight:650; }
+.mono-cardpop .btn { justify-self:center; min-width:20cqw; }
+@keyframes mono-flip { from { opacity:0; transform:rotateX(80deg) scale(.8); } to { opacity:1; transform:none; } }
+.mono-tools summary { cursor:pointer; font:700 14px/1.3 var(--font-tech); }
+.mono-tools select, .mono-tools__num { padding:8px 10px; border:1px solid var(--border); border-radius:var(--r-sm); background:var(--glass); color:var(--text); font-size:13px; max-width:100%; }
+.mono-tools__num { width:96px; }

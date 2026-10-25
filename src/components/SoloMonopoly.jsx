@@ -1,10 +1,11 @@
-// MAF_MONOPOLY_V1_SOLO : Monopoly - mode entrainement (un seul ecran, aucun serveur, aucune mise)
+// MAF_MONOPOLY_V1_SOLO (etape 3) : Monopoly - mode entrainement (un seul ecran, aucun serveur, aucune mise)
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MonopolyBoard from './MonopolyBoard';
 import '../styles/monopoly.css';
 import { SQUARES, PIECES, GROUP_COLORS } from '../games/monopoly/data';
 import {
-  createGame, rollDice, buy, sell, endTurn, giveUp, canBuy, sellOptions, ownedBy,
+  createGame, rollDice, buy, build, sell, endTurn, giveUp, canBuy, sellOptions, buildOptions, ownedBy,
+  setBalance, grantProperty, autoTurn,
 } from '../games/monopoly/engine';
 
 const usd = (n) => `${n} $`;
@@ -58,11 +59,18 @@ export default function SoloMonopoly() {
   const [rolling, setRolling] = useState(false);
   const [tmpFaces, setTmpFaces] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [forced, setForced] = useState([0, 0]); // 0 = aleatoire
+  const [auto, setAuto] = useState(false);
+  const [cardSeen, setCardSeen] = useState('');
+  const [testCash, setTestCash] = useState('100');
+  const [testSquare, setTestSquare] = useState('39');
   const timer = useRef(null);
 
   useEffect(() => () => clearInterval(timer.current), []);
 
   const start = () => {
+    setAuto(false);
+    setCardSeen('');
     setGame(createGame({ names: names.slice(0, count).map((n, i) => n.trim() || `Joueur ${i + 1}`), dice }));
     setSelected(null);
   };
@@ -73,10 +81,10 @@ export default function SoloMonopoly() {
     timer.current = setInterval(() => setTmpFaces(Array.from({ length: dice }, () => 1 + Math.floor(Math.random() * 6))), 90);
     setTimeout(() => {
       clearInterval(timer.current);
-      setGame((g) => rollDice(g));
+      setGame((g) => rollDice(g, { forced: forced.slice(0, dice).map((v) => v || null) }));
       setRolling(false);
     }, 850);
-  }, [game, rolling, dice]);
+  }, [game, rolling, dice, forced]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -87,6 +95,13 @@ export default function SoloMonopoly() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onRoll]);
+
+  // Mode automatique : joue les tours tout seul pour voir les debits d'argent
+  useEffect(() => {
+    if (!auto || !game || game.phase === 'over') return undefined;
+    const id = setTimeout(() => setGame((g) => autoTurn(g)), 900);
+    return () => clearTimeout(id);
+  }, [auto, game]);
 
   if (!game) {
     return (
@@ -118,6 +133,9 @@ export default function SoloMonopoly() {
     return game.log[0] ? `${game.log[0].player === null ? '' : `${game.players[game.log[0].player].name} `}${game.log[0].text}` : '';
   })();
   const sells = sellOptions(game);
+  const builds = buildOptions(game);
+  const cardKey = game.card ? `${game.turn}-${game.card.id}` : '';
+  const cardOpen = !!game.card && cardKey !== cardSeen;
 
   return (
     <div className="mono">
@@ -128,7 +146,14 @@ export default function SoloMonopoly() {
       </div>
 
       <MonopolyBoard game={game} selected={selected} onSelect={(i) => setSelected((s) => (s === i ? null : i))}
-        rolling={rolling} diceFaces={faces} />
+        rolling={rolling} diceFaces={faces}
+        renderCenter={() => cardOpen && (
+          <div className={`mono-cardpop${game.card.deck === 'chest' ? ' is-chest' : ''}`} role="dialog" aria-label="Carte tirée">
+            <strong>{game.card.deck === 'chest' ? 'CAISSE DE COMMUNAUTÉ' : 'CHANCE'}</strong>
+            <p>{game.card.text}</p>
+            <button type="button" className="btn btn--sm btn--primary" onClick={() => setCardSeen(cardKey)}>OK</button>
+          </div>
+        )} />
 
       {game.phase === 'over' ? (
         <div className="mono-win">
@@ -138,8 +163,6 @@ export default function SoloMonopoly() {
         </div>
       ) : (
         <>
-          {game.card && <p className={`mono-card${game.card.deck === 'chest' ? ' mono-card--chest' : ''}`}>
-            <strong>{game.card.deck === 'chest' ? 'CAISSE DE COMMUNAUTÉ' : 'CHANCE'}</strong>{game.card.text}</p>}
           {hint && <p className={`mono-hint${game.phase === 'debt' ? ' mono-hint--warn' : ''}`}>{hint}</p>}
           <div className="mono-actions">
             <button type="button" className="btn btn--primary btn--sm" disabled={game.phase !== 'roll' || rolling} onClick={onRoll}>🎲 Lancer</button>
@@ -151,6 +174,24 @@ export default function SoloMonopoly() {
       )}
 
       {selected !== null && <TileInfo game={game} id={selected} />}
+
+      {builds.length > 0 && (
+        <section className="mono-panel" aria-label="Construire">
+          <h3>🏠 Construire (groupe complet)</h3>
+          <div className="mono-sell">
+            {builds.map((o) => {
+              const q = SQUARES[o.square];
+              const n = game.houses[o.square];
+              return (
+                <div key={o.square} className="mono-sell__row">
+                  <span><span className="mono-dot" style={{ background: GROUP_COLORS[q.group] }} />{q.name} · {n === 4 ? 'hôtel' : `maison n°${n + 1}`}</span>
+                  <button type="button" className="btn btn--sm" onClick={() => setGame((g) => build(g, o.square))}>−{usd(o.price)}</button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {game.phase !== 'over' && (game.phase === 'debt' || sells.length > 0) && (
         <section className="mono-panel" aria-label="Propriétés">
@@ -182,7 +223,39 @@ export default function SoloMonopoly() {
         </ul>
       </section>
 
-      <button type="button" className="btn btn--sm btn--outline" onClick={() => { if (window.confirm('Quitter cette partie d\'entraînement ?')) setGame(null); }}>Quitter la partie</button>
+      {game.phase !== 'over' && (
+        <details className="mono-panel mono-tools">
+          <summary>🧪 Outils de test</summary>
+          <p className="mono__note">Pour voir tous les cas sans attendre le hasard. Ces boutons n'existent qu'en entraînement.</p>
+          <div className="mono__row">
+            {Array.from({ length: dice }, (_, i) => (
+              <label key={i} className="mono__note">Dé {i + 1}{' '}
+                <select value={forced[i]} onChange={(e) => setForced((f) => f.map((v, k) => (k === i ? Number(e.target.value) : v)))}>
+                  <option value={0}>Aléatoire</option>
+                  {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
+            ))}
+          </div>
+          <div className="mono__row">
+            <input className="mono-tools__num" inputMode="numeric" value={testCash} aria-label="Nouveau solde"
+              onChange={(e) => setTestCash(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+            <button type="button" className="btn btn--sm" onClick={() => setGame((g) => setBalance(g, Number(testCash || 0)))}>Fixer le solde de {me.name}</button>
+          </div>
+          <div className="mono__row">
+            <select value={testSquare} onChange={(e) => setTestSquare(e.target.value)} aria-label="Propriété à donner">
+              {SQUARES.filter((q) => q.price).map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
+            </select>
+            <button type="button" className="btn btn--sm" onClick={() => setGame((g) => grantProperty(g, Number(testSquare)))}>Donner à {me.name}</button>
+          </div>
+          <div className="mono__row">
+            <button type="button" className="btn btn--sm" disabled={auto} onClick={() => setGame((g) => autoTurn(g))}>▶️ Jouer ce tour</button>
+            <button type="button" className={`btn btn--sm${auto ? ' btn--primary' : ''}`} onClick={() => setAuto((a) => !a)}>{auto ? '⏸️ Arrêter l\'auto' : '⏩ Partie automatique'}</button>
+          </div>
+        </details>
+      )}
+
+      <button type="button" className="btn btn--sm btn--outline" onClick={() => { if (window.confirm('Quitter cette partie d\'entraînement ?')) setAuto(false); setGame(null); }}>Quitter la partie</button>
     </div>
   );
 }
