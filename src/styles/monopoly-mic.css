@@ -1,0 +1,8 @@
+/* MAF_MONOPOLY_MIC_V1 : le micro prend la place du bouton "Plus" dans la rangee d'actions. */
+.mono-mic-slot { display:flex; min-width:0; }
+.mono-voice-trigger.mono-voice-trigger--slot { position:relative; top:auto; right:auto; z-index:auto; width:100%; height:auto; min-height:54px; padding:7px 3px; gap:4px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:15px; border-width:1px; font:inherit; font-size:10px; font-weight:600; line-height:1.1; letter-spacing:0; }
+.mono-voice-trigger--slot svg { width:20px; height:20px; flex:none; }
+.mono-voice-trigger--slot span:not(.mono-voice-recording-dot) { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mono-more-bottom { width:100%; margin-top:10px; }
+.mono-elim summary { cursor:pointer; font:700 14px/1.3 var(--font-tech); }
+.mono-elim .mono-log li { color:var(--text); line-height:1.45; }

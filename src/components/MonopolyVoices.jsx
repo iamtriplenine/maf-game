@@ -2,8 +2,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useVoiceRecorder, voiceSupported } from '../chat/useVoiceRecorder';
 import { IconMic, IconPlay, IconPause } from './VoiceIcons';
+import { createPortal } from 'react-dom'; // MAF_MONOPOLY_MIC_V1
 import { listMatchVoices, sendMatchVoice, fetchMatchVoice } from '../api/monopolyVoices';
 import '../styles/monopoly-voices.css';
+import '../styles/monopoly-mic.css';
 
 const fmt=ms=>`${Math.floor(ms/60000)}:${String(Math.floor(ms/1000)%60).padStart(2,'0')}`;
 const bars=Array.from({length:25},(_,i)=>20+Math.round(75*Math.abs(Math.sin(i*12.46+3.2))));
@@ -51,7 +53,7 @@ function VoiceLine({voice,roomId,mine}){
   </div>;
 }
 
-export default function MonopolyVoices({roomId,userId}){
+export default function MonopolyVoices({roomId,userId,slot=null}){
   const [opened,setOpened]=useState(false),[voices,setVoices]=useState([]),[sending,setSending]=useState(false),[error,setError]=useState('');
   const hold=useRef(null),activePointer=useRef(null),wasHold=useRef(false),sendingRef=useRef(false);
   const refresh=useCallback(async()=>{
@@ -90,14 +92,15 @@ export default function MonopolyVoices({roomId,userId}){
     else {setOpened(o=>!o);setError('');}
   };
   useEffect(()=>()=>{if(hold.current!==null)clearTimeout(hold.current);},[]);
+  const place=node=>slot?createPortal(node,slot):node;
   return <>
-    <button type="button" className={`mono-voice-trigger${recorder.recording?' is-recording':''}`}
+    {place(<button type="button" className={`mono-voice-trigger${slot?' mono-voice-trigger--slot':''}${recorder.recording?' is-recording':''}`}
       aria-label={opened?'Masquer les vocaux. Maintenir pour enregistrer.':'Afficher les vocaux. Maintenir pour enregistrer.'}
       aria-pressed={opened} title="Toucher : vocaux · Maintenir : parler" onPointerDown={onDown} onPointerUp={onUp}
       onPointerCancel={e=>{if(activePointer.current===e.pointerId){activePointer.current=null;if(hold.current!==null){clearTimeout(hold.current);hold.current=null;}if(wasHold.current)recorder.finish();}}}
-      onContextMenu={e=>e.preventDefault()} onClick={e=>{if(e.detail===0){setOpened(o=>!o);setError('');}}}><IconMic size={22}/>
+      onContextMenu={e=>e.preventDefault()} onClick={e=>{if(e.detail===0){setOpened(o=>!o);setError('');}}}><IconMic size={22}/>{slot&&<span>Micro</span>}
       {recorder.recording&&<span className="mono-voice-recording-dot"/>}
-    </button>
+    </button>)}
     {(opened||recorder.recording||sending)&&<section className="mono-voice-overlay" role="region" aria-label="Vocaux de la partie">
       <header><strong>Vocaux · {voices.length}/10</strong><button type="button" onClick={()=>setOpened(false)} aria-label="Masquer les vocaux">×</button></header>
       {recorder.recording&&<p className="mono-voice-record-state">● Enregistrement {fmt(recorder.elapsed)} · Relâche pour envoyer</p>}

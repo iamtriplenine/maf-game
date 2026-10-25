@@ -8,6 +8,7 @@ import MonopolyActionIcon from './MonopolyActionIcon';
 import MonopolyActivity from './MonopolyActivity';
 import MonopolySheet from './MonopolySheet';
 import MonopolyVoices from './MonopolyVoices';
+import EliminationRules from './MonopolyEliminationRules'; // MAF_MONOPOLY_ELIM_V1
 import usePawnTravel from '../games/monopoly/usePawnTravel';
 import { SQUARES, GROUP_COLORS, PIECES } from '../games/monopoly/data';
 import { buildOptions, sellOptions, canBuy, ownedBy } from '../games/monopoly/engine';
@@ -30,6 +31,7 @@ function BoardMatch({room, session, busy, send}) {
   const [selected,setSelected]=useState(null);
   const [focused,setFocused]=useState(false);
   const [cameraReady,setCameraReady]=useState(false);
+  const [micSlot,setMicSlot]=useState(null);
   const builds=isMyTurn?buildOptions(game):[];
   const sells=isMyTurn?sellOptions(game):[];
   const canAct=isMyTurn&&!busy&&!walking;
@@ -41,6 +43,7 @@ function BoardMatch({room, session, busy, send}) {
   useEffect(()=>{const timer=window.setInterval(()=>setClockNow(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
   const winner=room.winnerId===session?.id;
   const hint=game.phase==='over'?'Partie terminee.'
+    : me?.bankrupt?'Tu es éliminé : ta mise est perdue. Tu peux continuer à regarder la partie.'
     : !isMyTurn?`Au tour de ${active?.name || 'un autre joueur'}. La partie se met a jour automatiquement.`
     : game.phase==='debt'?`${me.name}, il faut vendre pour regler ta dette.`
     : game.phase==='roll'?'Tu peux construire sur tes terrains avant de lancer les des.'
@@ -54,7 +57,7 @@ function BoardMatch({room, session, busy, send}) {
             rolling={false} diceFaces={game.lastRoll?.dice||[]} positions={shown} travel={travel}
             cameraFocused={focused} onCameraReadyChange={setCameraReady}
             renderCenter={()=><MonopolyActivity game={game} paused={walking||!!panel}/>}/>
-          {room.status==='playing'&&<MonopolyVoices roomId={room.id} userId={session?.id}/>}
+          {room.status==='playing'&&micSlot&&<MonopolyVoices roomId={room.id} userId={session?.id} slot={micSlot}/>}
         </div>
         <div className="mono-console">
           {awayPlayers.map(p=><p className="mono-online-absence" role="status" key={p.id}>
@@ -65,8 +68,8 @@ function BoardMatch({room, session, busy, send}) {
             <span>{cash(active?.balance||0)} <small>· Tour {game.turn}</small></span>
           </div>
           {room.status==='finished'?<div className="mono-win">
-            <h3>{winner?'🏆 Tu as gagne !':`🏆 ${room.players.find(p=>p.id===room.winnerId)?.name||'Partie terminee'}`}</h3>
-            <p>{winner?`Gain : ${francs(room.payout)}`:'Merci pour la partie.'}</p>
+            <h3>{winner?'🏆 Tu as gagné !':!room.winnerId?'Partie annulée':`🏆 ${room.players.find(p=>p.id===room.winnerId)?.name||'Partie terminée'} gagne la partie`}</h3>
+            <p>{winner?`Gain : ${francs(room.payout)}`:!room.winnerId?'Les mises ont été remboursées.':`Tu as perdu ta mise de ${francs(room.stake)}.`}</p>
           </div>:<>
             <p className="mono-hint">{hint}</p>
             <div className="mono-actions">
@@ -78,7 +81,7 @@ function BoardMatch({room, session, busy, send}) {
               <button type="button" className="btn btn--sm" aria-haspopup="dialog" onClick={()=>setPanel('build')}><MonopolyActionIcon name="build"/><span>Maison</span></button>
               <button type="button" className="btn btn--sm" aria-haspopup="dialog" onClick={()=>setPanel('sell')}><MonopolyActionIcon name="sell"/><span>Vendre</span></button>
               <button type="button" className="btn btn--sm" disabled={!cameraReady} onClick={()=>setFocused(f=>!f)}><MonopolyActionIcon name={focused?"map":"target"}/><span>{focused?"Plateau":"Mon pion"}</span></button>
-              <button type="button" className="btn btn--sm" aria-haspopup="dialog" onClick={()=>setPanel('more')}><MonopolyActionIcon name="more"/><span>Plus</span></button>
+              <div className="mono-mic-slot" ref={setMicSlot}/>
             </div>
           </>}
         </div>
@@ -89,6 +92,7 @@ function BoardMatch({room, session, busy, send}) {
           <span>{p.bankrupt?'Faillite':`${cash(p.balance)} · ${ownedBy(game,i).length} terrain(s)`}</span>
         </div>)}</div>
         <h3>Activites</h3><ul className="mono-log">{game.log.slice(0,35).map(l=><li key={l.n}>{l.player!==null?`${game.players[l.player]?.name||''} `:''}{l.text}</li>)}</ul>
+        <button type="button" className="btn btn--sm btn--outline mono-more-bottom" aria-haspopup="dialog" onClick={()=>setPanel('more')}><MonopolyActionIcon name="more"/><span>Plus · conditions · abandon</span></button>
       </section>
       {panel&&<MonopolySheet title={panel==='build'?'Construire':panel==='sell'?'Vendre':'Options'} onClose={()=>setPanel(null)}>
         {panel==='build'&&<div className="mono-sell">
@@ -105,8 +109,8 @@ function BoardMatch({room, session, busy, send}) {
           {sells.map(o=><div className="mono-sell__row" key={o.square}>
           <span>{SQUARES[o.square].name}</span><button type="button" className="btn btn--sm" disabled={!canAct} onClick={()=>onAction('sell',o.square)}>+{cash(o.value)}</button>
         </div>)}</div>}
-        {panel==='more'&&<div className="mono-panel"><p className="mono__note">Code salon : {room.code}. La partie reste sur le serveur si tu quittes cette page.</p>
-          <button type="button" className="btn btn--sm btn--outline" disabled={busy||room.status!=='playing'}
+        {panel==='more'&&<div className="mono-panel"><EliminationRules stake={room.stake} open/><p className="mono__note">Code salon : {room.code}. La partie reste sur le serveur si tu quittes cette page.</p>
+          <button type="button" className="btn btn--sm btn--outline" disabled={busy||room.status!=='playing'||!!me?.bankrupt}
             onClick={()=>{if(window.confirm('Abandonner ? Tu perdras la partie et ta mise.'))void onAction('abandon');}}>Abandonner la partie</button>
         </div>}
       </MonopolySheet>}
@@ -185,6 +189,7 @@ export default function MonopolyOnline({onPlayingChange,mode='create',selectedRo
       room&&['waiting','proposed'].includes(room.status)?<div className="mono-online-lobby">
         <div className="mono-online-heading"><span>Salon #{room.code}</span><strong>{members.length}/{room.maxPlayers} joueurs</strong></div>
         <p>Mise : <strong>{francs(room.stake)} par joueur</strong> · Pot à {members.length} : {francs(room.stake*members.length)}</p>
+        <EliminationRules stake={room.stake} open/>
         <div className="mono-online-players">{Array.from({length:room.maxPlayers},(_,i)=>{
           const p=members.find(m=>m.seat===i);return <div className="mono-online-player" key={i}>
             <i style={{background:p?['#ef6262','#36a9ec','#f2b443','#9d7df0'][i]:'#67636a'}}/>
