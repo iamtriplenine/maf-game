@@ -29,7 +29,8 @@ export function createGame({ names, rng = Math.random, dice = 1 } = {}) {
     })),
     owners: Array(40).fill(null),
     houses: Array(40).fill(0),
-    builtThisTurn: [], // une seule construction par propriete au cours du tour actuel
+    builtThisTurn: [],
+    purchasedThisTurn: null, // une seule construction par propriete au cours du tour actuel
     decks: { chance: shuffled(CHANCE_CARDS, rng), chest: shuffled(CHEST_CARDS, rng) },
     current: 0,
     phase: 'roll', // roll | after | debt | over
@@ -102,10 +103,14 @@ export function canBuy(s) {
 // Regles MAF : aucune collection de couleur exigee. Une construction par terrain et par tour,
 // uniquement AVANT de lancer les des, sur les proprietes possedees (ni gares ni compagnies).
 export function buildOptions(s, p = s.current) {
-  if (s.phase !== 'roll' || p !== s.current || s.players[p]?.bankrupt) return [];
-  const spent = s.builtThisTurn || []; // compatibilite avec les parties en cours sauvegardees avant la regle
+  if (p !== s.current || s.players[p]?.bankrupt) return [];
+  // Avant le de : construction sur ses terrains. Apres l'achat : uniquement le
+  // terrain tout juste achete, sans attendre le prochain tour.
+  if (s.phase !== 'roll' && (s.phase !== 'after' || !Number.isInteger(s.purchasedThisTurn))) return [];
+  const spent = s.builtThisTurn || []; // compatibilite avec les anciennes parties sauvegardees
   const balance = s.players[p].balance;
   return SQUARES.filter((q) => q.type === 'prop' && s.owners[q.id] === p
+    && (s.phase === 'roll' || q.id === s.purchasedThisTurn)
     && s.houses[q.id] < 5 && !spent.includes(q.id) && q.house <= balance)
     .map((q) => ({ square: q.id, price: q.house }));
 }
@@ -224,6 +229,7 @@ export function rollDice(state, { rng = Math.random, forced = null } = {}) {
   const total = values.reduce((a, b) => a + b, 0);
   s.lastRoll = { dice: values, total };
   s.card = null;
+  s.purchasedThisTurn = null;
   const p = s.current;
   const me = s.players[p];
   say(s, p, `a lancé ${count === 2 ? `${values.join(' + ')} = ` : ''}${total}`, 'roll');
@@ -247,6 +253,7 @@ export function buy(state) {
   me.balance -= q.price;
   s.stats.paid += q.price;
   s.owners[q.id] = p;
+  s.purchasedThisTurn = q.type === 'prop' ? q.id : null;
   say(s, p, `a acheté ${q.name} (${q.price} $)`, 'purchase');
   return s;
 }
@@ -311,6 +318,7 @@ function nextPlayer(s) {
   s.lastRoll = null;
   s.debt = null;
   s.builtThisTurn = [];
+  s.purchasedThisTurn = null;
   s.turn += 1;
 }
 
@@ -353,7 +361,11 @@ export function autoTurn(state, rng = Math.random) {
     if (s.phase === 'debt') s = giveUp(s);
   }
   if (s.phase === 'after') {
-    if (canBuy(s)) s = buy(s);
+    if (canBuy(s)) {
+      s = buy(s);
+      const newPlot = buildOptions(s)[0];
+      if (newPlot && s.players[s.current].balance > 400) s = build(s, newPlot.square);
+    }
     s = endTurn(s);
   }
   return s;

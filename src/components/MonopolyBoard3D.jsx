@@ -49,7 +49,7 @@ export default function MonopolyBoard3D({ game, positions, travel, selected, cam
   const resize=()=>{const w=el.clientWidth,h=el.clientHeight;if(!w||!h||!renderer)return;renderer.setPixelRatio(renderPixelRatio(window.devicePixelRatio));renderer.setSize(w,h,false);camera.aspect=w/h;overview.y=overviewHeight(camera.fov,camera.aspect);if(!latest.current.travel&&!latest.current.cameraFocused&&focusAmount===0){camera.position.copy(overview);camera.lookAt(0,0,0);}camera.updateProjectionMatrix();dirty=true;};
   const lost=e=>{e.preventDefault();fail();};
   try{
-   renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});renderer.setClearColor(0,0);
+   renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true,powerPreference:'low-power'});renderer.setClearColor(0,0);
    renderer.domElement.setAttribute('aria-label','Plateau et pions en 3D');el.appendChild(renderer.domElement);
    renderer.domElement.addEventListener('click',click);renderer.domElement.addEventListener('webglcontextlost',lost);
    observer=new ResizeObserver(resize);observer.observe(el);resize();

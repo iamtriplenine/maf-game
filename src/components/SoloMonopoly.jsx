@@ -26,7 +26,7 @@ const RULES = [
   'Passer par GO rapporte 200 $ (et 200 $ aussi si on s\'arrête dessus). « Go To Jail » envoie en prison (case 10) et coûte 50 $ ; il n\'y a pas de tour perdu.',
   'Loyer d\'une propriété : le loyer de base (×2 si on possède tout le groupe sans maison), puis ×5, ×15, ×45 avec 1, 2, 3 maisons, +200 $ avec 4 maisons, +400 $ avec l\'hôtel.',
   'Gares : 25, 50, 100 ou 200 $ selon le nombre de gares possédées. Compagnies : 4× le dé (10× si on a les deux).',
-  'Construire : chaque terrain acheté peut accueillir des maisons, sans avoir toutes les propriétés de la même couleur. Avant le lancer de dés, chaque joueur peut ajouter une construction sur chacune de ses propriétés, au maximum une par propriété et par tour (si son solde le permet). Quatre maisons maximum, puis un hôtel lors d’un tour suivant. Pas de maison sur les gares ni les compagnies.',
+  'Construire : sur n’importe quel terrain possédé, sans avoir toute une couleur. Avant de lancer les dés, une construction par propriété et par tour. Après avoir acheté un nouveau terrain, tu peux immédiatement y placer sa première maison si tu as assez d’argent. Quatre maisons maximum, puis un hôtel lors d’un tour suivant. Gares et compagnies exclues.',
   'Vendre une propriété rapporte la moitié de son prix (plus la moitié des maisons). Si on ne peut pas payer même en vendant tout : faillite. Le dernier joueur en jeu gagne.',
 ];
 function Rules() {
@@ -160,11 +160,19 @@ export default function SoloMonopoly({ onPlayingChange }) {
     if (game.phase === 'roll') return buildOptions(game).length
       ? `${me.name}, tu peux construire sur tes terrains avant de lancer ${game.dice === 2 ? 'les dés' : 'le dé'}.`
       : `${me.name}, lance ${game.dice === 2 ? 'les dés' : 'le dé'} (bouton ou touche Espace).`;
-    if (canBuy(game)) return `${me.name} est sur ${SQUARES[me.location].name} : achat possible pour ${usd(SQUARES[me.location].price)}.`;
-    return 'Tu peux acheter, vendre ou terminer ton tour. Les constructions se font avant le lancer.';
+    if (canBuy(game)) return `${me.name} est sur ${SQUARES[me.location].name} : achat possible pour ${usd(SQUARES[me.location].price)}. Tu pourras ensuite construire immédiatement si tu as assez d’argent.`;
+    if (game.phase === 'after' && game.purchasedThisTurn != null && buildOptions(game).length) return `${me.name}, terrain acheté ! Tu peux y placer une maison tout de suite, avant de terminer ton tour.`;
+    return 'Tu peux vendre ou terminer ton tour. Les autres constructions se font avant le lancer.';
   })();
   const sells = sellOptions(game);
   const builds = buildOptions(game);
+  const onBuy = () => {
+    const next = buy(game);
+    if (next === game) return;
+    setGame(next);
+    // Proposer directement la premiere maison sur le terrain tout juste achete.
+    if (next.purchasedThisTurn != null && buildOptions(next).length) setPanel('build');
+  };
 
   return (
     <div className="mono mono--playing">
@@ -188,7 +196,7 @@ export default function SoloMonopoly({ onPlayingChange }) {
             <p className={`mono-hint${game.phase === 'debt' ? ' mono-hint--warn' : ''}`} title={hint}>{hint}</p>
             <div className="mono-actions">
               <button type="button" className="btn btn--primary btn--sm" disabled={game.phase !== 'roll' || rolling || walking} onClick={onRoll}>🎲 Lancer</button>
-              <button type="button" className="btn btn--sm" disabled={!canBuy(game) || walking || rolling} onClick={() => setGame(g => buy(g))}>🏷️ Acheter{canBuy(game) ? ` (${usd(SQUARES[me.location].price)})` : ''}</button>
+              <button type="button" className="btn btn--sm" disabled={!canBuy(game) || walking || rolling} onClick={onBuy}>🏷️ Acheter{canBuy(game) ? ` (${usd(SQUARES[me.location].price)})` : ''}</button>
               <button type="button" className="btn btn--sm" disabled={game.phase !== 'after' || walking || rolling} onClick={() => setGame(g => endTurn(g))}>⏭️ Fin du tour</button>
             </div>
             <div className="mono-secondary-actions">
@@ -213,7 +221,7 @@ export default function SoloMonopoly({ onPlayingChange }) {
       {panel === 'build' && (
         <section className="mono-panel" aria-label="Construire">
           <h3>🏠 Construire sur mes terrains</h3>
-          <p className="mono__note">Avant le lancer : une construction maximum par propriété et par tour, sans condition de couleur. Tu peux construire sur plusieurs terrains différents si tu as assez d’argent.</p>
+          <p className="mono__note">Une construction maximum par propriété et par tour, sans condition de couleur. Avant le lancer, tu peux construire sur différents terrains. Après un achat, tu peux immédiatement construire sur le nouveau terrain.</p>
           <div className="mono-sell">
             {builds.length === 0 && <p className="mono__note">Aucune construction supplémentaire possible pour ce tour. Lance les dés ou attends ton prochain tour.</p>}
             {builds.map((o) => {
@@ -222,7 +230,7 @@ export default function SoloMonopoly({ onPlayingChange }) {
               return (
                 <div key={o.square} className="mono-sell__row">
                   <span><span className="mono-dot" style={{ background: GROUP_COLORS[q.group] }} />{q.name} · {n === 4 ? 'hôtel' : `maison n°${n + 1}`}</span>
-                  <button type="button" className="btn btn--sm" disabled={walking || rolling || game.phase !== 'roll'} onClick={() => setGame((g) => build(g, o.square))}>−{usd(o.price)}</button>
+                  <button type="button" className="btn btn--sm" disabled={walking || rolling || !builds.some((option) => option.square === o.square)} onClick={() => { setGame((g) => build(g, o.square)); if (game.phase === 'after') setPanel(null); }}>−{usd(o.price)}</button>
                 </div>
               );
             })}

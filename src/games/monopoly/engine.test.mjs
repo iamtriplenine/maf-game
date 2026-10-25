@@ -26,6 +26,46 @@ ok('achat puis loyer a l autre joueur (Mediterranean 2 $)', () => {
   assert.equal(s.players[1].balance, 1498);
   assert.equal(s.players[0].balance, 1442);
 });
+ok('construction immediate apres achat, sans attendre le tour suivant', () => {
+  let s = createGame({ names: ['A', 'B'] });
+  s = rollDice(s, { forced: [1] });
+  assert.equal(s.phase, 'after');
+  assert.equal(buildOptions(s).length, 0); // terrain pas encore achete
+  s = buy(s);
+  assert.equal(s.purchasedThisTurn, 1);
+  assert.deepEqual(buildOptions(s).map((o) => o.square), [1]);
+  s = build(s, 1);
+  assert.equal(s.houses[1], 1);
+  assert.equal(s.players[0].balance, 1390); // 1500 - 60 - 50
+  assert.equal(build(s, 1), s); // jamais deux constructions sur ce terrain pendant ce tour
+  assert.equal(buildOptions(s).length, 0);
+  s = endTurn(s);
+  assert.equal(s.purchasedThisTurn, null);
+});
+ok('apres achat, seuls le nouveau terrain et le budget sont pris en compte', () => {
+  let s = createGame({ names: ['A', 'B'] });
+  s = grantProperty(s, 3); // autre terrain possede, disponible seulement avant lancer
+  s = rollDice(s, { forced: [1] });
+  s = buy(s);
+  assert.deepEqual(buildOptions(s).map((o) => o.square), [1]);
+  assert.equal(build(s, 3), s); // pas de construction sur les autres proprietes apres le lancer
+  let low = createGame({ names: ['A', 'B'] });
+  low = setBalance(low, 70);
+  low = rollDice(low, { forced: [1] });
+  low = buy(low); // reste 10 $, maison a 50 $
+  assert.equal(buildOptions(low).length, 0);
+  let rail = createGame({ names: ['A', 'B'] });
+  rail = rollDice(rail, { forced: [5] });
+  rail = buy(rail); // gare, jamais de maison
+  assert.equal(buildOptions(rail).length, 0);
+});
+ok('automatique : possibilite de construire sur le terrain juste achete', () => {
+  let s = createGame({ names: ['A', 'B'] });
+  s = autoTurn(s, () => 0); // case 1 a acheter apres lancer un 1
+  assert.equal(s.owners[1], 0);
+  assert.equal(s.houses[1], 1);
+  assert.equal(s.players[0].balance, 1390);
+});
 ok('loyer de groupe complet puis maisons et hotel construit sur cinq tours distincts', () => {
   let s = createGame({ names: ['A', 'B'], rng: () => 0.3 });
   s = grantProperty(s, 1); s = grantProperty(s, 3);
