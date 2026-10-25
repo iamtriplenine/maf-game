@@ -1,6 +1,6 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 // MAF_MONOPOLY_V1_BOARD (etape 4) : plateau 2D (image du projet Unity) + pions, proprietes et maisons
-import { SQUARES, PIECES } from '../games/monopoly/data';
+import { SQUARES, PIECES, GROUP_COLORS } from '../games/monopoly/data';
 
 const MonopolyBoard3D = lazy(() => import('./MonopolyBoard3D'));
 
@@ -26,6 +26,21 @@ const pct = (v) => `${(v * 100).toFixed(3)}%`;
 const OFFSETS = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0], [-1, 0], [1, 0]];
 
 export default function MonopolyBoard({ game, selected, onSelect, rolling, diceFaces, renderCenter, positions, travel }) {
+  const [toast, setToast] = useState(null);
+  const toastId = useRef(0), keyboardCase = useRef(0), selectRef = useRef(onSelect);
+  selectRef.current = onSelect;
+  const showCase = id => {
+    if (id === null) return;
+    keyboardCase.current = id;
+    selectRef.current?.(id);
+    setToast({ id, key: ++toastId.current });
+  };
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = setTimeout(() => { setToast(null); selectRef.current?.(null); }, 500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+  const toastSquare = toast ? SQUARES[toast.id] : null;
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const locOf = (p, idx) => (positions && positions[idx] !== undefined ? positions[idx] : p.location);
@@ -35,11 +50,14 @@ export default function MonopolyBoard({ game, selected, onSelect, rolling, diceF
     (pawnsBySquare[locOf(p, idx)] ||= []).push(p);
   });
   return (
-    <div className={`mono-board${ready && !failed ? ' is-3d' : ''}${travel ? ' is-travelling' : ''}`} role="group" aria-label="Plateau de Monopoly">
-      {!failed && <Suspense fallback={null}><MonopolyBoard3D game={game} positions={positions} travel={travel} selected={selected} onSelect={onSelect} onReady={() => setReady(true)} onFail={() => {setReady(false);setFailed(true);}} /></Suspense>}
-      {ready && !failed && <select className="mono-case-picker" aria-label="Choisir une case du plateau" value={selected ?? ''} onChange={e => onSelect?.(e.target.value === '' ? null : Number(e.target.value))}>
-        <option value="">Examiner une case</option>{SQUARES.map(q => <option key={q.id} value={q.id}>{q.name}</option>)}
-      </select>}
+    <div className={`mono-board${ready && !failed ? ' is-3d' : ''}${travel ? ' is-travelling' : ''}`} role="group" aria-label="Plateau de Monopoly. Utilise les flèches pour parcourir les cases." tabIndex={0}
+      onKeyDown={e => {
+        if (e.target !== e.currentTarget) return;
+        const step = {ArrowRight:1,ArrowLeft:-1,ArrowUp:10,ArrowDown:-10}[e.key];
+        if (step !== undefined) { e.preventDefault(); e.stopPropagation(); showCase((keyboardCase.current + step + 40) % 40); }
+        else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); showCase(keyboardCase.current); }
+      }}>
+      {!failed && <Suspense fallback={null}><MonopolyBoard3D game={game} positions={positions} travel={travel} selected={selected} onSelect={showCase} onReady={() => setReady(true)} onFail={() => {setReady(false);setFailed(true);}} /></Suspense>}
       <img className="mono-board__img" src="/games/monopoly/board.jpg" alt="" draggable="false" />
 
       {SQUARES.map((q) => {
@@ -51,7 +69,7 @@ export default function MonopolyBoard({ game, selected, onSelect, rolling, diceF
         const style = { left: pct(c.x), top: pct(c.y), width: pct(c.side === 'left' || c.side === 'right' ? C : (c.side === 'corner' ? C : T)), height: pct(c.side === 'bottom' || c.side === 'top' ? C : (c.side === 'corner' ? C : T)) };
         return (
           <div key={q.id} className={`mono-sq${selected === q.id ? ' is-selected' : ''}`} style={style}>
-            <button type="button" className="mono-sq__hit" aria-label={`${q.name}`} onClick={() => onSelect?.(q.id)} />
+            <button type="button" className="mono-sq__hit" aria-label={`${q.name}`} onClick={() => showCase(q.id)} />
             {owner !== null && (
               <span className="mono-owner" style={{
                 background: game.players[owner].color,
@@ -91,6 +109,9 @@ export default function MonopolyBoard({ game, selected, onSelect, rolling, diceF
         );
       })}
 
+      {toastSquare && <div key={toast.key} className="mono-case-toast" role="status" style={{'--mono-case-color':GROUP_COLORS[toastSquare.group] || (toastSquare.type === 'chest' ? '#43b7e8' : toastSquare.type === 'chance' ? '#f4aa43' : '#c9d9cb')}}>
+        <span className="mono-case-toast__dot" /><strong>{toastSquare.name}</strong>
+      </div>}
       <div className="mono-center">
         <div className="mono-dice-stage">
           <span className="mono-dice-result" role="status">{rolling ? 'Lancer en cours…' : diceFaces?.length ? `Résultat : ${diceFaces.join(' + ')}` : ''}</span>

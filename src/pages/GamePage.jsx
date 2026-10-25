@@ -69,6 +69,7 @@ export default function GamePage() {
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const [tab, setTab] = useState('jeux');
   const [gameId, setGameId] = useState(null);
+  const [monopolyPlaying, setMonopolyPlaying] = useState(false);
   const [tankRunTraining, setTankRunTraining] = useState(false); // MAF_TANKRUN_SALONS_FIX_V1
   const [rooms, setRooms] = useState([]);
   const [mine, setMine] = useState(null);
@@ -348,7 +349,7 @@ export default function GamePage() {
     !isParticipant && !guestRequestElsewhere && !acceptedMatchElsewhere;
 
   return (
-    <main className="game-page game-hub">
+    <main className={`game-page game-hub${currentGame?.id === 'monopoly' && tab === 'jeux' && monopolyPlaying ? ' game-hub--monopoly-playing' : ''}`}>
       <header className="game-page__head">
         <h1 className="title-tech"><IconGamepad size={30} /> GAME</h1>
         <p>Explore les jeux, cree un salon et trouve ton adversaire.</p>
@@ -560,7 +561,7 @@ export default function GamePage() {
                 <section className="game-detail__training" aria-label="Entraînement Monopoly">
                   <span className="game-hub__eyebrow">ENTRAINEMENT</span>
                   <p className="game-hub__muted">Mode test : pas de salon ni de mise pour l'instant. Tu peux voir le plateau, les règles, les cartes et les débits d'argent.</p>
-                  <SoloMonopoly />
+                  <SoloMonopoly onPlayingChange={setMonopolyPlaying} />
                 </section>
               ) : currentGame.id === 'tankrun' && tankRunTraining ? (
                 <Suspense fallback={<p role="status">Chargement de Tank Run...</p>}>

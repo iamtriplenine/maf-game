@@ -1,6 +1,8 @@
 // MAF_MONOPOLY_V1_SOLO (etape 4) : Monopoly - mode entrainement (un seul ecran, aucun serveur, aucune mise)
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MonopolyBoard from './MonopolyBoard';
+import MonopolySheet from './MonopolySheet';
+import useMonopolyViewport from '../games/monopoly/useMonopolyViewport';
 import usePawnTravel from '../games/monopoly/usePawnTravel';
 import '../styles/monopoly.css';
 import { SQUARES, PIECES, GROUP_COLORS } from '../games/monopoly/data';
@@ -57,26 +59,7 @@ function PlayerRow({ p, isCurrent, props }) {
   );
 }
 
-function TileInfo({ game, id }) {
-  const q = SQUARES[id];
-  const owner = game.owners[id];
-  const kind = { prop: 'Propriété', rail: 'Gare', util: 'Compagnie', tax: 'Taxe', chance: 'Chance', chest: 'Caisse de communauté', go: 'Départ', jail: 'Prison (visite)', parking: 'Parc gratuit', gojail: 'Allez en prison' }[q.type];
-  return (
-    <div className="mono-panel mono-info">
-      <h3>{q.group && <span className="mono-dot" style={{ background: GROUP_COLORS[q.group] }} />}{q.name}</h3>
-      <span>{kind}{q.price ? ` · prix ${usd(q.price)}` : ''}{q.tax ? ` · taxe ${usd(q.tax)}` : ''}</span>
-      {q.type === 'prop' && <>
-        <span>Loyer : {usd(q.rent)} (×2 si tout le groupe) · 1 maison {usd(q.rent * 5)} · 2 maisons {usd(q.rent * 15)} · 3 maisons {usd(q.rent * 45)}</span>
-        <span>4 maisons {usd(q.rent * 45 + 200)} · hôtel {usd(q.rent * 45 + 400)} · maison {usd(q.house)}</span>
-      </>}
-      {q.type === 'rail' && <span>Loyer : 25 $ / 50 $ / 100 $ / 200 $ selon le nombre de gares possédées.</span>}
-      {q.type === 'util' && <span>Loyer : 4× le dé (10× avec les 2 compagnies).</span>}
-      {q.price && <span>{owner === null ? 'Libre' : `Propriétaire : ${game.players[owner].name}`}{game.houses[id] ? ` · ${game.houses[id] === 5 ? 'hôtel' : `${game.houses[id]} maison(s)`}` : ''}</span>}
-    </div>
-  );
-}
-
-export default function SoloMonopoly() {
+export default function SoloMonopoly({ onPlayingChange }) {
   const [count, setCount] = useState(2);
   const [dice, setDice] = useState(1);
   const [names, setNames] = useState(['Joueur 1', 'Joueur 2', 'Joueur 3', 'Joueur 4', 'Joueur 5', 'Joueur 6', 'Joueur 7']);
@@ -90,8 +73,14 @@ export default function SoloMonopoly() {
   const [testCash, setTestCash] = useState('100');
   const [testSquare, setTestSquare] = useState('39');
   const timer = useRef(null);
+  const rollTimeout = useRef(null);
+  const screenRef = useRef(null), consoleRef = useRef(null);
+  const [panel, setPanel] = useState(null);
+  useMonopolyViewport(!!game, screenRef, consoleRef);
+  useEffect(() => { onPlayingChange?.(!!game); }, [!!game, onPlayingChange]);
+  useEffect(() => () => onPlayingChange?.(false), [onPlayingChange]);
 
-  useEffect(() => () => clearInterval(timer.current), []);
+  useEffect(() => () => { clearInterval(timer.current); clearTimeout(rollTimeout.current); }, []);
 
   // La partie survit si on change d'onglet dans l'application (effacee a la fermeture)
   useEffect(() => {
@@ -114,7 +103,7 @@ export default function SoloMonopoly() {
     if (!game || game.phase !== 'roll' || rolling || walking) return;
     setRolling(true);
     timer.current = setInterval(() => setTmpFaces(Array.from({ length: game.dice }, () => 1 + Math.floor(Math.random() * 6))), 90);
-    setTimeout(() => {
+    rollTimeout.current = setTimeout(() => {
       clearInterval(timer.current);
       setGame((g) => rollDice(g, { forced: forced.slice(0, g.dice).map((v) => v || null) }));
       setRolling(false);
@@ -163,10 +152,12 @@ export default function SoloMonopoly() {
   const faces = rolling ? tmpFaces : (game.lastRoll?.dice || []);
   const hint = (() => {
     if (game.phase === 'over') return '';
+    if (rolling) return 'Lancer en cours…';
+    if (walking) return 'Déplacement du pion…';
     if (game.phase === 'debt') return `${me.name}, tu dois ${usd(game.debt.amount)} mais tu as ${usd(me.balance)}. Vends une propriété ou déclare faillite.`;
     if (game.phase === 'roll') return `${me.name}, lance ${game.dice === 2 ? 'les dés' : 'le dé'} (bouton ou touche Espace).`;
     if (canBuy(game)) return `${me.name} est sur ${SQUARES[me.location].name} : achat possible pour ${usd(SQUARES[me.location].price)}.`;
-    return game.log[0] ? `${game.log[0].player === null ? '' : `${game.players[game.log[0].player].name} `}${game.log[0].text}` : '';
+    return 'Tu peux construire, vendre ou terminer ton tour.';
   })();
   const sells = sellOptions(game);
   const builds = buildOptions(game);
@@ -174,44 +165,49 @@ export default function SoloMonopoly() {
   const cardOpen = !!game.card && cardKey !== cardSeen && !walking;
 
   return (
-    <div className="mono">
-      <div className="mono-turn">
-        <span className="mono-turn__who"><span className="mono-token" style={{ background: me.color }}>{PIECES[me.piece].emoji}</span>
-          {game.phase === 'over' ? 'Partie terminée' : `Tour de ${me.name}`}</span>
-        <small>Tour n°{game.turn}</small>
-      </div>
-
-      <MonopolyBoard game={game} selected={selected} onSelect={(i) => setSelected((s) => (s === i ? null : i))}
-        rolling={rolling} diceFaces={faces} positions={shown} travel={travel}
-        renderCenter={() => cardOpen && (
-          <div className={`mono-cardpop${game.card.deck === 'chest' ? ' is-chest' : ''}`} role="dialog" aria-label="Carte tirée">
-            <strong>{game.card.deck === 'chest' ? 'CAISSE DE COMMUNAUTÉ' : 'CHANCE'}</strong>
-            <p>{game.card.text}</p>
-            <button type="button" className="btn btn--sm btn--primary" onClick={() => setCardSeen(cardKey)}>OK</button>
+    <div className="mono mono--playing">
+      <section className="mono-play-screen" ref={screenRef} aria-label="Partie de Monopoly">
+        <MonopolyBoard game={game} selected={selected} onSelect={setSelected}
+          rolling={rolling} diceFaces={faces} positions={shown} travel={travel}
+          renderCenter={() => cardOpen && (
+            <div className={`mono-cardpop${game.card.deck === 'chest' ? ' is-chest' : ''}`} role="dialog" aria-label="Carte tirée">
+              <strong>{game.card.deck === 'chest' ? 'CAISSE DE COMMUNAUTÉ' : 'CHANCE'}</strong>
+              <p>{game.card.text}</p>
+              <button type="button" className="btn btn--sm btn--primary" onClick={() => setCardSeen(cardKey)}>OK</button>
+            </div>
+          )} />
+        <div className="mono-console" ref={consoleRef}>
+          <div className="mono-statusline">
+            <span><span className="mono-token" style={{ background: me.color }}>{PIECES[me.piece].emoji}</span><strong>{me.name}</strong></span>
+            <span>{usd(me.balance)} <small>· Tour {game.turn}</small></span>
           </div>
-        )} />
-
-      {game.phase === 'over' ? (
-        <div className="mono-win">
-          <h3>{game.winner >= 0 ? `🏆 ${game.players[game.winner].name} gagne !` : 'Partie terminée'}</h3>
-          <button type="button" className="btn btn--primary btn--sm" onClick={start}>Rejouer</button>
-          <button type="button" className="btn btn--sm" onClick={() => setGame(null)}>Changer les réglages</button>
+          {game.phase === 'over' ? (
+            <div className="mono-win">
+              <h3>{game.winner >= 0 ? `🏆 ${game.players[game.winner].name} gagne !` : 'Partie terminée'}</h3>
+              <button type="button" className="btn btn--primary btn--sm" onClick={start}>Rejouer</button>
+              <button type="button" className="btn btn--sm" onClick={() => setGame(null)}>Changer les réglages</button>
+            </div>
+          ) : <>
+            <p className={`mono-hint${game.phase === 'debt' ? ' mono-hint--warn' : ''}`} title={hint}>{hint}</p>
+            <div className="mono-actions">
+              <button type="button" className="btn btn--primary btn--sm" disabled={game.phase !== 'roll' || rolling || walking} onClick={onRoll}>🎲 Lancer</button>
+              <button type="button" className="btn btn--sm" disabled={!canBuy(game) || walking || rolling} onClick={() => setGame(g => buy(g))}>🏷️ Acheter{canBuy(game) ? ` (${usd(SQUARES[me.location].price)})` : ''}</button>
+              <button type="button" className="btn btn--sm" disabled={game.phase !== 'after' || walking || rolling} onClick={() => setGame(g => endTurn(g))}>⏭️ Fin du tour</button>
+            </div>
+            <div className="mono-secondary-actions">
+              <button type="button" className="btn btn--sm" disabled={!builds.length || walking || rolling} onClick={() => setPanel('build')}>🏠 Construire</button>
+              <button type="button" className="btn btn--sm" disabled={(!sells.length && game.phase !== 'debt') || walking || rolling} onClick={() => setPanel('sell')}>🏷️ Vendre</button>
+              <button type="button" className="btn btn--sm" onClick={() => setPanel('more')}>••• Plus</button>
+            </div>
+          </>}
         </div>
-      ) : (
-        <>
-          {hint && <p className={`mono-hint${game.phase === 'debt' ? ' mono-hint--warn' : ''}`}>{hint}</p>}
-          <div className="mono-actions">
-            <button type="button" className="btn btn--primary btn--sm" disabled={game.phase !== 'roll' || rolling || walking} onClick={onRoll}>🎲 Lancer</button>
-            <button type="button" className="btn btn--sm" disabled={!canBuy(game) || walking} onClick={() => setGame((g) => buy(g))}>
-              🏷️ Acheter{canBuy(game) ? ` (${usd(SQUARES[me.location].price)})` : ''}</button>
-            <button type="button" className="btn btn--sm" disabled={game.phase !== 'after' || walking} onClick={() => setGame((g) => endTurn(g))}>⏭️ Fin du tour</button>
-          </div>
-        </>
-      )}
-
-      {selected !== null && <TileInfo game={game} id={selected} />}
-
-      {builds.length > 0 && (
+      </section>
+      <section className="mono-panel mono-history" aria-label="Activités">
+        <h3>Activités</h3>
+        <ul className="mono-log">{game.log.map(l => <li key={l.n}>{l.player === null ? '' : `${game.players[l.player].name} `}{l.text}</li>)}</ul>
+      </section>
+      {panel && <MonopolySheet title={panel === 'build' ? 'Construire' : panel === 'sell' ? 'Vendre' : 'Options de la partie'} onClose={() => setPanel(null)}>
+      {panel === 'build' && (
         <section className="mono-panel" aria-label="Construire">
           <h3>🏠 Construire (groupe complet)</h3>
           <div className="mono-sell">
@@ -221,7 +217,7 @@ export default function SoloMonopoly() {
               return (
                 <div key={o.square} className="mono-sell__row">
                   <span><span className="mono-dot" style={{ background: GROUP_COLORS[q.group] }} />{q.name} · {n === 4 ? 'hôtel' : `maison n°${n + 1}`}</span>
-                  <button type="button" className="btn btn--sm" onClick={() => setGame((g) => build(g, o.square))}>−{usd(o.price)}</button>
+                  <button type="button" className="btn btn--sm" disabled={walking || rolling} onClick={() => setGame((g) => build(g, o.square))}>−{usd(o.price)}</button>
                 </div>
               );
             })}
@@ -229,7 +225,7 @@ export default function SoloMonopoly() {
         </section>
       )}
 
-      {game.phase !== 'over' && (game.phase === 'debt' || sells.length > 0) && (
+      {panel === 'sell' && (
         <section className="mono-panel" aria-label="Propriétés">
           <h3>{game.phase === 'debt' ? '⚠️ Vends pour payer ta dette' : 'Mes propriétés'}</h3>
           <div className="mono-sell">
@@ -239,7 +235,7 @@ export default function SoloMonopoly() {
               return (
                 <div key={o.square} className="mono-sell__row">
                   <span>{q.group && <span className="mono-dot" style={{ background: GROUP_COLORS[q.group] }} />}{q.name}{game.houses[o.square] ? ` (${game.houses[o.square] === 5 ? 'hôtel' : `${game.houses[o.square]} 🏠`})` : ''}</span>
-                  <button type="button" className="btn btn--sm" onClick={() => setGame((g) => sell(g, o.square))}>Vendre +{usd(o.value)}</button>
+                  <button type="button" className="btn btn--sm" disabled={walking || rolling} onClick={() => setGame((g) => sell(g, o.square))}>Vendre +{usd(o.value)}</button>
                 </div>
               );
             })}
@@ -248,19 +244,12 @@ export default function SoloMonopoly() {
         </section>
       )}
 
-      <section className="mono-players" aria-label="Joueurs">
-        {game.players.map((p) => <PlayerRow key={p.id} p={p} isCurrent={p.id === game.current && game.phase !== 'over'} props={ownedBy(game, p.id).length} />)}
-      </section>
 
-      <section className="mono-panel" aria-label="Activité">
-        <h3>Activité</h3>
-        <ul className="mono-log">
-          {game.log.slice(0, 6).map((l) => <li key={l.n}>{l.player === null ? '' : `${game.players[l.player].name} `}{l.text}</li>)}
-        </ul>
-      </section>
-
-      <Rules />
-
+        {panel === 'more' && <>
+          <section className="mono-players" aria-label="Joueurs">
+            {game.players.map(p => <PlayerRow key={p.id} p={p} isCurrent={p.id === game.current && game.phase !== 'over'} props={ownedBy(game,p.id).length} />)}
+          </section>
+          <Rules />
       {game.phase !== 'over' && (
         <details className="mono-panel mono-tools">
           <summary>🧪 Outils de test</summary>
@@ -293,9 +282,10 @@ export default function SoloMonopoly() {
         </details>
       )}
 
-      <button type="button" className="btn btn--sm btn--outline" onClick={() => { if (window.confirm('Quitter cette partie d\'entraînement ?')) setAuto(false); setGame(null); }}>Quitter la partie</button>
+
+          <button type="button" className="btn btn--sm btn--outline" onClick={() => { if (window.confirm('Quitter cette partie d’entraînement ?')) { setAuto(false); setPanel(null); setGame(null); clearInterval(timer.current); clearTimeout(rollTimeout.current); setRolling(false); } }}>Quitter la partie</button>
+        </>}
+      </MonopolySheet>}
     </div>
   );
 }
-
-
