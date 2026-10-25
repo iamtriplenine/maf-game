@@ -108,7 +108,7 @@
 .mono--playing { gap:0; min-width:0; }
 .mono-play-screen { display:flex; flex-direction:column; gap:8px; min-height:var(--mono-screen-height,calc(100svh - 140px)); min-width:0; }
 .mono-play-screen > .mono-board { width:min(100%,var(--mono-board-limit,640px)); max-width:640px; flex:none; align-self:center; }
-.mono-console { width:100%; max-width:640px; align-self:center; margin-top:auto; display:grid; gap:6px; }
+.mono-console { width:100%; max-width:640px; align-self:center; margin-top:0; display:grid; gap:6px; }
 .mono-statusline { display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:25px; font-size:12px; }
 .mono-statusline > span { display:flex; align-items:center; gap:6px; min-width:0; }
 .mono-statusline strong { max-width:36vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -139,3 +139,10 @@
 @media(prefers-reduced-motion:reduce) { .mono-case-toast { animation:none; } }
 /* Le bouton flottant global ne doit pas masquer les commandes de la partie. */
 body:has(.game-hub--monopoly-playing) .refresh-control { display:none; }
+
+/* Activite ephemere : le fond seul est floute, le texte reste net. */
+.mono-center > .mono-activity { position:absolute; inset:0; z-index:7; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:3cqw; padding:5cqw; border-radius:5cqw; border:1px solid rgba(255,255,255,.65); background:rgba(245,255,245,.78); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); color:#14251c; text-align:center; pointer-events:none; box-shadow:0 2cqw 8cqw rgba(0,0,0,.16); animation:mono-activity-in .15s ease-out; }
+.mono-activity strong { font:800 clamp(16px,5cqw,30px)/1.15 var(--font-ui); }
+.mono-activity p { margin:0; font:650 clamp(13px,4.2cqw,25px)/1.35 var(--font-ui); overflow-wrap:anywhere; }
+@keyframes mono-activity-in { from {opacity:0;} to {opacity:1;} }
+@media(prefers-reduced-motion:reduce) { .mono-center > .mono-activity { animation:none; } }

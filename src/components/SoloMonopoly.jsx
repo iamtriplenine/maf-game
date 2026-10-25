@@ -1,6 +1,7 @@
 // MAF_MONOPOLY_V1_SOLO (etape 4) : Monopoly - mode entrainement (un seul ecran, aucun serveur, aucune mise)
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MonopolyBoard from './MonopolyBoard';
+import MonopolyActivity from './MonopolyActivity';
 import MonopolySheet from './MonopolySheet';
 import useMonopolyViewport from '../games/monopoly/useMonopolyViewport';
 import usePawnTravel from '../games/monopoly/usePawnTravel';
@@ -69,7 +70,6 @@ export default function SoloMonopoly({ onPlayingChange }) {
   const [selected, setSelected] = useState(null);
   const [forced, setForced] = useState([0, 0]); // 0 = aleatoire
   const [auto, setAuto] = useState(false);
-  const [cardSeen, setCardSeen] = useState('');
   const [testCash, setTestCash] = useState('100');
   const [testSquare, setTestSquare] = useState('39');
   const timer = useRef(null);
@@ -94,7 +94,6 @@ export default function SoloMonopoly({ onPlayingChange }) {
 
   const start = () => {
     setAuto(false);
-    setCardSeen('');
     setGame(createGame({ names: names.slice(0, count).map((n, i) => n.trim() || `Joueur ${i + 1}`), dice }));
     setSelected(null);
   };
@@ -161,21 +160,13 @@ export default function SoloMonopoly({ onPlayingChange }) {
   })();
   const sells = sellOptions(game);
   const builds = buildOptions(game);
-  const cardKey = game.card ? `${game.turn}-${game.card.id}` : '';
-  const cardOpen = !!game.card && cardKey !== cardSeen && !walking;
 
   return (
     <div className="mono mono--playing">
       <section className="mono-play-screen" ref={screenRef} aria-label="Partie de Monopoly">
         <MonopolyBoard game={game} selected={selected} onSelect={setSelected}
           rolling={rolling} diceFaces={faces} positions={shown} travel={travel}
-          renderCenter={() => cardOpen && (
-            <div className={`mono-cardpop${game.card.deck === 'chest' ? ' is-chest' : ''}`} role="dialog" aria-label="Carte tirée">
-              <strong>{game.card.deck === 'chest' ? 'CAISSE DE COMMUNAUTÉ' : 'CHANCE'}</strong>
-              <p>{game.card.text}</p>
-              <button type="button" className="btn btn--sm btn--primary" onClick={() => setCardSeen(cardKey)}>OK</button>
-            </div>
-          )} />
+          renderCenter={() => <MonopolyActivity game={game} paused={rolling || walking || !!panel} />} />
         <div className="mono-console" ref={consoleRef}>
           <div className="mono-statusline">
             <span><span className="mono-token" style={{ background: me.color }}>{PIECES[me.piece].emoji}</span><strong>{me.name}</strong></span>
