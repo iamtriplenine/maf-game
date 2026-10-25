@@ -26,7 +26,7 @@ const RULES = [
   'Passer par GO rapporte 200 $ (et 200 $ aussi si on s\'arrête dessus). « Go To Jail » envoie en prison (case 10) et coûte 50 $ ; il n\'y a pas de tour perdu.',
   'Loyer d\'une propriété : le loyer de base (×2 si on possède tout le groupe sans maison), puis ×5, ×15, ×45 avec 1, 2, 3 maisons, +200 $ avec 4 maisons, +400 $ avec l\'hôtel.',
   'Gares : 25, 50, 100 ou 200 $ selon le nombre de gares possédées. Compagnies : 4× le dé (10× si on a les deux).',
-  'Construire : seulement avec un groupe de couleur complet, une maison à la fois sur la case la moins bâtie ; la 5e est un hôtel.',
+  'Construire : chaque terrain acheté peut accueillir des maisons, sans avoir toutes les propriétés de la même couleur. Avant le lancer de dés, chaque joueur peut ajouter une construction sur chacune de ses propriétés, au maximum une par propriété et par tour (si son solde le permet). Quatre maisons maximum, puis un hôtel lors d’un tour suivant. Pas de maison sur les gares ni les compagnies.',
   'Vendre une propriété rapporte la moitié de son prix (plus la moitié des maisons). Si on ne peut pas payer même en vendant tout : faillite. Le dernier joueur en jeu gagne.',
 ];
 function Rules() {
@@ -157,9 +157,11 @@ export default function SoloMonopoly({ onPlayingChange }) {
     if (rolling) return 'Lancer en cours…';
     if (walking) return 'Déplacement du pion…';
     if (game.phase === 'debt') return `${me.name}, tu dois ${usd(game.debt.amount)} mais tu as ${usd(me.balance)}. Vends une propriété ou déclare faillite.`;
-    if (game.phase === 'roll') return `${me.name}, lance ${game.dice === 2 ? 'les dés' : 'le dé'} (bouton ou touche Espace).`;
+    if (game.phase === 'roll') return buildOptions(game).length
+      ? `${me.name}, tu peux construire sur tes terrains avant de lancer ${game.dice === 2 ? 'les dés' : 'le dé'}.`
+      : `${me.name}, lance ${game.dice === 2 ? 'les dés' : 'le dé'} (bouton ou touche Espace).`;
     if (canBuy(game)) return `${me.name} est sur ${SQUARES[me.location].name} : achat possible pour ${usd(SQUARES[me.location].price)}.`;
-    return 'Tu peux construire, vendre ou terminer ton tour.';
+    return 'Tu peux acheter, vendre ou terminer ton tour. Les constructions se font avant le lancer.';
   })();
   const sells = sellOptions(game);
   const builds = buildOptions(game);
@@ -210,15 +212,17 @@ export default function SoloMonopoly({ onPlayingChange }) {
       {panel && <MonopolySheet title={panel === 'build' ? 'Construire' : panel === 'sell' ? 'Vendre' : 'Options de la partie'} onClose={() => setPanel(null)}>
       {panel === 'build' && (
         <section className="mono-panel" aria-label="Construire">
-          <h3>🏠 Construire (groupe complet)</h3>
+          <h3>🏠 Construire sur mes terrains</h3>
+          <p className="mono__note">Avant le lancer : une construction maximum par propriété et par tour, sans condition de couleur. Tu peux construire sur plusieurs terrains différents si tu as assez d’argent.</p>
           <div className="mono-sell">
+            {builds.length === 0 && <p className="mono__note">Aucune construction supplémentaire possible pour ce tour. Lance les dés ou attends ton prochain tour.</p>}
             {builds.map((o) => {
               const q = SQUARES[o.square];
               const n = game.houses[o.square];
               return (
                 <div key={o.square} className="mono-sell__row">
                   <span><span className="mono-dot" style={{ background: GROUP_COLORS[q.group] }} />{q.name} · {n === 4 ? 'hôtel' : `maison n°${n + 1}`}</span>
-                  <button type="button" className="btn btn--sm" disabled={walking || rolling} onClick={() => setGame((g) => build(g, o.square))}>−{usd(o.price)}</button>
+                  <button type="button" className="btn btn--sm" disabled={walking || rolling || game.phase !== 'roll'} onClick={() => setGame((g) => build(g, o.square))}>−{usd(o.price)}</button>
                 </div>
               );
             })}

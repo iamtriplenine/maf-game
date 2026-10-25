@@ -25,3 +25,10 @@ rien de cela n'est fait pour l'instant.
 - Faute corrigee : le groupe vert etait {31, 32, 24} dans l'original, c'est {31, 32, 34}.
 - Faillite : un joueur qui peut payer en vendant ses biens n'est plus declare en faillite a tort.
 - Option 2 des (l'original n'avait qu'un seul de).
+
+## Regles MAF de construction (2026-10-25)
+- Une maison peut etre construite sur **n’importe quel terrain achete**, sans monopoliser une couleur.
+- Construire se fait **pendant son propre tour, avant le lancer des des**, sur n’importe quel terrain possede, quel que soit l’emplacement du pion.
+- **Au plus une construction par propriete et par tour** : plusieurs terrains differents peuvent chacun recevoir une maison au cours du meme tour si le joueur a l’argent necessaire.
+- Les limites habituelles sont conservees : quatre maisons, puis une cinquieme construction les remplace par un hotel ; le prix depend du terrain.
+- Aucune maison sur gare ou compagnie. Les compteurs `builtThisTurn` sont reinitialises lorsque le tour passe au joueur suivant ; les anciennes sauvegardes sans ce champ restent compatibles.

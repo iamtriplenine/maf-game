@@ -26,23 +26,81 @@ ok('achat puis loyer a l autre joueur (Mediterranean 2 $)', () => {
   assert.equal(s.players[1].balance, 1498);
   assert.equal(s.players[0].balance, 1442);
 });
-ok('loyer double si groupe complet, x5 avec 1 maison, hotel', () => {
-  let s = createGame({ names: ['A', 'B'] });
+ok('loyer de groupe complet puis maisons et hotel construit sur cinq tours distincts', () => {
+  let s = createGame({ names: ['A', 'B'], rng: () => 0.3 });
   s = grantProperty(s, 1); s = grantProperty(s, 3);
-  assert.equal(rentOf(s, 1), 4);
-  s = build(s, 1); assert.equal(rentOf(s, 1), 10);
-  s = build(s, 3); s = build(s, 1); s = build(s, 3);
-  assert.equal(rentOf(s, 1), 30);
-  s = build(s, 1); s = build(s, 3); s = build(s, 1); s = build(s, 3);
-  s = build(s, 1); s = build(s, 3);
-  assert.equal(s.houses[1], 5);
+  assert.equal(rentOf(s, 1), 4); // les couleurs restent utiles pour le loyer sans construction
+  for (let number = 1; number <= 5; number += 1) {
+    const before = s.players[0].balance;
+    s = build(s, 1);
+    assert.equal(s.houses[1], number);
+    assert.equal(s.players[0].balance, before - 50);
+    assert.equal(build(s, 1), s); // impossible d'ajouter deux maisons sur une meme case ce tour
+    if (number < 5) {
+      s = endTurn(rollDice(s, { forced: [1] }));
+      s = endTurn(rollDice(s, { forced: [1] }));
+      assert.equal(s.current, 0);
+      assert.equal(s.phase, 'roll');
+    }
+  }
   assert.equal(rentOf(s, 1), 2 * 45 + 400);
 });
-ok('construction : on construit d abord sur la case la moins batie', () => {
+ok('construction : une maison par terrain et par tour, sans collection de couleur', () => {
   let s = createGame({ names: ['A', 'B'] });
-  s = grantProperty(s, 1); s = grantProperty(s, 3);
+  s = grantProperty(s, 1); // groupe marron incomplet
+  s = grantProperty(s, 6); // groupe bleu clair incomplet
+  s = grantProperty(s, 39); // groupe bleu fonce incomplet
+  assert.deepEqual(buildOptions(s).map((o) => o.square), [1, 6, 39]);
   s = build(s, 1);
-  assert.deepEqual(buildOptions(s).map((o) => o.square), [3]);
+  assert.deepEqual(buildOptions(s).map((o) => o.square), [6, 39]);
+  assert.equal(build(s, 1), s);
+  s = build(s, 6); // plusieurs couleurs construites pendant le meme tour
+  assert.equal(s.houses[1], 1);
+  assert.equal(s.houses[6], 1);
+  assert.deepEqual(buildOptions(s).map((o) => o.square), [39]);
+});
+ok('construction autorisee seulement avant le lancer, a chaque nouveau tour', () => {
+  let s = createGame({ names: ['A', 'B'] });
+  s = grantProperty(s, 1);
+  assert.ok(buildOptions(s).some((o) => o.square === 1)); // pion encore sur GO
+  s = build(s, 1);
+  s = rollDice(s, { forced: [1] });
+  assert.equal(buildOptions(s).length, 0);
+  assert.equal(build(s, 1), s);
+  s = endTurn(s);
+  assert.deepEqual(s.builtThisTurn, []);
+  assert.equal(buildOptions(s).length, 0); // B n'est pas proprietaire
+  s = endTurn(rollDice(s, { forced: [2] }));
+  assert.equal(s.current, 0);
+  assert.ok(buildOptions(s).some((o) => o.square === 1));
+  s = build(s, 1);
+  assert.equal(s.houses[1], 2);
+});
+ok('construction : uniquement terrains possedes, pas gares ou compagnies, budget respecte', () => {
+  let s = createGame({ names: ['A', 'B'] });
+  s = grantProperty(s, 1);
+  s = grantProperty(s, 5); // gare
+  s = grantProperty(s, 12); // compagnie
+  s = grantProperty(s, 39); // terrain cher
+  assert.deepEqual(buildOptions(s).map((o) => o.square), [1, 39]);
+  assert.equal(build(s, 5), s);
+  assert.equal(build(s, 12), s);
+  s = setBalance(s, 50);
+  assert.deepEqual(buildOptions(s).map((o) => o.square), [1]);
+  assert.equal(build(s, 39), s);
+  const saved = { ...s };
+  delete saved.builtThisTurn; // sauvegardes anciennes compatibles
+  assert.deepEqual(buildOptions(saved).map((o) => o.square), [1]);
+});
+ok('simulation automatique : peut construire avant de lancer les des', () => {
+  let s = createGame({ names: ['A', 'B'], rng: () => 0.3 });
+  s = grantProperty(s, 1);
+  const start = s.players[0].balance;
+  s = autoTurn(s, () => 0); // de 1, atterrit sur 1 et ne rachète rien
+  assert.equal(s.houses[1], 1);
+  assert.equal(s.current, 1);
+  assert.equal(s.players[0].balance, start - 50);
+  assert.deepEqual(s.builtThisTurn, []);
 });
 ok('passage par GO : +200, arrivee sur GO : +200', () => {
   let s = createGame({ names: ['A', 'B'] });

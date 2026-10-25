@@ -29,6 +29,7 @@ export function createGame({ names, rng = Math.random, dice = 1 } = {}) {
     })),
     owners: Array(40).fill(null),
     houses: Array(40).fill(0),
+    builtThisTurn: [], // une seule construction par propriete au cours du tour actuel
     decks: { chance: shuffled(CHANCE_CARDS, rng), chest: shuffled(CHEST_CARDS, rng) },
     current: 0,
     phase: 'roll', // roll | after | debt | over
@@ -98,20 +99,15 @@ export function canBuy(s) {
   return BUYABLE.includes(q.type) && s.owners[q.id] === null && p.balance >= q.price;
 }
 
-// Maisons constructibles : groupe complet, argent suffisant, on construit sur les cases les moins bâties
+// Regles MAF : aucune collection de couleur exigee. Une construction par terrain et par tour,
+// uniquement AVANT de lancer les des, sur les proprietes possedees (ni gares ni compagnies).
 export function buildOptions(s, p = s.current) {
-  if (s.phase === 'over' || s.phase === 'debt') return [];
-  const me = s.players[p];
-  const out = [];
-  Object.values(GROUPS).forEach((group) => {
-    if (!group.every((i) => s.owners[i] === p)) return;
-    const price = SQUARES[group[0]].house;
-    if (price > me.balance) return;
-    const min = Math.min(...group.map((i) => s.houses[i]));
-    if (min >= 5) return;
-    group.forEach((i) => { if (s.houses[i] === min) out.push({ square: i, price }); });
-  });
-  return out;
+  if (s.phase !== 'roll' || p !== s.current || s.players[p]?.bankrupt) return [];
+  const spent = s.builtThisTurn || []; // compatibilite avec les parties en cours sauvegardees avant la regle
+  const balance = s.players[p].balance;
+  return SQUARES.filter((q) => q.type === 'prop' && s.owners[q.id] === p
+    && s.houses[q.id] < 5 && !spent.includes(q.id) && q.house <= balance)
+    .map((q) => ({ square: q.id, price: q.house }));
 }
 export const sellOptions = (s, p = s.current) => ownedBy(s, p).map((i) => ({ square: i, value: sellValue(s, i) }));
 
@@ -263,6 +259,7 @@ export function build(state, square) {
   me.balance -= opt.price;
   s.stats.paid += opt.price;
   s.houses[square] += 1;
+  (s.builtThisTurn ||= []).push(square);
   say(s, s.current, s.houses[square] === 5
     ? `a construit un hôtel sur ${SQUARES[square].name}`
     : `a construit une maison sur ${SQUARES[square].name}`, s.houses[square] === 5 ? 'hotel-built' : 'house-built');
@@ -313,6 +310,7 @@ function nextPlayer(s) {
   s.phase = 'roll';
   s.lastRoll = null;
   s.debt = null;
+  s.builtThisTurn = [];
   s.turn += 1;
 }
 
@@ -344,7 +342,11 @@ export function grantProperty(state, square) {
 // Joue automatiquement le tour du joueur actif (mode "Auto" de l'entrainement)
 export function autoTurn(state, rng = Math.random) {
   let s = state;
-  if (s.phase === 'roll') s = rollDice(s, { rng });
+  if (s.phase === 'roll') {
+    const b = buildOptions(s)[0];
+    if (b && s.players[s.current].balance > 400) s = build(s, b.square);
+    s = rollDice(s, { rng });
+  }
   if (s.phase === 'debt') {
     const opts = sellOptions(s).sort((a, b) => a.value - b.value);
     for (const o of opts) { if (s.phase !== 'debt') break; s = sell(s, o.square); }
@@ -352,8 +354,6 @@ export function autoTurn(state, rng = Math.random) {
   }
   if (s.phase === 'after') {
     if (canBuy(s)) s = buy(s);
-    const b = buildOptions(s)[0];
-    if (b && s.players[s.current].balance > 400) s = build(s, b.square);
     s = endTurn(s);
   }
   return s;
