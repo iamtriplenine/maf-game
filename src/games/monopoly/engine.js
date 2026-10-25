@@ -43,9 +43,9 @@ export function createGame({ names, rng = Math.random, dice = 1 } = {}) {
   };
 }
 
-function say(s, player, text) {
+function say(s, player, text, kind = 'general') {
   s.seq += 1;
-  s.log.unshift({ n: s.seq, player, text });
+  s.log.unshift({ n: s.seq, player, text, kind });
   if (s.log.length > 80) s.log.length = 80;
 }
 
@@ -129,12 +129,12 @@ function declareBankrupt(s, p) {
     if (s.owners[i] === p) { s.owners[i] = null; s.houses[i] = 0; }
   }
   s.debt = null;
-  say(s, p, 'a fait faillite !');
+  say(s, p, 'a fait faillite !', 'bankrupt');
   const alive = s.players.filter((x) => !x.bankrupt);
   if (alive.length <= 1) {
     s.phase = 'over';
     s.winner = alive.length === 1 ? alive[0].id : -1;
-    say(s, null, alive.length === 1 ? `${alive[0].name} remporte la partie !` : 'Partie terminée : aucun gagnant.');
+    say(s, null, alive.length === 1 ? `${alive[0].name} remporte la partie !` : 'Partie terminée : aucun gagnant.', 'game-over');
     return;
   }
   nextPlayer(s);
@@ -148,17 +148,27 @@ function charge(s, p, amount, creditor, label) {
     me.balance -= amount;
     s.stats.paid += amount;
     if (creditor !== null && creditor !== undefined) credit(s, creditor, amount);
+    const kind = creditor !== null && creditor !== undefined
+      ? 'rent-paid'
+      : label === 'taxe'
+        ? 'tax-paid'
+        : label === 'prison'
+          ? 'jail-fee'
+          : label === 'carte'
+            ? 'card-payment'
+            : 'payment';
     say(s, p, creditor !== null && creditor !== undefined
-      ? `a payé ${amount} $ de loyer à ${s.players[creditor].name}` : `a payé ${amount} $${label ? ` (${label})` : ''}`);
+      ? `a payé ${amount} $ de loyer à ${s.players[creditor].name}`
+      : `a payé ${amount} $${label ? ` (${label})` : ''}`, kind);
     return true;
   }
   if (me.balance + liquidationValue(s, p) >= amount) {
     s.debt = { amount, creditor: creditor ?? null, label: label || '' };
     s.phase = 'debt';
-    say(s, p, `doit ${amount} $ mais n'a que ${me.balance} $ : il faut vendre des propriétés`);
+    say(s, p, `doit ${amount} $ mais n'a que ${me.balance} $ : il faut vendre des propriétés`, 'debt-warning');
     return false;
   }
-  say(s, p, `ne peut pas payer ${amount} $`);
+  say(s, p, `ne peut pas payer ${amount} $`, 'cannot-pay');
   declareBankrupt(s, p);
   return false;
 }
@@ -168,18 +178,18 @@ function landOn(s, roll) {
   const p = s.current;
   const me = s.players[p];
   const q = SQUARES[me.location];
-  say(s, p, `est arrivé sur ${q.name}`);
+  say(s, p, `est arrivé sur ${q.name}`, 'arrive');
   if (BUYABLE.includes(q.type)) {
     const owner = s.owners[q.id];
     if (owner !== null && owner !== p) charge(s, p, rentOf(s, q.id, roll), owner, 'loyer');
     return;
   }
   switch (q.type) {
-    case 'go': credit(s, p, GO_SALARY); say(s, p, `a reçu ${GO_SALARY} $ (case GO)`); break;
+    case 'go': credit(s, p, GO_SALARY); say(s, p, `a reçu ${GO_SALARY} $ (case GO)`, 'go-reward'); break;
     case 'tax': charge(s, p, q.tax, null, 'taxe'); break;
     case 'gojail':
       me.location = 10;
-      say(s, p, 'est envoyé en prison');
+      say(s, p, 'est envoyé en prison', 'go-to-jail');
       charge(s, p, JAIL_FEE, null, 'prison');
       break;
     case 'chance':
@@ -196,8 +206,8 @@ function drawCard(s, deckName, roll) {
   deck.push(id); // la carte retourne en bas du paquet
   const card = cardById(id);
   s.card = { deck: deckName, text: card.text, id };
-  say(s, p, `a tiré une carte ${deckName === 'chance' ? 'Chance' : 'Caisse de communauté'} : ${card.text}`);
-  if (card.amount > 0) { credit(s, p, card.amount); say(s, p, `a reçu ${card.amount} $`); }
+  say(s, p, `a tiré une carte ${deckName === 'chance' ? 'Chance' : 'Caisse de communauté'} : ${card.text}`, deckName === 'chance' ? 'chance-card' : 'chest-card');
+  if (card.amount > 0) { credit(s, p, card.amount); say(s, p, `a reçu ${card.amount} $`, 'card-credit'); }
   if (card.moveTo !== null) {
     me.location = card.moveTo; // pas de prime GO en passant, comme l'original (seulement en arrivant sur GO)
     landOn(s, roll);
@@ -220,11 +230,11 @@ export function rollDice(state, { rng = Math.random, forced = null } = {}) {
   s.card = null;
   const p = s.current;
   const me = s.players[p];
-  say(s, p, `a lancé ${count === 2 ? `${values.join(' + ')} = ` : ''}${total}`);
+  say(s, p, `a lancé ${count === 2 ? `${values.join(' + ')} = ` : ''}${total}`, 'roll');
   let loc = me.location + total;
   if (loc > 39) {
     loc -= 40;
-    if (loc !== 0) { credit(s, p, GO_SALARY); say(s, p, `est passé par GO : +${GO_SALARY} $`); }
+    if (loc !== 0) { credit(s, p, GO_SALARY); say(s, p, `est passé par GO : +${GO_SALARY} $`, 'go-pass'); }
   }
   me.location = loc;
   s.phase = 'after';
@@ -241,7 +251,7 @@ export function buy(state) {
   me.balance -= q.price;
   s.stats.paid += q.price;
   s.owners[q.id] = p;
-  say(s, p, `a acheté ${q.name} (${q.price} $)`);
+  say(s, p, `a acheté ${q.name} (${q.price} $)`, 'purchase');
   return s;
 }
 
@@ -254,7 +264,8 @@ export function build(state, square) {
   s.stats.paid += opt.price;
   s.houses[square] += 1;
   say(s, s.current, s.houses[square] === 5
-    ? `a construit un hôtel sur ${SQUARES[square].name}` : `a construit une maison sur ${SQUARES[square].name}`);
+    ? `a construit un hôtel sur ${SQUARES[square].name}`
+    : `a construit une maison sur ${SQUARES[square].name}`, s.houses[square] === 5 ? 'hotel-built' : 'house-built');
   return s;
 }
 
@@ -267,7 +278,7 @@ export function sell(state, square) {
   s.stats.received += value;
   s.owners[square] = null;
   s.houses[square] = 0;
-  say(s, p, `a vendu ${SQUARES[square].name} (+${value} $)`);
+  say(s, p, `a vendu ${SQUARES[square].name} (+${value} $)`, 'sale');
   if (s.phase === 'debt' && s.debt) {
     const { amount, creditor, label } = s.debt;
     const me = s.players[p];
@@ -318,7 +329,7 @@ export function setBalance(state, amount) {
   if (state.phase === 'over') return state;
   const s = clone(state);
   s.players[s.current].balance = Math.max(0, Math.floor(amount));
-  say(s, s.current, `(test) solde fixé à ${s.players[s.current].balance} $`);
+  say(s, s.current, `(test) solde fixé à ${s.players[s.current].balance} $`, 'debug');
   return s;
 }
 // Donne une propriete au joueur actif (pour tester loyers et constructions)
@@ -326,7 +337,7 @@ export function grantProperty(state, square) {
   if (state.phase === 'over' || !BUYABLE.includes(SQUARES[square]?.type)) return state;
   const s = clone(state);
   s.owners[square] = s.current;
-  say(s, s.current, `(test) reçoit ${SQUARES[square].name}`);
+  say(s, s.current, `(test) reçoit ${SQUARES[square].name}`, 'debug');
   return s;
 }
 
