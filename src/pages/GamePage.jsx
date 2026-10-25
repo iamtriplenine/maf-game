@@ -402,7 +402,7 @@ export default function GamePage() {
             </button>)}
           </div>
           {selected && (
-            <article ref={detailRef} className="game-hub__detail" aria-label="Details du salon">
+            <article ref={detailRef} className={`game-hub__detail${selected.game === 'tankrun' ? ' game-hub__detail--tankrun' : ''}${selected.game === 'tankrun' && isParticipant && ['ready','playing','finished'].includes(selected.status) ? ' game-hub__detail--tankrun-live' : ''}`} aria-label="Details du salon">
               <div className="game-hub__line">
                 <div>
                   <span className="game-hub__eyebrow">SALON SELECTIONNE</span>
@@ -410,8 +410,8 @@ export default function GamePage() {
                 </div>
                 <button type="button" className="game-hub__close" onClick={() => chooseRoom(null)} aria-label="Masquer ce salon">×</button>
               </div>
-              <div className="game-hub__facts">
-                <span>{gameSymbol(selected.game)} {gameName(selected.game)}</span>{selected.game === 'penalty' ? <span>{selected.shots} tirs / joueur</span> : selected.game === 'dice' ? <span>{selected.dice_count} dé(s) · {selected.shots} coup(s) · {selected.dice_mode === 'cumulative' ? 'Cumul' : 'Manches'}</span> : selected.game === 'tank' ? <span>2 chars · armes tactiques</span> : <span>10 × 10 · 20 pions / joueur</span>}
+              <div className={`game-hub__facts${selected.game === 'tankrun' ? ' game-hub__facts--tankrun' : ''}`}>
+                <span>{gameSymbol(selected.game)} {gameName(selected.game)}</span>{selected.game === 'penalty' ? <span>{selected.shots} tirs / joueur</span> : selected.game === 'dice' ? <span>{selected.dice_count} dé(s) · {selected.shots} coup(s) · {selected.dice_mode === 'cumulative' ? 'Cumul' : 'Manches'}</span> : selected.game === 'tankrun' ? <span>2 chars · duel en course · configuration compacte</span> : selected.game === 'tank' ? <span>2 chars · armes tactiques</span> : <span>10 × 10 · 20 pions / joueur</span>}
                 <span>Mise : {money(selected.stake)} par joueur</span><span>Gain : {money(selected.stake * 2)}</span>
                 {selected.escrow > 0 && selected.status !== 'finished' && <span>Cagnotte retenue : {money(selected.escrow)}</span>}
                 <RoomCountdown room={selected} />
@@ -428,12 +428,12 @@ export default function GamePage() {
                       : "Ton adversaire n'a pas de fonds suffisants. Aucune mise n'a été prélevée."}
                 </p>
               )}
-              <div className="game-hub__players">
+              <div className={`game-hub__players${selected.game === 'tankrun' ? ' game-hub__players--tankrun' : ''}`}>
                 <div><small>CREATEUR</small><strong>{selected.host.pseudo}</strong><span>ID {selected.host.id}</span></div>
                 <div className="game-hub__vs">VS</div>
                 <div><small>ADVERSAIRE</small><strong>{selected.guest?.pseudo || (selected.status === 'pending' ? 'Demande en cours' : 'En attente...')}</strong><span>{selected.guest ? `ID ${selected.guest.id}` : 'Place libre / non confirmee'}</span></div>
               </div>
-              <div className="game-hub__actions">
+              <div className={`game-hub__actions${selected.game === 'tankrun' ? ' game-hub__actions--tankrun' : ''}`}>
                 {isHost && selected.status === 'open' && <p>Salon visible par tous. Donne le code <strong>{selected.code}</strong> a ton ami.</p>}
                 {isHost && selected.status === 'pending' && <>
                   <p><strong>{selected.guest?.pseudo || 'Un joueur'}</strong> souhaite rejoindre ton salon. Si tu acceptes, la mise de {money(selected.stake)} est prélevée sur vos deux comptes.</p>

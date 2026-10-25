@@ -71,3 +71,48 @@
 .game-hub__results h2 { margin:10px 0 4px; font-size:19px; }
 .game-hub__result { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; text-align:left; border:1px solid var(--border); background:var(--glass); color:var(--text); border-radius:12px; padding:12px; font-size:12px; }
 .game-hub__result strong { color:var(--accent-2); }
+
+/* MAF_TANKRUN_COMPACT_PREP_V1 */
+.game-hub__detail--tankrun {
+  gap: 12px;
+}
+.game-hub__detail--tankrun .game-hub__line {
+  align-items: center;
+}
+.game-hub__detail--tankrun .game-hub__line h3 {
+  margin: 4px 0 0;
+  font-size: clamp(21px, 4vw, 24px);
+}
+.game-hub__detail--tankrun .game-hub__close {
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
+}
+.game-hub__facts--tankrun {
+  gap: 8px;
+}
+.game-hub__facts--tankrun span {
+  padding: 7px 10px;
+}
+.game-hub__players--tankrun > div:not(.game-hub__vs) {
+  min-height: 84px;
+  padding: 10px 7px;
+}
+.game-hub__actions--tankrun {
+  gap: 8px;
+}
+.game-hub__actions--tankrun p {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.game-hub__detail--tankrun-live {
+  padding: clamp(12px, 2.6vw, 18px);
+}
+@media(max-width:700px) {
+  .game-hub__detail--tankrun {
+    gap: 10px;
+  }
+  .game-hub__facts--tankrun span {
+    font-size: 11px;
+  }
+}

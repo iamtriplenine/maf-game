@@ -6,9 +6,22 @@ import './TankRunOnline.css';
 
 const AMMUNITION = ['standard','rapide','lourd','explosif','ricochet'];
 const LAND = ['original','desert','usine'];
-const LABELS = {original:'Original',desert:'Désert',usine:'Usine'};
+const LABELS = {original:'Terrain d\'origine',desert:'Désert',usine:'Usine'};
+const TERRAIN_META = {
+  original: { title: 'Terrain d\'origine', caption: 'Piste équilibrée, idéale pour les duels classiques.' },
+  desert: { title: 'Désert', caption: 'Grande visibilité, longues lignes de tir et conduite nerveuse.' },
+  usine: { title: 'Usine', caption: 'Couloirs plus serrés, ambiance industrielle et affrontements rapprochés.' }
+};
 const SKINS = ['origine','spectre','titan'];
-const SKIN_LABELS = {origine:'Classique',spectre:'Spectre',titan:'Titan'};
+const SKIN_LABELS = {origine:'Origine',spectre:'Spectre',titan:'Titan'};
+const SKIN_META = {
+  origine: { title: 'Origine', subtitle: 'Classique' },
+  spectre: { title: 'Spectre', subtitle: 'Néon' },
+  titan: { title: 'Titan', subtitle: 'Blindé' }
+};
+
+const getTerrainData = (key) => TERRAIN_META[key] || { title: LABELS[key] || 'Terrain', caption: 'Terrain sélectionné pour le duel.' };
+const getSkinData = (key) => SKIN_META[key] || { title: SKIN_LABELS[key] || 'Char', subtitle: 'Configuration' };
 
 export default function TankRunOnline({room,match,onStart,onExit,onForfeit,busy}){
   const [terrain,setTerrain] = useState('original');
@@ -26,14 +39,25 @@ export default function TankRunOnline({room,match,onStart,onExit,onForfeit,busy}
   const pressed=useRef(false);
   const busyPoll=useRef(false);
   const viewer=room.is_host?'host':'guest';
+  const viewerRole = room.is_host ? 'Joueur 1' : 'Joueur 2';
   const own=(room.tankrun_setup||{})[viewer];
   const opponent=(room.tankrun_setup||{})[viewer==='host'?'guest':'host'];
+  const ownPseudo = room.is_host ? room.host?.pseudo : room.guest?.pseudo;
+  const opponentPseudo = room.is_host ? room.guest?.pseudo : room.host?.pseudo;
   const latestAmmo=useRef(ammo);
   const sequence=useRef(0);
   const epoch=useRef('tankrun-'+Date.now()+'-'+Math.random().toString(36).slice(2));
   latestAmmo.current=ammo;
   const active=room.status==='playing' || room.status==='finished';
   const finishedWinner=room.status==='finished'?match?.winner:state?.winner;
+  const terrainInfo = getTerrainData(terrain);
+  const opponentSkinKey = opponent?.skin || 'origine';
+  const primaryDisabled = !room.is_host || !(own&&opponent) || busy;
+
+  useEffect(()=>{
+    if(own?.arena) setTerrain(own.arena);
+    if(own?.skin) setSkin(own.skin);
+  },[own?.arena, own?.skin]);
 
   useEffect(()=>{
     if(!active || room.status==='finished')return undefined;
@@ -63,7 +87,6 @@ export default function TankRunOnline({room,match,onStart,onExit,onForfeit,busy}
     const view={W:0,H:0,dpr:1,scale:1,ox:0,oy:0,bg:null,humans:0};
     let oldArena='';
     const resize=()=>{
-      // MAF_TANKRUN_DISPLAY_FIT_V1 : taille de layout (avant transform:rotate).
       const width=wrap.clientWidth,height=wrap.clientHeight;
       if(!width||!height)return;
       view.W=width;view.H=height;view.dpr=Math.min(window.devicePixelRatio||1,2.5);
@@ -80,7 +103,6 @@ export default function TankRunOnline({room,match,onStart,onExit,onForfeit,busy}
       if(snap&&view.W){
         const prev=prevRef.current;
         const delay=Math.min(1,Math.max(0,(performance.now()-snap.at)/120));
-        // Interpolation de l'affichage uniquement; seul le serveur calcule les collisions.
         let scene=snap;
         if(prev?.tanks?.length===snap.tanks?.length){
           scene={...snap,tanks:snap.tanks.map((t,i)=>{
@@ -121,63 +143,135 @@ export default function TankRunOnline({room,match,onStart,onExit,onForfeit,busy}
     return ()=>{stop();window.removeEventListener('blur',stop);document.removeEventListener('visibilitychange',visibility)};
   },[room.id]);
 
+  const saveSetup = async()=>{
+    setSaving(true);
+    setMessage('');
+    try{
+      await setTankRunSetup(room.id,{arena:terrain,skin});
+      setMessage('Configuration enregistrée.');
+    }catch(e){
+      setMessage(e.message);
+    }finally{
+      setSaving(false);
+    }
+  };
+
   if(room.status==='ready')return (
-    <section className="tr-prep" aria-label="Préparation du duel Tank Run">
-      <div className="tr-prep__hero">
+    <section className="tr-setup" aria-label="Préparation du duel Tank Run">
+      <div className="tr-setup__hero">
         <div>
-          <p className="tr-prep__eyebrow">Tank Run · salon privé</p>
-          <h3>Préparez votre duel</h3>
-          <p className="tr-prep__lede">Choisis ton char, propose un terrain et attends la validation de l'adversaire avant de lancer la partie.</p>
+          <p className="tr-setup__eyebrow">Tank Run · salon privé</p>
+          <h3>Configure ton duel</h3>
+          <p className="tr-setup__lede">Choisis ton char, confirme le terrain et garde toutes les commandes visibles sans faire défiler l'écran.</p>
         </div>
-        <div className={`tr-prep__badge ${own && opponent ? 'is-ready' : 'is-waiting'}`}>
-          {own && opponent ? 'Prêt à lancer' : 'Préparation en cours'}
+        <div className={`tr-setup__state ${own && opponent ? 'is-ready' : 'is-waiting'}`}>
+          {own && opponent ? 'Prêt à lancer' : 'Préparation'}
         </div>
       </div>
 
-      <div className="tr-prep__layout">
-        <div className="tr-prep__panel tr-prep__panel--form">
-          <p className="tr-prep__panel-title">Mon choix</p>
-          <label className="tr-prep__field">
-            <span>Char</span>
-            <select value={skin} onChange={e=>setSkin(e.target.value)}>
-              {SKINS.map(k=><option key={k} value={k}>{SKIN_LABELS[k]}</option>)}
-            </select>
-          </label>
-          <label className="tr-prep__field">
-            <span>Terrain proposé</span>
+      <div className="tr-setup__topbar">
+        <article className="tr-stat-card">
+          <span className="tr-stat-card__label">Joueurs</span>
+          <div className="tr-stat-card__choices">
+            <span className="is-active">2</span>
+            <span>3</span>
+            <span>4</span>
+          </div>
+        </article>
+        <article className="tr-stat-card">
+          <span className="tr-stat-card__label">Humains</span>
+          <div className="tr-stat-card__choices">
+            <span>1</span>
+            <span className="is-active">2</span>
+          </div>
+          <small>Salon à deux joueurs humains.</small>
+        </article>
+      </div>
+
+      <article className="tr-surface-card tr-surface-card--terrain">
+        <div className="tr-surface-card__header">
+          <div>
+            <strong>Terrain</strong>
+            <p>{terrainInfo.caption}</p>
+          </div>
+          <span className="tr-surface-card__badge">{terrainInfo.title}</span>
+        </div>
+        <div className="tr-terrain-row">
+          <label className="tr-field tr-field--compact">
+            <span>Terrain choisi</span>
             <select value={terrain} onChange={e=>setTerrain(e.target.value)}>
               {LAND.map(k=><option key={k} value={k}>{LABELS[k]}</option>)}
             </select>
           </label>
-          <button className="btn btn--primary btn--block" disabled={saving||busy} onClick={async()=>{
-            setSaving(true);setMessage('');
-            try{await setTankRunSetup(room.id,{arena:terrain,skin});setMessage('Choix envoyé. Attends la confirmation de ton adversaire.');}
-            catch(e){setMessage(e.message)}finally{setSaving(false)}
-          }}>{saving ? 'Enregistrement…' : 'Valider mon choix'}</button>
-          <p className="tr-prep__helper">Tu peux modifier ton char et ton terrain tant que le duel n'a pas été lancé.</p>
-          {message&&<p className="tr-prep__message" role="status">{message}</p>}
-        </div>
-
-        <div className="tr-prep__panel tr-prep__panel--summary">
-          <p className="tr-prep__panel-title">Résumé du duel</p>
-          <div className="tr-choice-grid">
-            <article className={`tr-choice-card ${own ? 'is-ready' : 'is-waiting'}`}>
-              <span className="tr-choice-card__tag">Toi</span>
-              <strong>{own ? SKIN_LABELS[own.skin] : 'Choix en attente'}</strong>
-              <small>{own ? LABELS[own.arena] : 'Aucun terrain proposé'}</small>
-            </article>
-            <article className={`tr-choice-card ${opponent ? 'is-ready' : 'is-waiting'}`}>
-              <span className="tr-choice-card__tag">Adversaire</span>
-              <strong>{opponent ? SKIN_LABELS[opponent.skin] : 'Choix en attente'}</strong>
-              <small>{opponent ? LABELS[opponent.arena] : 'Aucun terrain proposé'}</small>
-            </article>
+          <div className={`tr-terrain-preview tr-terrain-preview--${terrain}`} aria-hidden="true">
+            <span>{terrainInfo.title}</span>
           </div>
-          {!(own&&opponent)&&<p className="tr-prep__helper">Chaque joueur doit valider son choix avant le lancement de la partie.</p>}
-          {own&&opponent&&room.is_host&&<button className="btn btn--primary btn--block" disabled={busy} onClick={onStart}>Lancer le duel</button>}
-          {own&&opponent&&!room.is_host&&<p className="tr-prep__helper">Le créateur du salon peut maintenant lancer le duel.</p>}
-          <button className="btn btn--glass btn--sm btn--block" onClick={onExit}>Retour au salon</button>
         </div>
+      </article>
+
+      <article className="tr-surface-card">
+        <div className="tr-surface-card__header">
+          <div>
+            <strong>Chars et effets des tirs</strong>
+            <p>Réglages visibles pour les deux joueurs.</p>
+          </div>
+        </div>
+        <div className="tr-player-grid">
+          <article className={`tr-player-card tr-player-card--self tr-player-card--${skin}`}>
+            <div className="tr-player-card__head">
+              <span>{viewerRole} · {ownPseudo || 'Toi'}</span>
+              <strong>Humain</strong>
+            </div>
+            <div className={`tr-tank-preview tr-tank-preview--${skin}`} aria-hidden="true" />
+            <label className="tr-field tr-field--compact">
+              <span>Char</span>
+              <select value={skin} onChange={e=>setSkin(e.target.value)}>
+                {SKINS.map(k=><option key={k} value={k}>{SKIN_META[k].title} · {SKIN_META[k].subtitle}</option>)}
+              </select>
+            </label>
+          </article>
+
+          <article className={`tr-player-card tr-player-card--opponent tr-player-card--${opponentSkinKey}${opponent ? '' : ' is-waiting'}`}>
+            <div className="tr-player-card__head">
+              <span>{room.is_host ? 'Joueur 2' : 'Joueur 1'} · {opponentPseudo || 'Adversaire'}</span>
+              <strong>{opponent ? 'Humain' : 'En attente'}</strong>
+            </div>
+            <div className={`tr-tank-preview tr-tank-preview--${opponentSkinKey}`} aria-hidden="true" />
+            <div className="tr-player-card__summary">
+              <span>Char</span>
+              <strong>{opponent ? `${getSkinData(opponent.skin).title} · ${getSkinData(opponent.skin).subtitle}` : 'Choix en attente'}</strong>
+            </div>
+          </article>
+        </div>
+      </article>
+
+      <div className="tr-help-row">
+        <article className="tr-help-card">
+          <strong>Ton char tourne</strong>
+          <span>Déplace-toi sans recharger la page.</span>
+        </article>
+        <article className="tr-help-card">
+          <strong>Appui court : tirer</strong>
+          <span>Le tir part vers la même direction.</span>
+        </article>
+        <article className="tr-help-card">
+          <strong>Appui long : avancer</strong>
+          <span>Maintiens pour foncer vers l'avant.</span>
+        </article>
       </div>
+
+      {message && <p className="tr-setup__message" role="status">{message}</p>}
+
+      <div className="tr-action-row">
+        <button type="button" className="tr-action tr-action--ghost" onClick={onExit}>Retour</button>
+        <button type="button" className="tr-action tr-action--secondary" disabled={saving||busy} onClick={()=>void saveSetup()}>
+          {saving ? 'Enregistrement…' : 'Valider'}
+        </button>
+        <button type="button" className="tr-action tr-action--primary" disabled={primaryDisabled} onClick={onStart}>
+          {room.is_host ? (own&&opponent ? 'JOUER' : 'EN ATTENTE') : (own&&opponent ? 'PRÊT' : 'EN ATTENTE')}
+        </button>
+      </div>
+      {!room.is_host && <p className="tr-setup__hint">Quand les deux choix sont prêts, le créateur du salon lance la partie.</p>}
     </section>
   );
 
