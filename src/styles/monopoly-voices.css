@@ -1,0 +1,25 @@
+/* Composant exclusivement Monopoly multijoueur. Ne modifie aucune commande existante. */
+.mono-voice-board-wrap{position:relative;width:min(100%,640px);max-width:640px;align-self:center;flex:none;aspect-ratio:1/1;isolation:isolate}
+.mono-voice-board-wrap > .mono-board{width:100%;height:100%;max-width:none}
+.mono-voice-trigger{position:absolute;top:13%;right:1.5%;z-index:35;display:grid;place-items:center;width:clamp(36px,10cqw,52px);height:clamp(36px,10cqw,52px);padding:0;border:2px solid rgba(255,255,255,.88);border-radius:999px;background:#e52f49;color:white;box-shadow:0 3px 12px #21081380;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+.mono-voice-trigger.is-recording{background:#fa1540;animation:mono-voice-pulse .8s infinite alternate}
+.mono-voice-recording-dot{position:absolute;width:7px;height:7px;top:-2px;right:0;border-radius:50%;background:white}
+@keyframes mono-voice-pulse{to{box-shadow:0 0 0 8px #e9324a44,0 3px 14px #28061166}}
+.mono-voice-overlay{position:absolute;z-index:32;top:50%;left:50%;transform:translate(-50%,-50%);width:68%;height:66%;display:flex;flex-direction:column;gap:7px;padding:clamp(8px,2cqw,13px);border:1px solid #ffffffa6;border-radius:15px;background:rgba(12,24,38,.28);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff;box-shadow:0 9px 35px #0005;overflow:hidden;font-size:clamp(10px,2.5cqw,13px);font-family:var(--font-ui,system-ui);text-shadow:0 1px 3px #0009;user-select:text;-webkit-user-select:text}
+.mono-voice-overlay header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex:none}
+.mono-voice-overlay header strong{font-size:clamp(11px,2.7cqw,15px)}
+.mono-voice-overlay header button{border:0;background:#ffffff2b;color:inherit;font-size:19px;line-height:1;border-radius:8px;width:25px;height:25px}
+.mono-voice-list{display:flex;flex-direction:column;gap:7px;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+.mono-voice-line{padding:6px 8px;border:1px solid #fff4;border-radius:12px;background:rgba(255,255,255,.16);min-width:0;flex:none}
+.mono-voice-line.is-mine{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 23%,transparent)}
+.mono-voice-name{font-size:clamp(9px,2.2cqw,12px);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px}
+.mono-voice-player{display:flex;align-items:center;gap:5px;min-width:0}
+.mono-voice-play{width:28px;height:28px;flex:none;display:grid;place-items:center;border:1px solid #fff8;border-radius:50%;color:#fff;background:var(--accent);padding:0;cursor:pointer}
+.mono-voice-wave{height:27px;display:flex;align-items:center;gap:2px;flex:1;min-width:0}
+.mono-voice-wave i{flex:1;background:#ffffff87;border-radius:3px;min-width:1px;transition:background .1s}
+.mono-voice-wave i.is-on{background:var(--accent)}
+.mono-voice-player small{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:10px}
+.mono-voice-note,.mono-voice-empty,.mono-voice-record-state,.mono-voice-error{font-size:11px;margin:0;color:#fff}
+.mono-voice-record-state{color:#ffccd2;font-weight:700}
+.mono-voice-error{color:#ffced7}
+@media(prefers-reduced-motion:reduce){.mono-voice-trigger.is-recording{animation:none}}

@@ -7,6 +7,7 @@ import MonopolyBoard from './MonopolyBoard';
 import MonopolyActionIcon from './MonopolyActionIcon';
 import MonopolyActivity from './MonopolyActivity';
 import MonopolySheet from './MonopolySheet';
+import MonopolyVoices from './MonopolyVoices';
 import usePawnTravel from '../games/monopoly/usePawnTravel';
 import { SQUARES, GROUP_COLORS, PIECES } from '../games/monopoly/data';
 import { buildOptions, sellOptions, canBuy, ownedBy } from '../games/monopoly/engine';
@@ -48,10 +49,13 @@ function BoardMatch({room, session, busy, send}) {
   return (
     <div className="mono mono--playing mono-online-match">
       <section className="mono-play-screen" aria-label="Monopoly multijoueur">
-        <MonopolyBoard game={game} selected={selected} onSelect={setSelected}
-          rolling={false} diceFaces={game.lastRoll?.dice||[]} positions={shown} travel={travel}
-          cameraFocused={focused} onCameraReadyChange={setCameraReady}
-          renderCenter={()=><MonopolyActivity game={game} paused={walking||!!panel}/>}/>
+        <div className="mono-voice-board-wrap">
+          <MonopolyBoard game={game} selected={selected} onSelect={setSelected}
+            rolling={false} diceFaces={game.lastRoll?.dice||[]} positions={shown} travel={travel}
+            cameraFocused={focused} onCameraReadyChange={setCameraReady}
+            renderCenter={()=><MonopolyActivity game={game} paused={walking||!!panel}/>}/>
+          {room.status==='playing'&&<MonopolyVoices roomId={room.id} userId={session?.id}/>}
+        </div>
         <div className="mono-console">
           {awayPlayers.map(p=><p className="mono-online-absence" role="status" key={p.id}>
             {p.name} a quitté le plateau · retour sous {Math.max(0,Math.ceil((Number(game.presence.away[String(p.id)])+120000-clockNow)/1000))} s, sinon élimination.
