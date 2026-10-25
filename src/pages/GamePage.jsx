@@ -10,6 +10,7 @@ import TankRunOnline from '../components/TankRunOnline'; // MAF_TANKRUN_STAGE_4
 import DiceArena from '../components/DiceArena'; // MAF_DICE_GAMEPAGE_V1
 import SoloDice from '../components/SoloDice'; // MAF_DICE_PRACTICE_V1
 import SoloTank from '../components/SoloTank';
+import SoloMonopoly from '../components/SoloMonopoly'; // MAF_MONOPOLY_V1_GAMEPAGE : Monopoly (entrainement)
 // MAF_TANK_ROTATION_LOCAL_V1 / module charge seulement au lancement proprietaire
 // MAF_TANK_GAMEPAGE_V1
 import { useSession } from '../auth/useSession';
@@ -53,6 +54,11 @@ const GAMES = [
     id: 'tankrun', emoji: '🕹️', name: 'Tank Run',
     about: 'Combat de chars a rotation automatique. Appuie pour tirer ou maintiens pour avancer.',
     tags: ['2 joueurs en ligne', 'Salons', 'Choix du char', 'Choix du terrain'],
+  },
+  {
+    id: 'monopoly', emoji: '🎩', name: 'Monopoly',
+    about: 'Achète des propriétés, construis des maisons et des hôtels, encaisse les loyers et ruine tes adversaires. Pour l\'instant : mode entraînement uniquement (pas de salon ni de mise).',
+    tags: ['Entraînement', '2 à 7 joueurs', 'Propriétés', 'Maisons & hôtels', 'Chance & Caisse de communauté'],
   },
 ];
 const statusLabel = { open: 'Ouvert', pending: 'Demande en cours', ready: 'Pret a jouer', playing: 'Match en cours', finished: 'Termine' };
@@ -550,7 +556,13 @@ export default function GamePage() {
                 </div>
               </div>
               {error && <p role="alert" className="game-hub__error">{error}</p>}
-              {currentGame.id === 'tankrun' && tankRunTraining ? (
+              {currentGame.id === 'monopoly' ? (
+                <section className="game-detail__training" aria-label="Entraînement Monopoly">
+                  <span className="game-hub__eyebrow">ENTRAINEMENT</span>
+                  <p className="game-hub__muted">Mode test : pas de salon ni de mise pour l'instant. Tu peux voir le plateau, les règles, les cartes et les débits d'argent.</p>
+                  <SoloMonopoly />
+                </section>
+              ) : currentGame.id === 'tankrun' && tankRunTraining ? (
                 <Suspense fallback={<p role="status">Chargement de Tank Run...</p>}>
                   <TankRun onExit={() => setTankRunTraining(false)} />
                 </Suspense>
