@@ -20,7 +20,7 @@ const minPlayers = 2;
 
 function BoardMatch({room, session, busy, send}) {
   const game=room.game;
-  const meIndex=room.players.findIndex(p=>p.id===session?.id);
+  const meIndex=room.players.findIndex(p=>Number(p.id)===Number(session?.id));
   const isMyTurn=meIndex===game.current && game.phase!=='over';
   const active=game.players[game.current];
   const me=game.players[meIndex];
@@ -71,10 +71,10 @@ function BoardMatch({room, session, busy, send}) {
               <button type="button" className={`btn btn--sm${isMyTurn&&['after','debt'].includes(game.phase)?' mono-end-timed':''}`} style={{'--mono-end-width':`${endProgress}%`}} disabled={!canAct||game.phase!=='after'} onClick={()=>onAction('end')}><MonopolyActionIcon name="end"/><span>Fin</span></button>
             </div>
             <div className="mono-secondary-actions">
-              <button type="button" className="btn btn--sm" disabled={!canAct||!builds.length} onClick={()=>setPanel('build')}><MonopolyActionIcon name="build"/><span>Maison</span></button>
-              <button type="button" className="btn btn--sm" disabled={!canAct||!sells.length} onClick={()=>setPanel('sell')}><MonopolyActionIcon name="sell"/><span>Vendre</span></button>
+              <button type="button" className="btn btn--sm" aria-haspopup="dialog" onClick={()=>setPanel('build')}><MonopolyActionIcon name="build"/><span>Maison</span></button>
+              <button type="button" className="btn btn--sm" aria-haspopup="dialog" onClick={()=>setPanel('sell')}><MonopolyActionIcon name="sell"/><span>Vendre</span></button>
               <button type="button" className="btn btn--sm" disabled={!cameraReady} onClick={()=>setFocused(f=>!f)}><MonopolyActionIcon name={focused?"map":"target"}/><span>{focused?"Plateau":"Mon pion"}</span></button>
-              <button type="button" className="btn btn--sm" onClick={()=>setPanel('more')}><MonopolyActionIcon name="more"/><span>Plus</span></button>
+              <button type="button" className="btn btn--sm" aria-haspopup="dialog" onClick={()=>setPanel('more')}><MonopolyActionIcon name="more"/><span>Plus</span></button>
             </div>
           </>}
         </div>
@@ -87,11 +87,18 @@ function BoardMatch({room, session, busy, send}) {
         <h3>Activites</h3><ul className="mono-log">{game.log.slice(0,35).map(l=><li key={l.n}>{l.player!==null?`${game.players[l.player]?.name||''} `:''}{l.text}</li>)}</ul>
       </section>
       {panel&&<MonopolySheet title={panel==='build'?'Construire':panel==='sell'?'Vendre':'Options'} onClose={()=>setPanel(null)}>
-        {panel==='build'&&<div className="mono-sell">{builds.map(o=>{const q=SQUARES[o.square];return <div className="mono-sell__row" key={o.square}>
+        {panel==='build'&&<div className="mono-sell">
+          {!isMyTurn?<p className="mono__note">Ce n'est pas ton tour. Tu pourras construire quand ce sera à toi de jouer.</p>
+            : walking?<p className="mono__note">Déplacement du pion en cours. La construction sera disponible après l'animation.</p>
+            : !builds.length?<p className="mono__note">Aucune maison disponible maintenant : il faut posséder un terrain constructible, avoir assez d'argent et construire avant de lancer les dés (ou juste après son achat). Une construction par terrain et par tour.</p>:null}
+          {builds.map(o=>{const q=SQUARES[o.square];return <div className="mono-sell__row" key={o.square}>
           <span><span className="mono-dot" style={{background:GROUP_COLORS[q.group]}}/>{q.name} · {game.houses[o.square]===4?'Hotel':'Maison'}</span>
           <button className="btn btn--sm" type="button" disabled={!canAct} onClick={()=>onAction('build',o.square)}>−{cash(o.price)}</button>
         </div>;})}</div>}
-        {panel==='sell'&&<div className="mono-sell">{sells.map(o=><div className="mono-sell__row" key={o.square}>
+        {panel==='sell'&&<div className="mono-sell">
+          {!isMyTurn?<p className="mono__note">Ce n'est pas ton tour. Tu pourras vendre quand ce sera à toi de jouer.</p>
+            : !sells.length?<p className="mono__note">Tu n'as pas encore de propriété à vendre.</p>:null}
+          {sells.map(o=><div className="mono-sell__row" key={o.square}>
           <span>{SQUARES[o.square].name}</span><button type="button" className="btn btn--sm" disabled={!canAct} onClick={()=>onAction('sell',o.square)}>+{cash(o.value)}</button>
         </div>)}</div>}
         {panel==='more'&&<div className="mono-panel"><p className="mono__note">Code salon : {room.code}. La partie reste sur le serveur si tu quittes cette page.</p>

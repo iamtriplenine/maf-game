@@ -127,7 +127,8 @@
 .mono-case-toast strong { font:750 clamp(16px,4.5cqw,26px)/1.18 var(--font-ui); }
 .mono-case-toast__dot { width:12px; height:12px; flex:none; border-radius:50%; background:var(--mono-case-color); box-shadow:0 0 18px var(--mono-case-color); }
 @keyframes mono-case-peek { 0% { opacity:0; } 15%,72% { opacity:1; } 100% { opacity:0; } }
-.mono-sheet-backdrop { position:fixed; z-index:80; inset:0; display:flex; align-items:flex-end; justify-content:center; background:rgba(3,5,12,.5); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); padding:12px; }
+/* Les fenêtres sont portées dans document.body. Rester AU-DESSUS du plateau Monopoly plein écran (z-index:100). */
+.mono-sheet-backdrop { position:fixed; z-index:1000; inset:0; display:flex; align-items:flex-end; justify-content:center; background:rgba(3,5,12,.5); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); padding:12px; }
 .mono-sheet { width:min(100%,640px); max-height:85dvh; display:flex; flex-direction:column; gap:12px; padding:16px; padding-bottom:max(16px,env(safe-area-inset-bottom)); border:1px solid var(--border); border-radius:24px; color:var(--text); background:var(--bg-2); box-shadow:0 -12px 60px rgba(0,0,0,.35); }
 .mono-sheet > header { display:flex; justify-content:space-between; align-items:center; gap:12px; }
 .mono-sheet > header h2 { margin:0; font:750 18px/1.2 var(--font-ui); }
