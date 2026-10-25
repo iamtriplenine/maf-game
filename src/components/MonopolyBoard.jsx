@@ -25,6 +25,37 @@ const INNER = { bottom: [0, -1], top: [0, 1], left: [1, 0], right: [-1, 0], corn
 const pct = (v) => `${(v * 100).toFixed(3)}%`;
 const OFFSETS = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0], [-1, 0], [1, 0]];
 
+function colorWithAlpha(color, alpha) {
+  if (typeof color !== 'string') return `rgba(80,140,120,${alpha})`;
+  const value = color.trim();
+  if (/^#([\da-f]{3})$/i.test(value)) {
+    const [r, g, b] = value.slice(1).split('').map((c) => parseInt(c + c, 16));
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  if (/^#([\da-f]{6})$/i.test(value)) {
+    const hex = value.slice(1);
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  return value;
+}
+
+function squareGlow(colors) {
+  const list = (colors || []).filter(Boolean);
+  if (!list.length) return null;
+  if (list.length === 1) return colorWithAlpha(list[0], 0.28);
+  const step = 100 / list.length;
+  const stops = list.flatMap((color, index) => {
+    const start = (index * step).toFixed(2);
+    const end = ((index + 1) * step).toFixed(2);
+    const tint = colorWithAlpha(color, 0.24);
+    return [`${tint} ${start}%`, `${tint} ${end}%`];
+  });
+  return `linear-gradient(135deg, ${stops.join(', ')})`;
+}
+
 export default function MonopolyBoard({ game, selected, onSelect, rolling, diceFaces, renderCenter, positions, travel }) {
   const [toast, setToast] = useState(null);
   const toastId = useRef(0), keyboardCase = useRef(0), selectRef = useRef(onSelect);
@@ -59,6 +90,19 @@ export default function MonopolyBoard({ game, selected, onSelect, rolling, diceF
       }}>
       {!failed && <Suspense fallback={null}><MonopolyBoard3D game={game} positions={positions} travel={travel} selected={selected} onSelect={showCase} onReady={() => setReady(true)} onFail={() => {setReady(false);setFailed(true);}} /></Suspense>}
       <img className="mono-board__img" src="/games/monopoly/board.jpg" alt="" draggable="false" />
+
+      {Object.entries(pawnsBySquare).map(([id, players]) => {
+        const squareId = Number(id);
+        const c = squareCenter(squareId);
+        const style = {
+          left: pct(c.x),
+          top: pct(c.y),
+          width: pct(c.side === 'left' || c.side === 'right' ? C : (c.side === 'corner' ? C : T)),
+          height: pct(c.side === 'bottom' || c.side === 'top' ? C : (c.side === 'corner' ? C : T)),
+          background: squareGlow(players.map((player) => player.color)),
+        };
+        return <span key={`occupancy-${squareId}`} className="mono-occupancy" style={style} title={`Présence : ${players.map((player) => player.name).join(', ')}`} />;
+      })}
 
       {SQUARES.map((q) => {
         const c = squareCenter(q.id);
