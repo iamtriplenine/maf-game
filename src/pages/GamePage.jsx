@@ -206,8 +206,12 @@ export default function GamePage() {
   };
 
   useEffect(() => {
-    if ((selected?.id || selectedMonopoly?.id) && tab === 'salon') detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [selected?.id, selectedMonopoly?.id, tab]);
+    if (!monopolyOnlinePlaying && (selected?.id || selectedMonopoly?.id) && tab === 'salon')
+      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [selected?.id, selectedMonopoly?.id, tab, monopolyOnlinePlaying]);
+  useEffect(() => {
+    if (monopolyOnlinePlaying && selectedMonopoly?.id && tab === 'salon') window.scrollTo(0, 0);
+  }, [monopolyOnlinePlaying, selectedMonopoly?.id, tab]);
 
   const openGame = (id) => {
     // Tank Run disponible pour tous les comptes.
@@ -351,8 +355,8 @@ export default function GamePage() {
     if (touch) swipe.current = { x: touch.clientX, y: touch.clientY };
   };
   const endSwipe = (event) => {
-    // MAF_SWIPE_TABS_ONLY_V1 : ne jamais changer d'onglet pendant un duel.
-    if (selected?.status === 'playing' && match) { swipe.current = null; return; }
+    // Pas de glissement d'onglet pendant une partie Monopoly ni un duel.
+    if (monopolyOnlinePlaying || (selected?.status === 'playing' && match)) { swipe.current = null; return; }
     const touch = event.changedTouches?.[0];
     const start = swipe.current;
     swipe.current = null;
@@ -370,6 +374,7 @@ export default function GamePage() {
   const isGuest = selected && session?.id === selected.guest?.id;
   const isParticipant = isHost || isGuest;
   const myHostedRooms = myRooms.filter((room) => room.is_host);
+  const activeMonopoly = monopolyMine?.status === 'playing' ? monopolyMine : null;
   const hostedMonopoly = monopolyMine && Number(monopolyMine.hostId) === Number(session?.id)
     && ['waiting', 'proposed', 'playing'].includes(monopolyMine.status) ? monopolyMine : null;
   const visibleMonopolyRooms = monopolyRooms.filter((room) => ['waiting', 'proposed'].includes(room.status));
@@ -419,6 +424,10 @@ export default function GamePage() {
           {error && <p role="alert" className="game-hub__error">{error}</p>}
           {notice && <p role="status" className="game-hub__notice">{notice}</p>}
 
+          {activeMonopoly && (!selectedMonopoly || Number(selectedMonopoly.id) !== Number(activeMonopoly.id)) &&
+            <button type="button" className="game-hub__mine game-hub__mine--monopoly-return" onClick={() => openMonopolyRoom(activeMonopoly)}>
+              <span>🎩 Partie Monopoly #{activeMonopoly.code} en cours</span><strong>Revenir au plateau →</strong>
+            </button>}
           {session && <MultiRoomSlots rooms={myHostedRooms} monopolyRoom={hostedMonopoly} busy={busy}
             onOpen={(room) => void openRoom(room)} onOpenMonopoly={openMonopolyRoom}
             gameName={gameName} gameSymbol={gameSymbol} />}
@@ -456,10 +465,15 @@ export default function GamePage() {
               <span className="salon-row__stake">{money(room.stake)}<RoomCountdown room={room} prefix="" /></span>
             </button>)}
           </div>
-          {selectedMonopoly && <article ref={detailRef} className="game-hub__detail" aria-label="Détails du salon Monopoly">
-            <div className="game-hub__line">
-              <h3>🎩 Monopoly · Salon #{selectedMonopoly.code}</h3>
-              <button type="button" className="game-hub__close" aria-label="Fermer les détails du salon" onClick={() => setSelectedMonopoly(null)}>×</button>
+          {selectedMonopoly && <article ref={detailRef}
+            className={`game-hub__detail${monopolyOnlinePlaying ? ' game-hub__detail--monopoly-fullscreen' : ''}`}
+            aria-label={monopolyOnlinePlaying ? 'Partie Monopoly en cours' : 'Détails du salon Monopoly'}>
+            <div className="game-hub__line game-hub__monopoly-head">
+              <h3>{monopolyOnlinePlaying ? '🎩 Monopoly · Partie en cours' : `🎩 Monopoly · Salon #${selectedMonopoly.code}`}</h3>
+              <button type="button" className="game-hub__close"
+                aria-label={monopolyOnlinePlaying ? 'Revenir aux salons sans abandonner' : 'Fermer les détails du salon'}
+                onClick={() => {setSelectedMonopoly(null);setMonopolyOnlinePlaying(false);window.scrollTo(0,0);}}>
+                {monopolyOnlinePlaying ? '← Salons' : '×'}</button>
             </div>
             <MonopolyOnline mode="detail" selectedRoomId={selectedMonopoly.id} previewRoom={selectedMonopoly}
               onPlayingChange={setMonopolyOnlinePlaying} onOpenRoom={openMonopolyRoom}/>

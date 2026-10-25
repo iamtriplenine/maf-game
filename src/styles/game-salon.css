@@ -28,3 +28,33 @@
 /* Liste partagee : le Monopoly suit les memes bandes que les autres salons. */
 .salon-list .salon-row { min-width:0; }
 .salon-list .salon-row__main { min-width:0; }
+
+/* Partie Monopoly : le plateau occupe l'ecran, pas la zone de details des salons. */
+body:has(.game-hub__detail--monopoly-fullscreen) { overflow:hidden; }
+body:has(.game-hub__detail--monopoly-fullscreen) .dock,
+body:has(.game-hub__detail--monopoly-fullscreen) .refresh-control { display:none; }
+.game-hub__detail--monopoly-fullscreen {
+  position:fixed !important; inset:0; z-index:100;
+  display:block; width:100%; max-width:none; min-height:100dvh;
+  margin:0; padding:max(8px, env(safe-area-inset-top)) 12px max(18px, env(safe-area-inset-bottom));
+  overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
+  border:0; border-radius:0; box-shadow:none; background:var(--bg);
+  -webkit-overflow-scrolling:touch;
+}
+.game-hub__detail--monopoly-fullscreen .game-hub__monopoly-head {
+  position:sticky; top:0; z-index:15; display:flex; justify-content:space-between;
+  align-items:center; padding:5px 2px 9px; margin:0 auto 5px; max-width:640px;
+  background:var(--bg);
+}
+.game-hub__detail--monopoly-fullscreen .game-hub__monopoly-head h3 {
+  font-size:13px; margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.game-hub__detail--monopoly-fullscreen .game-hub__close {
+  border:1px solid var(--border); border-radius:999px; padding:7px 11px;
+  font-size:12px; width:auto; height:auto; white-space:nowrap; flex:none;
+}
+.game-hub__detail--monopoly-fullscreen .mono-online {max-width:100%;}
+.game-hub__detail--monopoly-fullscreen .mono-online-match {gap:8px;}
+.game-hub__detail--monopoly-fullscreen .mono-play-screen {min-height:0;}
+.game-hub__mine--monopoly-return {display:flex; justify-content:space-between; align-items:center; gap:10px;}
+.game-hub__mine--monopoly-return strong {color:var(--accent-2);font-size:12px;white-space:nowrap;}

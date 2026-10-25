@@ -138,6 +138,7 @@ export default function MonopolyOnline({onPlayingChange,mode='create',selectedRo
   })();};
   const members=room?.players||[];
   const isHost=room?.hostId===session?.id;
+  const canPropose=members.some(p=>Number(p.id)===Number(session?.id));
   const vote=room?.proposal?.votes?.[session?.id];
   const votesCount=room?.proposal?Object.values(room.proposal.votes||{}).filter(Boolean).length:0;
   const isPlaying=mode==='detail'&&(room?.status==='playing'||room?.status==='finished');
@@ -159,16 +160,16 @@ export default function MonopolyOnline({onPlayingChange,mode='create',selectedRo
             {p?<>{p.name} <small>#{p.id}{p.id===session.id?' · Toi':''}</small></>:<span>En attente d'un joueur...</span>}
           </div>;})}</div>
         {room.status==='proposed'?<div className="mono-online-vote" role="status">
-          <strong>🔔 Proposition : commencer à {room.proposal.count} joueurs</strong>
+          <strong>🔔 {members.find(p=>Number(p.id)===Number(room.proposal.proposedBy))?.name || 'Un joueur'} propose de commencer à {room.proposal.count} joueurs</strong>
           <p>{votesCount}/{members.length} accords. Tu peux accepter ou continuer d'attendre.</p>
-          {vote===true?<p>Ton accord est enregistré. En attente des autres joueurs.</p>:<div className="mono-online-actions">
-            <button type="button" className="btn btn--primary" disabled={busy} onClick={()=>update(()=>api.vote(room.id,true))}>✓ Commencer</button>
+          {vote===true?<p>Ton accord est enregistré. En attente des autres joueurs.</p>:null}
+          <div className="mono-online-actions">
+            {vote!==true&&<button type="button" className="btn btn--primary" disabled={busy} onClick={()=>update(()=>api.vote(room.id,true))}>✓ Commencer</button>}
             <button type="button" className="btn" disabled={busy} onClick={()=>update(()=>api.vote(room.id,false))}>Attendre d'autres joueurs</button>
-          </div>}
-          {isHost&&<button type="button" className="btn btn--sm" disabled={busy} onClick={()=>update(()=>api.vote(room.id,false))}>Annuler la proposition</button>}
+          </div>
         </div>:<>
-          <p>{members.length===room.maxPlayers?'Salon complet : le créateur peut proposer le départ.':`Encore ${room.maxPlayers-members.length} place(s) possible(s).`}</p>
-          {isHost&&members.length>=minPlayers&&<button type="button" className="btn btn--primary" disabled={busy}
+          <p>{members.length===room.maxPlayers?'Salon complet : chaque participant peut proposer le départ.':`Encore ${room.maxPlayers-members.length} place(s) possible(s).`}</p>
+          {canPropose&&members.length>=minPlayers&&<button type="button" className="btn btn--primary" disabled={busy}
             onClick={()=>update(()=>api.propose(room.id,members.length))}>Proposer de commencer à {members.length}</button>}
         </>}
         <div className="mono-online-actions"><button type="button" className="btn" disabled={busy} onClick={()=>update(()=>api.leave(room.id))}>{isHost?'Fermer le salon':'Quitter le salon'}</button></div>
