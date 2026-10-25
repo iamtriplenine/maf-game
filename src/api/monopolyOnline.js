@@ -1,0 +1,11 @@
+import { walletRequest } from './accounts';
+const base = '/api/monopoly/rooms';
+export const publicRooms = async () => (await walletRequest(base)).rooms || [];
+export const mine = async () => (await walletRequest(`${base}/mine`)).room;
+export const detail = async id => (await walletRequest(`${base}/${id}`)).room;
+export const create = async (maxPlayers, stake) => (await walletRequest(base, {method:'POST',body:{maxPlayers,stake}})).room;
+export const join = async id => (await walletRequest(`${base}/${id}/join`,{method:'POST'})).room;
+export const leave = async id => (await walletRequest(`${base}/${id}/leave`,{method:'POST'})).room;
+export const propose = async (id,count) => (await walletRequest(`${base}/${id}/propose`,{method:'POST',body:{count}})).room;
+export const vote = async (id,accept) => (await walletRequest(`${base}/${id}/vote`,{method:'POST',body:{accept}})).room;
+export const action = async (id,action,square) => (await walletRequest(`${base}/${id}/action`,{method:'POST',body:{action,...(Number.isInteger(square)?{square}:{})}})).room;

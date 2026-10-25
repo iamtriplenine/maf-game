@@ -11,6 +11,7 @@ import DiceArena from '../components/DiceArena'; // MAF_DICE_GAMEPAGE_V1
 import SoloDice from '../components/SoloDice'; // MAF_DICE_PRACTICE_V1
 import SoloTank from '../components/SoloTank';
 import SoloMonopoly from '../components/SoloMonopoly'; // MAF_MONOPOLY_V1_GAMEPAGE : Monopoly (entrainement)
+import MonopolyOnline from '../components/MonopolyOnline'; // MAF_MONOPOLY_ONLINE_V1
 // MAF_TANK_ROTATION_LOCAL_V1 / module charge seulement au lancement proprietaire
 // MAF_TANK_GAMEPAGE_V1
 import { useSession } from '../auth/useSession';
@@ -58,7 +59,7 @@ const GAMES = [
   {
     id: 'monopoly', emoji: '🎩', name: 'Monopoly',
     about: 'Achète des propriétés, construis des maisons et des hôtels, encaisse les loyers et ruine tes adversaires. Pour l\'instant : mode entraînement uniquement (pas de salon ni de mise).',
-    tags: ['Entraînement', '2 à 7 joueurs', 'Propriétés', 'Maisons & hôtels', 'Chance & Caisse de communauté'],
+    tags: ['En ligne : 2 à 4 joueurs', 'Salons & mises', 'Entraînement', 'Maisons & hôtels'],
   },
 ];
 const statusLabel = { open: 'Ouvert', pending: 'Demande en cours', ready: 'Pret a jouer', playing: 'Match en cours', finished: 'Termine' };
@@ -70,6 +71,8 @@ export default function GamePage() {
   const [tab, setTab] = useState('jeux');
   const [gameId, setGameId] = useState(null);
   const [monopolyPlaying, setMonopolyPlaying] = useState(false);
+  const [monopolyOnlinePlaying, setMonopolyOnlinePlaying] = useState(false);
+  const [monopolyTrainingOpen,setMonopolyTrainingOpen] = useState(false);
   const [tankRunTraining, setTankRunTraining] = useState(false); // MAF_TANKRUN_SALONS_FIX_V1
   const [rooms, setRooms] = useState([]);
   const [mine, setMine] = useState(null);
@@ -349,7 +352,7 @@ export default function GamePage() {
     !isParticipant && !guestRequestElsewhere && !acceptedMatchElsewhere;
 
   return (
-    <main className={`game-page game-hub${currentGame?.id === 'monopoly' && tab === 'jeux' && monopolyPlaying ? ' game-hub--monopoly-playing' : ''}`}>
+    <main className={`game-page game-hub${currentGame?.id === 'monopoly' && tab === 'jeux' && (monopolyPlaying || monopolyOnlinePlaying) ? ' game-hub--monopoly-playing' : ''}`}>
       <header className="game-page__head">
         <h1 className="title-tech"><IconGamepad size={30} /> GAME</h1>
         <p>Explore les jeux, cree un salon et trouve ton adversaire.</p>
@@ -381,6 +384,9 @@ export default function GamePage() {
             <button type="button" className="game-hub__refresh" disabled={loading || busy}
               onClick={() => void refresh()} aria-label="Actualiser les salons">↻ Actualiser</button>
           </div>
+          <button type="button" className="btn btn--sm" onClick={()=>{setGameId('monopoly');setTab('jeux');}}>
+            🎩 Voir les salons Monopoly (2 à 4 joueurs)
+          </button>
           {error && <p role="alert" className="game-hub__error">{error}</p>}
           {notice && <p role="status" className="game-hub__notice">{notice}</p>}
 
@@ -558,10 +564,14 @@ export default function GamePage() {
               </div>
               {error && <p role="alert" className="game-hub__error">{error}</p>}
               {currentGame.id === 'monopoly' ? (
-                <section className="game-detail__training" aria-label="Entraînement Monopoly">
-                  <span className="game-hub__eyebrow">ENTRAINEMENT</span>
-                  <p className="game-hub__muted">Mode test : pas de salon ni de mise pour l'instant. Tu peux voir le plateau, les règles, les cartes et les débits d'argent.</p>
-                  <SoloMonopoly onPlayingChange={setMonopolyPlaying} />
+                <section className="game-detail__training" aria-label="Monopoly en ligne et entrainement">
+                  <MonopolyOnline onPlayingChange={setMonopolyOnlinePlaying}/>
+                  {!monopolyOnlinePlaying&&<div className="mono-online-training-toggle">
+                    <button type="button" className="btn btn--sm" onClick={()=>setMonopolyTrainingOpen(v=>!v)}>
+                      {monopolyTrainingOpen?'Fermer l’entrainement':'Mode entrainement sans mise'}
+                    </button>
+                    {monopolyTrainingOpen&&<SoloMonopoly onPlayingChange={setMonopolyPlaying}/>} 
+                  </div>}
                 </section>
               ) : currentGame.id === 'tankrun' && tankRunTraining ? (
                 <Suspense fallback={<p role="status">Chargement de Tank Run...</p>}>
