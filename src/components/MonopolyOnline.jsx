@@ -35,6 +35,7 @@ function BoardMatch({room, session, busy, send}) {
   const allowedBuy=canAct&&canBuy(game);
   const awayPlayers=room.players.filter(p=>game.presence?.away?.[String(p.id)]!==undefined&&!game.players[room.players.indexOf(p)]?.bankrupt);
   const [clockNow,setClockNow]=useState(Date.now());
+  const rollRemaining=Math.max(0,Math.min(100,((Number(game.turnClock?.dueAt)||clockNow)-clockNow)/500));
   useEffect(()=>{const timer=window.setInterval(()=>setClockNow(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
   const winner=room.winnerId===session?.id;
   const hint=game.phase==='over'?'Partie terminee.'
@@ -64,7 +65,7 @@ function BoardMatch({room, session, busy, send}) {
           </div>:<>
             <p className="mono-hint">{hint}</p>
             <div className="mono-actions">
-              <button type="button" className="btn btn--primary btn--sm" disabled={!canAct||game.phase!=='roll'} onClick={()=>onAction('roll')}><MonopolyActionIcon name="roll"/><span>Lancer</span></button>
+              <button type="button" className={`btn btn--primary btn--sm${isMyTurn&&game.phase==='roll'?' mono-roll-timed':''}`} style={{'--mono-roll-width':`${rollRemaining}%`}} disabled={!canAct||game.phase!=='roll'} onClick={()=>onAction('roll')}><MonopolyActionIcon name="roll"/><span>Lancer</span></button>
               <button type="button" className="btn btn--sm" disabled={!allowedBuy} onClick={()=>onAction('buy')}><MonopolyActionIcon name="buy"/><span>Acheter</span></button>
               <button type="button" className="btn btn--sm" disabled={!canAct||game.phase!=='after'} onClick={()=>onAction('end')}><MonopolyActionIcon name="end"/><span>Fin</span></button>
             </div>

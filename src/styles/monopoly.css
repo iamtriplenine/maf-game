@@ -170,3 +170,8 @@ body:has(.game-hub--monopoly-playing) .refresh-control { display:none; }
 .mono-console .btn svg{width:20px;height:20px;flex:none;display:block;}
 .mono-console .btn span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 @media (max-width:370px) { .mono-console .mono-actions .btn{font-size:11px;} .mono-console .mono-secondary-actions .btn{font-size:9.5px;} .mono-console .btn svg{width:19px;height:19px;} }
+
+/* Rose : la jauge du lancer se retracte de droite vers la gauche. */
+.mono-console .btn.mono-roll-timed{position:relative;isolation:isolate;background:rgba(225,56,148,.16);border-color:#e14c9a;overflow:hidden;color:white;}
+.mono-console .btn.mono-roll-timed::before{content:"";position:absolute;inset:0 auto 0 0;width:var(--mono-roll-width,100%);background:linear-gradient(90deg,#b82881,#ef65b2);z-index:0;pointer-events:none;}
+.mono-console .btn.mono-roll-timed svg,.mono-console .btn.mono-roll-timed span{position:relative;z-index:1;}
