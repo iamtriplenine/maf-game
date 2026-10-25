@@ -1,0 +1,5 @@
+Modele dice.obj et texture dice.png : elena-pan/Unity-Monopoly, branche master.
+https://github.com/elena-pan/Unity-Monopoly
+Commit 63e854baf2aeb165aee90b952e384dd20316ecd0.
+Fichiers identiques a Monopoly-Local(1).zip fourni par l utilisateur.
+Rendu et mouvements adaptes a Three.js ; aucun moteur Unity inclus.

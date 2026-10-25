@@ -1,5 +1,8 @@
+import { lazy, Suspense } from 'react';
 // MAF_MONOPOLY_V1_BOARD (etape 4) : plateau 2D (image du projet Unity) + pions, proprietes et maisons
 import { SQUARES, PIECES } from '../games/monopoly/data';
+
+const MonopolyDice3D = lazy(() => import('./MonopolyDice3D'));
 
 const C = 0.1328; // taille d'une case d'angle (fraction du plateau)
 const T = (1 - 2 * C) / 9; // largeur d'une case normale
@@ -81,10 +84,11 @@ export default function MonopolyBoard({ game, selected, onSelect, rolling, diceF
       })}
 
       <div className="mono-center">
-        <div className={`mono-dice${rolling ? ' is-rolling' : ''}`} aria-live="polite">
-          {(diceFaces && diceFaces.length ? diceFaces : []).map((f, i) => (
-            <span key={i} className="mono-die">{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][f - 1]}</span>
-          ))}
+        <div className="mono-dice-stage">
+          <span className="mono-dice-result" role="status">{rolling ? 'Lancer en cours…' : diceFaces?.length ? `Résultat : ${diceFaces.join(' + ')}` : ''}</span>
+          {(rolling || diceFaces?.length > 0) && <Suspense fallback={<div className="mono-dice">{(diceFaces || []).map((f, i) => <span key={i} className="mono-die">{['⚀','⚁','⚂','⚃','⚄','⚅'][f - 1]}</span>)}</div>}>
+            <MonopolyDice3D rolling={rolling} faces={diceFaces} count={game.dice} />
+          </Suspense>}
         </div>
         {renderCenter?.()}
       </div>

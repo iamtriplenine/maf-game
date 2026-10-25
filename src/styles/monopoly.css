@@ -79,3 +79,9 @@
 .mono-rules .mono-log li { color:var(--text); }
 @media (max-width:560px) { .mono-actions { grid-template-columns:repeat(3,minmax(0,1fr)); } .mono-actions .btn { padding:0 8px; } }
 @media (prefers-reduced-motion:reduce) { .mono-pawn.is-current, .mono-dice.is-rolling .mono-die, .mono-cardpop { animation:none; } }
+
+/* MAF_MONOPOLY_DICE_3D_V1 : zone transparente au centre du plateau. */
+.mono-dice-stage { width:100%; display:grid; justify-items:center; gap:.8cqw; }
+.mono-dice3d { width:100%; height:30cqw; max-height:190px; pointer-events:none; }
+.mono-dice3d canvas { display:block; width:100%; height:100%; }
+.mono-dice-result { color:#162a1a; font-size:clamp(11px,2.6cqw,16px); font-weight:700; text-shadow:0 1px 3px #fff; }
