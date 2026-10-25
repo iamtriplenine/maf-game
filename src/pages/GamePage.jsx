@@ -16,6 +16,7 @@ import MonopolyOnline from '../components/MonopolyOnline'; // MAF_MONOPOLY_ONLIN
 // MAF_TANK_GAMEPAGE_V1
 import { useSession } from '../auth/useSession';
 import * as roomsApi from '../api/rooms';
+import * as monopolyApi from '../api/monopolyOnline';
 import MultiRoomSlots from '../components/MultiRoomSlots'; // MAF_MULTIROOM_V1
 import { registerRefresh } from '../api/refresh';
 import { syncWallet } from '../api/accounts';
@@ -32,8 +33,8 @@ const localRoomDeadline = room => room ? {
 } : null;
 
 const money = (value) => `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`;
-const gameName = (game) => game === 'tankrun' ? 'Tank Run' : game === 'dice' ? 'Lancer de dés' : game === 'tank' ? 'Tank Battle' : game === 'checkers' ? 'Dames' : 'Tir au but';
-const gameSymbol = (game) => game === 'tankrun' ? '🏎️' : game === 'dice' ? '🎲' : game === 'tank' ? '🚀' : game === 'checkers' ? '♛' : '⚽';
+const gameName = (game) => game === 'monopoly' ? 'Monopoly' : game === 'tankrun' ? 'Tank Run' : game === 'dice' ? 'Lancer de dés' : game === 'tank' ? 'Tank Battle' : game === 'checkers' ? 'Dames' : 'Tir au but';
+const gameSymbol = (game) => game === 'monopoly' ? '🎩' : game === 'tankrun' ? '🏎️' : game === 'dice' ? '🎲' : game === 'tank' ? '🚀' : game === 'checkers' ? '♛' : '⚽';
 const GAMES = [
   {
     id: 'penalty', emoji: '⚽', name: 'Tir au but',
@@ -77,6 +78,9 @@ export default function GamePage() {
   const [rooms, setRooms] = useState([]);
   const [mine, setMine] = useState(null);
   const [myRooms, setMyRooms] = useState([]);
+  const [monopolyRooms, setMonopolyRooms] = useState([]);
+  const [monopolyMine, setMonopolyMine] = useState(null);
+  const [selectedMonopoly, setSelectedMonopoly] = useState(null);
   const [selected, setSelected] = useState(null);
   const [match, setMatch] = useState(null);
   const [results, setResults] = useState([]);
@@ -113,6 +117,13 @@ export default function GamePage() {
         roomsApi.listRooms(), roomsApi.myRoom(), roomsApi.recentResults(), roomsApi.myRooms(),
       ]);
       setRooms(publicRooms);
+      // Le catalogue Monopoly est rassemble dans la meme page Salon.
+      const [publicMonopoly, mineMonopoly] = await Promise.all([
+        monopolyApi.publicRooms().catch(() => []),
+        session?.id ? monopolyApi.mine().catch(() => null) : Promise.resolve(null),
+      ]);
+      setMonopolyRooms(publicMonopoly);
+      setMonopolyMine(mineMonopoly);
       setMyRooms(ownedRooms);
       setMine(localRoomDeadline(myActiveRoom));
       setResults(recent);
@@ -163,6 +174,9 @@ export default function GamePage() {
     setMine(null);
     setMyRooms([]);
     setRooms([]);
+    setMonopolyRooms([]);
+    setMonopolyMine(null);
+    setSelectedMonopoly(null);
     const tick = () => { if (alive && !document.hidden) void refresh({ quiet: true }); };
     void refresh();
     const interval = window.setInterval(tick, 3000);
@@ -175,14 +189,15 @@ export default function GamePage() {
     };
   }, [refresh]);
 
-  const action = async (run, message) => {
+  const action = async (run, message, selectResult = true) => {
     if (busy) return false;
     setBusy(true);
     setError('');
     setNotice('');
     try {
       const next = await run();
-      chooseRoom(next);
+      if (selectResult) chooseRoom(next);
+      else chooseRoom(null);
       setNotice(message);
       await refresh({ quiet: true });
       return true;
@@ -191,8 +206,8 @@ export default function GamePage() {
   };
 
   useEffect(() => {
-    if (selected?.id && tab === 'salon') detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [selected?.id, tab]);
+    if ((selected?.id || selectedMonopoly?.id) && tab === 'salon') detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [selected?.id, selectedMonopoly?.id, tab]);
 
   const openGame = (id) => {
     // Tank Run disponible pour tous les comptes.
@@ -224,18 +239,26 @@ export default function GamePage() {
 
   const findCode = async (event) => {
     event.preventDefault();
-    if (!/^\d{4}$/.test(code)) {
-      setError('Saisis exactement 4 chiffres.');
+    if (!/^(\d{4}|\d{6})$/.test(code)) {
+      setError('Saisis 4 chiffres pour les autres jeux ou 6 chiffres pour Monopoly.');
+      return;
+    }
+    if (code.length === 6) {
+      setBusy(true); setError('');
+      try { openMonopolyRoom(await monopolyApi.roomByCode(code)); }
+      catch (err) { setError(err.message); }
+      finally { setBusy(false); }
       return;
     }
     await action(async () => {
       const room = await roomsApi.roomByCode(code);
       return room.status === 'playing' ? (await roomsApi.resumeMatch(room.id)).room : room;
-    }, 'Salon retrouve.');
+    }, 'Salon retrouvé.');
   };
 
   const openRoom = async (room) => {
     if (busy) return;
+    setSelectedMonopoly(null);
     setBusy(true); setError('');
     try {
       if (room.status === 'playing') {
@@ -284,6 +307,12 @@ export default function GamePage() {
     return () => window.removeEventListener('maf:open-pending-room', openPendingRoom);
   }, [session?.id]);
 
+  const openMonopolyRoom = (room) => {
+    chooseRoom(null);
+    setSelectedMonopoly({ ...room, id: Number(room.id) });
+    setTab('salon');
+  };
+
   const exitArena = async () => {
     if (busy) return;
     if (selected?.status !== 'playing') { chooseRoom(null); return; }
@@ -312,7 +341,7 @@ export default function GamePage() {
       const ok = await action(() => roomsApi.createRoom({ game: currentGame?.id || 'penalty',
         shots: currentGame?.id === 'penalty' ? shots : currentGame?.id === 'dice' ? diceRounds : null,
         diceCount: currentGame?.id === 'dice' ? diceCount : null, diceMode: currentGame?.id === 'dice' ? (diceRounds === 1 ? 'separate' : diceMode) : null, stake: value }),
-        'Ton salon est public ! Partage son code a 4 chiffres.');
+        'Ton salon est public ! Partage son code a 4 chiffres.', false);
       if (ok) { setGameId(null); setTab('salon'); }
     })();
   };
@@ -341,6 +370,9 @@ export default function GamePage() {
   const isGuest = selected && session?.id === selected.guest?.id;
   const isParticipant = isHost || isGuest;
   const myHostedRooms = myRooms.filter((room) => room.is_host);
+  const hostedMonopoly = monopolyMine && Number(monopolyMine.hostId) === Number(session?.id)
+    && ['waiting', 'proposed', 'playing'].includes(monopolyMine.status) ? monopolyMine : null;
+  const visibleMonopolyRooms = monopolyRooms.filter((room) => ['waiting', 'proposed'].includes(room.status));
   const sameGameRoom = myHostedRooms.some((room) => room.game === currentGame?.id);
   const slotLimitReached = myHostedRooms.length >= 5;
   // MAF_ROOMS_FREE_UNTIL_ACCEPTED_V1: seuls une autre demande sortante et les matchs acceptes bloquent l'invitation.
@@ -380,19 +412,17 @@ export default function GamePage() {
       ) : tab === 'salon' ? (
         <section id="game-panel-salon" role="tabpanel" aria-labelledby="game-tab-salon" className="game-hub__content">
           <div className="game-hub__line">
-            <h2>Salons disponibles <span className="game-hub__count">{rooms.length}</span></h2>
+            <h2>Salons disponibles <span className="game-hub__count">{rooms.length + visibleMonopolyRooms.length}</span></h2>
             <button type="button" className="game-hub__refresh" disabled={loading || busy}
               onClick={() => void refresh()} aria-label="Actualiser les salons">↻ Actualiser</button>
           </div>
-          <button type="button" className="btn btn--sm" onClick={()=>{setGameId('monopoly');setTab('jeux');}}>
-            🎩 Voir les salons Monopoly (2 à 4 joueurs)
-          </button>
           {error && <p role="alert" className="game-hub__error">{error}</p>}
           {notice && <p role="status" className="game-hub__notice">{notice}</p>}
 
-          {session && <MultiRoomSlots rooms={myHostedRooms} busy={busy} onOpen={(room) => void openRoom(room)}
+          {session && <MultiRoomSlots rooms={myHostedRooms} monopolyRoom={hostedMonopoly} busy={busy}
+            onOpen={(room) => void openRoom(room)} onOpenMonopoly={openMonopolyRoom}
             gameName={gameName} gameSymbol={gameSymbol} />}
-          {mine && selected?.id !== mine.id && (
+          {mine && selected?.id !== mine.id && (mine.return_deadline || !myHostedRooms.some((r) => r.id === mine.id)) && (
             <button type="button" className={`game-hub__mine${mine.return_deadline ? ' game-hub__mine--return' : ''}`} onClick={() => void openRoom(mine)}>
               <span>{mine.return_deadline
                 ? `⚠ MATCH INTERROMPU — ${Math.max(0, Math.ceil(((mine.localReturnDeadline || mine.return_deadline) - clock) / 1000))} s pour revenir !`
@@ -402,7 +432,19 @@ export default function GamePage() {
           )}
 
           <div className="salon-list" aria-live="polite">
-            {rooms.length === 0 && <p className="game-hub__empty">{loading ? 'Chargement des salons...' : 'Aucun salon public. Crée le premier depuis l\'onglet Game !'}</p>}
+            {rooms.length + visibleMonopolyRooms.length === 0 && <p className="game-hub__empty">{loading ? 'Chargement des salons...' : 'Aucun salon public. Crée le premier depuis l\'onglet Game !'}</p>}
+            {visibleMonopolyRooms.map((room) => <button type="button" key={`monopoly-${room.id}`}
+              className={`salon-row salon-row--open${selectedMonopoly?.id === room.id ? ' is-selected' : ''}`}
+              onClick={() => openMonopolyRoom(room)}>
+              <span className="salon-row__code">#{room.code}</span>
+              <span className="salon-row__main">
+                <strong>{room.host}</strong>
+                <small>🎩 Monopoly · {room.present}/{room.maxPlayers} joueurs · {room.status === 'proposed' ? 'Accord de départ en cours' : 'Ouvert'}</small>
+              </span>
+              <span className="salon-row__stake">{money(room.stake)}
+                <RoomCountdown room={{status:'open',expires_at:room.createdAt ? new Date(Date.parse(room.createdAt) + 30*60*1000).toISOString() : null, server_now: room.serverNow}} prefix="" />
+              </span>
+            </button>)}
             {rooms.map((room) => <button type="button" key={room.id}
               className={`salon-row salon-row--${room.status}${room.host_busy ? ' salon-row--host-busy' : ''}${selected?.id === room.id ? ' is-selected' : ''}`}
               onClick={() => void openRoom(room)}>
@@ -414,6 +456,14 @@ export default function GamePage() {
               <span className="salon-row__stake">{money(room.stake)}<RoomCountdown room={room} prefix="" /></span>
             </button>)}
           </div>
+          {selectedMonopoly && <article ref={detailRef} className="game-hub__detail" aria-label="Détails du salon Monopoly">
+            <div className="game-hub__line">
+              <h3>🎩 Monopoly · Salon #{selectedMonopoly.code}</h3>
+              <button type="button" className="game-hub__close" aria-label="Fermer les détails du salon" onClick={() => setSelectedMonopoly(null)}>×</button>
+            </div>
+            <MonopolyOnline mode="detail" selectedRoomId={selectedMonopoly.id} previewRoom={selectedMonopoly}
+              onPlayingChange={setMonopolyOnlinePlaying} onOpenRoom={openMonopolyRoom}/>
+          </article>}
           {selected && (
             <article ref={detailRef} className={`game-hub__detail${selected.game === 'tankrun' ? ' game-hub__detail--tankrun' : ''}${selected.game === 'tankrun' && isParticipant && ['ready','playing','finished'].includes(selected.status) ? ' game-hub__detail--tankrun-live' : ''}`} aria-label="Details du salon">
               <div className="game-hub__line">
@@ -506,19 +556,19 @@ export default function GamePage() {
             </article>
           )}
 
-          <div className="salon-note" role="note">Mise prélevée quand le créateur accepte son adversaire, retenue pendant le match, puis versée au gagnant. 2 joueurs maximum par salon.</div>
+          <div className="salon-note" role="note">Duels classiques : 2 joueurs, mise bloquée lors de l'acceptation. Monopoly : 2 à 4 joueurs, mises retenues uniquement après l'accord de tous.</div>
           <button type="button" className="btn btn--sm btn--block salon-create" onClick={() => setTab('jeux')}>＋ Créer un salon (choisir un jeu)</button>
           <div className="game-hub__panels game-hub__panels--single">
             <section className="game-hub__panel" aria-label="Rechercher un salon">
               <span className="game-hub__eyebrow">UN AMI T'ATTEND ?</span>
               <h3>Rechercher un code</h3>
               <form onSubmit={findCode} className="game-hub__form">
-                <label>Code du salon (4 chiffres)
-                  <input className="game-hub__code-input" type="text" inputMode="numeric" pattern="[0-9]{4}"
-                    autoComplete="off" placeholder="0000" required maxLength={4} value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))} />
+                <label>Code du salon (4 chiffres · Monopoly : 6)
+                  <input className="game-hub__code-input" type="text" inputMode="numeric" pattern="([0-9]{4}|[0-9]{6})"
+                    autoComplete="off" placeholder="0000" required maxLength={6} value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
                 </label>
-                <button className="btn btn--sm btn--block" type="submit" disabled={busy || code.length !== 4}>Rechercher</button>
+                <button className="btn btn--sm btn--block" type="submit" disabled={busy || !/^(\d{4}|\d{6})$/.test(code)}>Rechercher</button>
               </form>
               <p className="game-hub__muted">La recherche fonctionne meme si le salon ne figure plus dans les premiers resultats.</p>
             </section>
@@ -565,7 +615,19 @@ export default function GamePage() {
               {error && <p role="alert" className="game-hub__error">{error}</p>}
               {currentGame.id === 'monopoly' ? (
                 <section className="game-detail__training" aria-label="Monopoly en ligne et entrainement">
-                  <MonopolyOnline onPlayingChange={setMonopolyOnlinePlaying}/>
+                  <MonopolyOnline mode="create" onPlayingChange={setMonopolyOnlinePlaying}
+                    onOpenRoom={openMonopolyRoom}
+                    onCreated={(created) => {
+                      setGameId(null);setSelectedMonopoly(null);setTab('salon');
+                      if(created) {
+                        setMonopolyMine(created);
+                        setMonopolyRooms((old) => [{id:created.id,code:created.code,status:created.status,
+                          maxPlayers:created.maxPlayers,stake:created.stake,host:session?.pseudo||'Moi',
+                          present:created.players?.length||1,createdAt:created.createdAt,serverNow:created.serverNow},
+                          ...old.filter((r)=>r.id!==created.id)]);
+                      }
+                      void refresh({quiet:true});
+                    }}/>
                   {!monopolyOnlinePlaying&&<div className="mono-online-training-toggle">
                     <button type="button" className="btn btn--sm" onClick={()=>setMonopolyTrainingOpen(v=>!v)}>
                       {monopolyTrainingOpen?'Fermer l’entrainement':'Mode entrainement sans mise'}

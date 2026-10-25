@@ -1,6 +1,14 @@
 import { walletRequest } from './accounts';
+import { API_URL } from './config';
 const base = '/api/monopoly/rooms';
-export const publicRooms = async () => (await walletRequest(base)).rooms || [];
+async function publicRequest(path) {
+  const response = await fetch(`${API_URL}${path}`, { cache: 'no-store', signal: AbortSignal.timeout(15000) });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Impossible de charger les salons Monopoly.');
+  return data;
+}
+export const publicRooms = async () => (await publicRequest(base)).rooms || [];
+export const roomByCode = async code => (await publicRequest(`${base}/code/${encodeURIComponent(code)}`)).room;
 export const mine = async () => (await walletRequest(`${base}/mine`)).room;
 export const detail = async id => (await walletRequest(`${base}/${id}`)).room;
 export const create = async (maxPlayers, stake) => (await walletRequest(base, {method:'POST',body:{maxPlayers,stake}})).room;

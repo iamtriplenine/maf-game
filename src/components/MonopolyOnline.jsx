@@ -95,30 +95,33 @@ function BoardMatch({room, session, busy, send}) {
   );
 }
 
-export default function MonopolyOnline({onPlayingChange}) {
+export default function MonopolyOnline({onPlayingChange,mode='create',selectedRoomId=null,previewRoom=null,onCreated,onOpenRoom}) {
   const {session}=useSession();
-  const [rooms,setRooms]=useState([]),[room,setRoom]=useState(null);
+  const [room,setRoom]=useState(null);
   const [maxPlayers,setMaxPlayers]=useState(4),[stake,setStake]=useState('100');
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[note,setNote]=useState('');
-  const busyRef=useRef(false),roomRef=useRef(null),refreshRef=useRef(false);
-  roomRef.current=room;
+  const busyRef=useRef(false),refreshRef=useRef(false);
   const refresh=useCallback(async()=>{
     if(!session?.id||refreshRef.current)return;
     refreshRef.current=true;
     try {
-      const [list,mine]=await Promise.all([api.publicRooms(),api.mine()]);
-      setRooms(list);
-      const current=roomRef.current;
-      if(mine){setRoom(mine);} else if(current?.status==='finished'||current?.status==='closed'){
-        const detail=await api.detail(current.id).catch(()=>null);if(detail)setRoom(detail);else setRoom(null);
-      } else setRoom(null);
-    }catch(e){setError(e.message);}finally{refreshRef.current=false;}
-  },[session?.id]);
-  useEffect(()=>{setRoom(null);setRooms([]);setNote('');setError('');if(session?.id)void refresh();
+      const mine=await api.mine();
+      if(mode==='detail') {
+        if(Number(mine?.id)===Number(selectedRoomId))setRoom(mine);
+        else if(previewRoom?.status==='finished'||previewRoom?.status==='closed') {
+          // Seul un ancien participant peut retrouver les details d'une partie terminee.
+          setRoom(await api.detail(selectedRoomId).catch(()=>null));
+        } else setRoom(null);
+      } else setRoom(mine);
+    } catch(e) {setError(e.message);} finally {refreshRef.current=false;}
+  },[session?.id,mode,selectedRoomId,previewRoom?.status]);
+  useEffect(()=>{
+    setRoom(null);setNote('');setError('');if(session?.id)void refresh();
     const id=window.setInterval(()=>{if(!document.hidden)void refresh();},2500);
     return()=>window.clearInterval(id);
   },[session?.id,refresh]);
-  useEffect(()=>{onPlayingChange?.(room?.status==='playing'||room?.status==='finished');return()=>onPlayingChange?.(false);},[room?.status,onPlayingChange]);
+  useEffect(()=>{onPlayingChange?.(mode==='detail'&&(room?.status==='playing'||room?.status==='finished'));
+    return()=>onPlayingChange?.(false);},[mode,room?.status,onPlayingChange]);
   useEffect(()=>{if(room?.status==='playing'||room?.status==='finished')void syncWallet().catch(()=>{});},[room?.status,room?.payout]);
   const update=async fn=>{
     if(busyRef.current)return false;
@@ -128,62 +131,66 @@ export default function MonopolyOnline({onPlayingChange}) {
     finally{busyRef.current=false;setBusy(false);}
   };
   const watchRoom=async id=>{const ok=await update(()=>api.join(id));if(ok)setNote('Tu as rejoint le salon.');};
-  const onCreate=e=>{e.preventDefault();void update(()=>api.create(maxPlayers,Number(stake)));};
+  const onCreate=e=>{e.preventDefault();void (async()=>{
+    let created=null;
+    const ok=await update(async()=>{created=await api.create(maxPlayers,Number(stake));return created;});
+    if(ok)onCreated?.(created);
+  })();};
   const members=room?.players||[];
   const isHost=room?.hostId===session?.id;
   const vote=room?.proposal?.votes?.[session?.id];
   const votesCount=room?.proposal?Object.values(room.proposal.votes||{}).filter(Boolean).length:0;
-  const isPlaying=room?.status==='playing'||room?.status==='finished';
+  const isPlaying=mode==='detail'&&(room?.status==='playing'||room?.status==='finished');
   return <section className={`mono-online${isPlaying?' mono-online--playing':''}`} aria-label="Salons Monopoly en ligne">
-    {!isPlaying&&<header className="mono-online-head"><h3>🎩 Monopoly en ligne</h3>
-      <p>Salons de 2 a 4 joueurs. La mise est retiree uniquement quand tous acceptent le depart.</p></header>}
+    {mode==='create'&&<header className="mono-online-head"><h3>🎩 Monopoly en ligne</h3>
+      <p>Crée un salon de 2 à 4 joueurs. Les salons disponibles et les détails sont dans l'onglet Salon.</p></header>}
     {error&&<p className="game-hub__error" role="alert">{error}</p>}
     {note&&<p className="game-hub__notice" role="status">{note}</p>}
-    {!session?<p className="mono-panel">Connecte-toi dans Profil pour creer ou rejoindre un salon.</p>:isPlaying?
-      <><div className="mono-online-roomtop"><span>Monopoly #{room.code} · {room.players.length} joueurs</span>
-        {room.status==='finished'&&<button type="button" className="btn btn--sm" onClick={()=>{setRoom(null);void refresh();}}>Retour aux salons</button>}</div>
+    {!session?<p className="mono-panel">Connecte-toi dans Profil pour créer ou rejoindre un salon.</p>:
+    mode==='detail' ? (isPlaying?
+      <><div className="mono-online-roomtop"><span>Monopoly #{room.code} · {room.players.length} joueurs</span></div>
         <BoardMatch key={room.id} room={room} session={session} busy={busy} send={update}/></>:
-    room&&['waiting','proposed'].includes(room.status)?<div className="mono-online-lobby">
-      <div className="mono-online-heading"><span>Salon #{room.code}</span><strong>{members.length}/{room.maxPlayers} joueurs</strong></div>
-      <p>Mise : <strong>{francs(room.stake)} par joueur</strong> · Pot a {members.length} : {francs(room.stake*members.length)}</p>
-      <div className="mono-online-players">{Array.from({length:room.maxPlayers},(_,i)=>{
-        const p=members.find(m=>m.seat===i);return <div className="mono-online-player" key={i}>
-          <i style={{background:p?['#ef6262','#36a9ec','#f2b443','#9d7df0'][i]:'#67636a'}}/>
-          {p?<>{p.name} <small>#{p.id}{p.id===session.id?' · Toi':''}</small></>:<span>En attente d'un joueur...</span>}
-        </div>;})}</div>
-      {room.status==='proposed'?<div className="mono-online-vote" role="status">
-        <strong>🔔 Proposition : commencer a {room.proposal.count} joueurs</strong>
-        <p>{votesCount}/{members.length} accords. Tu peux accepter ou continuer d'attendre.</p>
-        {vote===true?<p>Ton accord est enregistre. En attente des autres joueurs.</p>:<div className="mono-online-actions">
-          <button type="button" className="btn btn--primary" disabled={busy} onClick={()=>update(()=>api.vote(room.id,true))}>✓ Commencer</button>
-          <button type="button" className="btn" disabled={busy} onClick={()=>update(()=>api.vote(room.id,false))}>Attendre d'autres joueurs</button>
-        </div>}
-        {isHost&&<button type="button" className="btn btn--sm" disabled={busy} onClick={()=>update(()=>api.vote(room.id,false))}>Annuler la proposition</button>}
-      </div>:<>
-        <p>{members.length===room.maxPlayers?'Salon complet : le createur peut proposer le depart.':`Encore ${room.maxPlayers-members.length} place(s) possible(s).`}</p>
-        {isHost&&members.length>=minPlayers&&<button type="button" className="btn btn--primary" disabled={busy}
-          onClick={()=>update(()=>api.propose(room.id,members.length))}>Proposer de commencer a {members.length}</button>}
-      </>}
-      <div className="mono-online-actions"><button type="button" className="btn" disabled={busy} onClick={()=>update(()=>api.leave(room.id))}>{isHost?'Fermer le salon':'Quitter le salon'}</button></div>
-    </div>:<>
-      <form className="mono-online-create" onSubmit={onCreate}>
-        <h4>Creer un salon</h4><label>Places maximum
-          <select value={maxPlayers} onChange={e=>setMaxPlayers(Number(e.target.value))}>
-            <option value={2}>2 joueurs</option><option value={3}>3 joueurs</option><option value={4}>4 joueurs</option>
-          </select></label>
-        <label>Mise par joueur (F CFA)<input type="text" inputMode="numeric" required pattern="[0-9]+"
-          value={stake} maxLength={7} onChange={e=>setStake(e.target.value.replace(/\D/g,'').slice(0,7))}/></label>
-        <p>La partie demarre seulement avec l'accord des joueurs. Le gagnant recoit les mises du salon.</p>
-        <button type="submit" className="btn btn--primary" disabled={busy}>Creer mon salon</button>
-      </form>
-      <div className="mono-online-directory"><div className="mono-online-heading"><h4>Salons disponibles</h4>
-        <button className="btn btn--sm" type="button" onClick={()=>void refresh()}>Actualiser</button></div>
-        {rooms.length===0?<p>Aucun salon ouvert pour l'instant.</p>:rooms.map(r=><div className="mono-online-listitem" key={r.id}>
-          <span><strong>#{r.code} · {r.host}</strong><small>{r.present}/{r.maxPlayers} joueurs · {francs(r.stake)}</small></span>
-          <button type="button" className="btn btn--sm" disabled={busy||r.status!=='waiting'||r.present>=r.maxPlayers}
-            onClick={()=>void watchRoom(r.id)}>Rejoindre</button>
-        </div>)}
-      </div>
-    </>}
+      room&&['waiting','proposed'].includes(room.status)?<div className="mono-online-lobby">
+        <div className="mono-online-heading"><span>Salon #{room.code}</span><strong>{members.length}/{room.maxPlayers} joueurs</strong></div>
+        <p>Mise : <strong>{francs(room.stake)} par joueur</strong> · Pot à {members.length} : {francs(room.stake*members.length)}</p>
+        <div className="mono-online-players">{Array.from({length:room.maxPlayers},(_,i)=>{
+          const p=members.find(m=>m.seat===i);return <div className="mono-online-player" key={i}>
+            <i style={{background:p?['#ef6262','#36a9ec','#f2b443','#9d7df0'][i]:'#67636a'}}/>
+            {p?<>{p.name} <small>#{p.id}{p.id===session.id?' · Toi':''}</small></>:<span>En attente d'un joueur...</span>}
+          </div>;})}</div>
+        {room.status==='proposed'?<div className="mono-online-vote" role="status">
+          <strong>🔔 Proposition : commencer à {room.proposal.count} joueurs</strong>
+          <p>{votesCount}/{members.length} accords. Tu peux accepter ou continuer d'attendre.</p>
+          {vote===true?<p>Ton accord est enregistré. En attente des autres joueurs.</p>:<div className="mono-online-actions">
+            <button type="button" className="btn btn--primary" disabled={busy} onClick={()=>update(()=>api.vote(room.id,true))}>✓ Commencer</button>
+            <button type="button" className="btn" disabled={busy} onClick={()=>update(()=>api.vote(room.id,false))}>Attendre d'autres joueurs</button>
+          </div>}
+          {isHost&&<button type="button" className="btn btn--sm" disabled={busy} onClick={()=>update(()=>api.vote(room.id,false))}>Annuler la proposition</button>}
+        </div>:<>
+          <p>{members.length===room.maxPlayers?'Salon complet : le créateur peut proposer le départ.':`Encore ${room.maxPlayers-members.length} place(s) possible(s).`}</p>
+          {isHost&&members.length>=minPlayers&&<button type="button" className="btn btn--primary" disabled={busy}
+            onClick={()=>update(()=>api.propose(room.id,members.length))}>Proposer de commencer à {members.length}</button>}
+        </>}
+        <div className="mono-online-actions"><button type="button" className="btn" disabled={busy} onClick={()=>update(()=>api.leave(room.id))}>{isHost?'Fermer le salon':'Quitter le salon'}</button></div>
+      </div>:<div className="mono-online-lobby">
+        <div className="mono-online-heading"><strong>Salon #{previewRoom?.code||''}</strong><span>{previewRoom?.present??previewRoom?.players?.length??0}/{previewRoom?.maxPlayers||4} joueurs</span></div>
+        <p>Mise : {francs(previewRoom?.stake||0)} par joueur. Rejoins ce salon pour voir les participants et proposer le départ.</p>
+        {previewRoom?.status==='waiting' && previewRoom?.present<previewRoom?.maxPlayers &&
+          <button type="button" className="btn btn--primary" disabled={busy} onClick={()=>void watchRoom(selectedRoomId)}>Rejoindre ce salon</button>}
+        {previewRoom?.status==='proposed'&&<p>Une proposition de départ est en cours : les nouvelles inscriptions sont suspendues.</p>}
+      </div>) :
+    room&&['waiting','proposed','playing'].includes(room.status)?<div className="mono-online-create">
+      <p>Tu as déjà un salon Monopoly #{room.code}. Il est accessible dans l'onglet Salon.</p>
+      <button type="button" className="btn btn--primary" onClick={()=>onOpenRoom?.(room)}>Voir mon salon</button>
+    </div>:<form className="mono-online-create" onSubmit={onCreate}>
+      <h4>Créer un salon</h4><label>Places maximum
+        <select value={maxPlayers} onChange={e=>setMaxPlayers(Number(e.target.value))}>
+          <option value={2}>2 joueurs</option><option value={3}>3 joueurs</option><option value={4}>4 joueurs</option>
+        </select></label>
+      <label>Mise par joueur (F CFA)<input type="text" inputMode="numeric" required pattern="[0-9]+"
+        value={stake} maxLength={7} onChange={e=>setStake(e.target.value.replace(/\D/g,'').slice(0,7))}/></label>
+      <p>Les joueurs sont visibles dans l'onglet Salon. La mise est retenue après leur accord unanime.</p>
+      <button type="submit" className="btn btn--primary" disabled={busy}>Créer mon salon</button>
+    </form>}
   </section>;
 }

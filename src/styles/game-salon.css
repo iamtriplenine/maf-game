@@ -24,3 +24,7 @@
 /* Secours bien visible dans le salon, meme si l'alerte flottante est masquee. */
 .game-hub__mine--return {padding:17px 15px; font-size:clamp(14px,3.5vw,17px); font-weight:900; border:2px solid #ffba3b; color:#ffe2a2; background:#4b2715; box-shadow:0 0 15px #d9770638;}
 .game-hub__mine--return span:last-child {color:#ffca52; font-weight:900; white-space:nowrap;}
+
+/* Liste partagee : le Monopoly suit les memes bandes que les autres salons. */
+.salon-list .salon-row { min-width:0; }
+.salon-list .salon-row__main { min-width:0; }
