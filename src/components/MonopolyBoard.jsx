@@ -1,4 +1,4 @@
-// MAF_MONOPOLY_V1_BOARD : plateau 2D (image du projet Unity) + pions, proprietes et maisons
+// MAF_MONOPOLY_V1_BOARD (etape 4) : plateau 2D (image du projet Unity) + pions, proprietes et maisons
 import { SQUARES, PIECES } from '../games/monopoly/data';
 
 const C = 0.1328; // taille d'une case d'angle (fraction du plateau)
@@ -20,11 +20,12 @@ const INNER = { bottom: [0, -1], top: [0, 1], left: [1, 0], right: [-1, 0], corn
 const pct = (v) => `${(v * 100).toFixed(3)}%`;
 const OFFSETS = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0], [-1, 0], [1, 0]];
 
-export default function MonopolyBoard({ game, selected, onSelect, rolling, diceFaces, renderCenter }) {
+export default function MonopolyBoard({ game, selected, onSelect, rolling, diceFaces, renderCenter, positions }) {
+  const locOf = (p, idx) => (positions && positions[idx] !== undefined ? positions[idx] : p.location);
   const pawnsBySquare = {};
-  game.players.forEach((p) => {
+  game.players.forEach((p, idx) => {
     if (p.bankrupt) return;
-    (pawnsBySquare[p.location] ||= []).push(p);
+    (pawnsBySquare[locOf(p, idx)] ||= []).push(p);
   });
   return (
     <div className="mono-board" role="group" aria-label="Plateau de Monopoly">
@@ -62,8 +63,9 @@ export default function MonopolyBoard({ game, selected, onSelect, rolling, diceF
 
       {game.players.map((p, idx) => {
         if (p.bankrupt) return null;
-        const c = squareCenter(p.location);
-        const group = pawnsBySquare[p.location] || [p];
+        const loc = locOf(p, idx);
+        const c = squareCenter(loc);
+        const group = pawnsBySquare[loc] || [p];
         const k = group.indexOf(p);
         const off = group.length === 1 ? [0, 0] : OFFSETS[k % OFFSETS.length];
         return (

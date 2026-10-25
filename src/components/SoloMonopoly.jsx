@@ -1,4 +1,4 @@
-// MAF_MONOPOLY_V1_SOLO (etape 3) : Monopoly - mode entrainement (un seul ecran, aucun serveur, aucune mise)
+// MAF_MONOPOLY_V1_SOLO (etape 4) : Monopoly - mode entrainement (un seul ecran, aucun serveur, aucune mise)
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MonopolyBoard from './MonopolyBoard';
 import '../styles/monopoly.css';
@@ -9,6 +9,47 @@ import {
 } from '../games/monopoly/engine';
 
 const usd = (n) => `${n} $`;
+const STORE_KEY = 'maf:monopoly-training-v1';
+const loadSaved = () => {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(STORE_KEY));
+    return v && v.version === 1 && Array.isArray(v.players) && v.players.length >= 2 ? v : null;
+  } catch { return null; }
+};
+
+// Les pions "marchent" case par case (la regle est deja calculee, seul l'affichage est progressif)
+function useWalking(players) {
+  const target = players.map((p) => p.location).join(',');
+  const [shown, setShown] = useState(() => players.map((p) => p.location));
+  const goal = target.split(',').map(Number);
+  const cur = shown.length === goal.length ? shown : goal;
+  useEffect(() => {
+    const idx = goal.findIndex((g, i) => g !== cur[i]);
+    if (idx === -1) return undefined;
+    const dist = (goal[idx] - cur[idx] + 40) % 40;
+    const id = setTimeout(() => setShown((s) => (s.length === goal.length ? s : goal).map((v, i) => (i === idx ? (dist <= 12 ? (v + 1) % 40 : goal[idx]) : v))), dist <= 12 ? 170 : 400);
+    return () => clearTimeout(id);
+  }, [target, cur.join(',')]); // eslint-disable-line
+  const walking = goal.some((g, i) => g !== cur[i]);
+  return { shown: cur, walking };
+}
+
+const RULES = [
+  'Chaque joueur commence avec 1 500 $. On lance le dé, on avance, et la case décide : acheter, payer un loyer, une taxe ou tirer une carte.',
+  'Passer par GO rapporte 200 $ (et 200 $ aussi si on s\'arrête dessus). « Go To Jail » envoie en prison (case 10) et coûte 50 $ ; il n\'y a pas de tour perdu.',
+  'Loyer d\'une propriété : le loyer de base (×2 si on possède tout le groupe sans maison), puis ×5, ×15, ×45 avec 1, 2, 3 maisons, +200 $ avec 4 maisons, +400 $ avec l\'hôtel.',
+  'Gares : 25, 50, 100 ou 200 $ selon le nombre de gares possédées. Compagnies : 4× le dé (10× si on a les deux).',
+  'Construire : seulement avec un groupe de couleur complet, une maison à la fois sur la case la moins bâtie ; la 5e est un hôtel.',
+  'Vendre une propriété rapporte la moitié de son prix (plus la moitié des maisons). Si on ne peut pas payer même en vendant tout : faillite. Le dernier joueur en jeu gagne.',
+];
+function Rules() {
+  return (
+    <details className="mono-panel mono-rules">
+      <summary>📖 Règles du jeu</summary>
+      <ul className="mono-log">{RULES.map((r) => <li key={r}>{r}</li>)}</ul>
+    </details>
+  );
+}
 
 function PlayerRow({ p, isCurrent, props }) {
   const prev = useRef(p.balance);
@@ -55,7 +96,7 @@ export default function SoloMonopoly() {
   const [count, setCount] = useState(2);
   const [dice, setDice] = useState(1);
   const [names, setNames] = useState(['Joueur 1', 'Joueur 2', 'Joueur 3', 'Joueur 4', 'Joueur 5', 'Joueur 6', 'Joueur 7']);
-  const [game, setGame] = useState(null);
+  const [game, setGame] = useState(loadSaved);
   const [rolling, setRolling] = useState(false);
   const [tmpFaces, setTmpFaces] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -68,6 +109,16 @@ export default function SoloMonopoly() {
 
   useEffect(() => () => clearInterval(timer.current), []);
 
+  // La partie survit si on change d'onglet dans l'application (effacee a la fermeture)
+  useEffect(() => {
+    try {
+      if (game) sessionStorage.setItem(STORE_KEY, JSON.stringify(game));
+      else sessionStorage.removeItem(STORE_KEY);
+    } catch { /* stockage indisponible : pas grave */ }
+  }, [game]);
+
+  const { shown, walking } = useWalking(game ? game.players : []);
+
   const start = () => {
     setAuto(false);
     setCardSeen('');
@@ -76,15 +127,15 @@ export default function SoloMonopoly() {
   };
 
   const onRoll = useCallback(() => {
-    if (!game || game.phase !== 'roll' || rolling) return;
+    if (!game || game.phase !== 'roll' || rolling || walking) return;
     setRolling(true);
-    timer.current = setInterval(() => setTmpFaces(Array.from({ length: dice }, () => 1 + Math.floor(Math.random() * 6))), 90);
+    timer.current = setInterval(() => setTmpFaces(Array.from({ length: game.dice }, () => 1 + Math.floor(Math.random() * 6))), 90);
     setTimeout(() => {
       clearInterval(timer.current);
-      setGame((g) => rollDice(g, { forced: forced.slice(0, dice).map((v) => v || null) }));
+      setGame((g) => rollDice(g, { forced: forced.slice(0, g.dice).map((v) => v || null) }));
       setRolling(false);
     }, 850);
-  }, [game, rolling, dice, forced]);
+  }, [game, rolling, walking, forced]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -118,6 +169,7 @@ export default function SoloMonopoly() {
               onChange={(e) => setNames((a) => a.map((v, k) => (k === i ? e.target.value : v)))} />
           ))}</div>
           <button type="button" className="btn btn--primary btn--block" onClick={start}>Commencer l'entraînement</button>
+          <Rules />
         </div>
       </div>
     );
@@ -128,14 +180,14 @@ export default function SoloMonopoly() {
   const hint = (() => {
     if (game.phase === 'over') return '';
     if (game.phase === 'debt') return `${me.name}, tu dois ${usd(game.debt.amount)} mais tu as ${usd(me.balance)}. Vends une propriété ou déclare faillite.`;
-    if (game.phase === 'roll') return `${me.name}, lance ${dice === 2 ? 'les dés' : 'le dé'} (bouton ou touche Espace).`;
+    if (game.phase === 'roll') return `${me.name}, lance ${game.dice === 2 ? 'les dés' : 'le dé'} (bouton ou touche Espace).`;
     if (canBuy(game)) return `${me.name} est sur ${SQUARES[me.location].name} : achat possible pour ${usd(SQUARES[me.location].price)}.`;
     return game.log[0] ? `${game.log[0].player === null ? '' : `${game.players[game.log[0].player].name} `}${game.log[0].text}` : '';
   })();
   const sells = sellOptions(game);
   const builds = buildOptions(game);
   const cardKey = game.card ? `${game.turn}-${game.card.id}` : '';
-  const cardOpen = !!game.card && cardKey !== cardSeen;
+  const cardOpen = !!game.card && cardKey !== cardSeen && !walking;
 
   return (
     <div className="mono">
@@ -146,7 +198,7 @@ export default function SoloMonopoly() {
       </div>
 
       <MonopolyBoard game={game} selected={selected} onSelect={(i) => setSelected((s) => (s === i ? null : i))}
-        rolling={rolling} diceFaces={faces}
+        rolling={rolling} diceFaces={faces} positions={shown}
         renderCenter={() => cardOpen && (
           <div className={`mono-cardpop${game.card.deck === 'chest' ? ' is-chest' : ''}`} role="dialog" aria-label="Carte tirée">
             <strong>{game.card.deck === 'chest' ? 'CAISSE DE COMMUNAUTÉ' : 'CHANCE'}</strong>
@@ -165,10 +217,10 @@ export default function SoloMonopoly() {
         <>
           {hint && <p className={`mono-hint${game.phase === 'debt' ? ' mono-hint--warn' : ''}`}>{hint}</p>}
           <div className="mono-actions">
-            <button type="button" className="btn btn--primary btn--sm" disabled={game.phase !== 'roll' || rolling} onClick={onRoll}>🎲 Lancer</button>
-            <button type="button" className="btn btn--sm" disabled={!canBuy(game)} onClick={() => setGame((g) => buy(g))}>
+            <button type="button" className="btn btn--primary btn--sm" disabled={game.phase !== 'roll' || rolling || walking} onClick={onRoll}>🎲 Lancer</button>
+            <button type="button" className="btn btn--sm" disabled={!canBuy(game) || walking} onClick={() => setGame((g) => buy(g))}>
               🏷️ Acheter{canBuy(game) ? ` (${usd(SQUARES[me.location].price)})` : ''}</button>
-            <button type="button" className="btn btn--sm" disabled={game.phase !== 'after'} onClick={() => setGame((g) => endTurn(g))}>⏭️ Fin du tour</button>
+            <button type="button" className="btn btn--sm" disabled={game.phase !== 'after' || walking} onClick={() => setGame((g) => endTurn(g))}>⏭️ Fin du tour</button>
           </div>
         </>
       )}
@@ -223,12 +275,14 @@ export default function SoloMonopoly() {
         </ul>
       </section>
 
+      <Rules />
+
       {game.phase !== 'over' && (
         <details className="mono-panel mono-tools">
           <summary>🧪 Outils de test</summary>
           <p className="mono__note">Pour voir tous les cas sans attendre le hasard. Ces boutons n'existent qu'en entraînement.</p>
           <div className="mono__row">
-            {Array.from({ length: dice }, (_, i) => (
+            {Array.from({ length: game.dice }, (_, i) => (
               <label key={i} className="mono__note">Dé {i + 1}{' '}
                 <select value={forced[i]} onChange={(e) => setForced((f) => f.map((v, k) => (k === i ? Number(e.target.value) : v)))}>
                   <option value={0}>Aléatoire</option>

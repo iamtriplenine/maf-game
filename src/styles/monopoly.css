@@ -1,4 +1,4 @@
-/* MAF_MONOPOLY_V1_CSS (etape 3) : Monopoly (mode entrainement) */
+/* MAF_MONOPOLY_V1_CSS (etape 4) : Monopoly (mode entrainement) */
 .mono { display:grid; gap:14px; }
 .mono__setup { display:grid; gap:14px; padding:18px; border:1px solid var(--border); border-radius:var(--r-lg); background:var(--glass); }
 .mono__setup h3 { margin:0; font:700 16px/1.3 var(--font-tech); }
@@ -22,7 +22,7 @@
 .mono-hotel { display:block; width:4.2cqw; height:2cqw; background:#e32a2a; border:.25cqw solid #7d1010; border-radius:.4cqw; }
 .mono-houses.is-vertical .mono-hotel { width:2cqw; height:4.2cqw; }
 
-.mono-pawn { position:absolute; width:4.6cqw; height:4.6cqw; margin:-2.3cqw 0 0 -2.3cqw; display:grid; place-items:center; border-radius:50%; border:.5cqw solid #fff; font-size:2.9cqw; line-height:1; box-shadow:0 .5cqw 1.2cqw rgba(0,0,0,.55); transition:left .45s var(--ease), top .45s var(--ease); z-index:3; pointer-events:none; }
+.mono-pawn { position:absolute; width:4.6cqw; height:4.6cqw; margin:-2.3cqw 0 0 -2.3cqw; display:grid; place-items:center; border-radius:50%; border:.5cqw solid #fff; font-size:2.9cqw; line-height:1; box-shadow:0 .5cqw 1.2cqw rgba(0,0,0,.55); transition:left .17s linear, top .17s linear; z-index:3; pointer-events:none; }
 .mono-pawn.is-current { animation:mono-bounce .9s ease-in-out infinite; z-index:4; }
 @keyframes mono-bounce { 50% { transform:translateY(-.9cqw) scale(1.12); } }
 
@@ -74,3 +74,8 @@
 .mono-tools summary { cursor:pointer; font:700 14px/1.3 var(--font-tech); }
 .mono-tools select, .mono-tools__num { padding:8px 10px; border:1px solid var(--border); border-radius:var(--r-sm); background:var(--glass); color:var(--text); font-size:13px; max-width:100%; }
 .mono-tools__num { width:96px; }
+
+.mono-rules summary { cursor:pointer; font:700 14px/1.3 var(--font-tech); }
+.mono-rules .mono-log li { color:var(--text); }
+@media (max-width:560px) { .mono-actions { grid-template-columns:repeat(3,minmax(0,1fr)); } .mono-actions .btn { padding:0 8px; } }
+@media (prefers-reduced-motion:reduce) { .mono-pawn.is-current, .mono-dice.is-rolling .mono-die, .mono-cardpop { animation:none; } }
