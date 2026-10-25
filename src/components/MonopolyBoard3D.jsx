@@ -5,6 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { PIECES } from '../games/monopoly/data';
 import { overviewHeight, renderPixelRatio } from '../games/monopoly/cameraQuality';
 import { BOARD_SIZE, squareCenter, squarePosition, pickSquare, sampleTravel, smooth } from '../games/monopoly/pawnMotion';
+import { buildingPlacement } from '../games/monopoly/buildingPlacement';
 
 const OFFSETS=[[-.6,-.6],[.6,-.6],[-.6,.6],[.6,.6],[0,0],[-.6,0],[.6,0]];
 export default function MonopolyBoard3D({ game, positions, travel, selected, cameraFocused, onCameraViewChange, onSelect, onReady, onFail }) {
@@ -28,8 +29,9 @@ export default function MonopolyBoard3D({ game, positions, travel, selected, cam
   scene.add(new THREE.HemisphereLight(0xffffff,0x61766c,2.3));
   const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(-6,18,10);scene.add(light);
   const marks=new THREE.Group();scene.add(marks);
+  const buildings=new THREE.Group();scene.add(buildings);
+  const buildingModels=new Map();
   const ringGeo=keep(new THREE.RingGeometry(.38,.45,32));
-  const squareGeo=keep(new THREE.PlaneGeometry(.36,.36));
   const selectedMat=keep(new THREE.MeshBasicMaterial({color:0xffd35c,transparent:true,opacity:.45,depthWrite:false}));
   const selection=new THREE.Mesh(keep(new THREE.PlaneGeometry(1,1)),selectedMat);
   selection.rotation.x=-Math.PI/2;selection.position.y=.045;selection.visible=false;scene.add(selection);
@@ -60,17 +62,39 @@ export default function MonopolyBoard3D({ game, positions, travel, selected, cam
     loaded.set(id,g.scene);pending.delete(id);g.scene.traverse(o=>{if(o.geometry)keep(o.geometry);if(o.material)keep(o.material);});dirty=true;
    },undefined,fail);
   };
-  let notified=false,previousGame=null,previousSelected=null,previousMotion=null,wasTravelling=false;
+  // Les vrais maillages proviennent de House.fbx / Hotel.fbx du ZIP Monopoly-Local.
+  // Ils ont ete convertis une fois en GLB, puis charges localement sans Unity.
+  // Une meme geometrie est reutilisee pour toutes les maisons d'une case.
+  for(const type of ['house','hotel']){
+   loader.load(`/games/monopoly/buildings/${type}.glb`,g=>{
+    if(stopped){g.scene.traverse(o=>{o.geometry?.dispose();o.material?.dispose?.();});return;}
+    buildingModels.set(type,g.scene);
+    g.scene.traverse(o=>{if(o.geometry)keep(o.geometry);if(o.material){const materials=Array.isArray(o.material)?o.material:[o.material];materials.forEach(keep);}});
+    previousBuildings=null;dirty=true;
+   },undefined,()=>{ /* Ne pas faire echouer les pions si un batiment manque. */ });
+  }
+  let notified=false,previousGame=null,previousBuildings=null,previousSelected=null,previousMotion=null,wasTravelling=false;
+  const rebuildBuildings=g=>{
+   buildings.clear();
+   for(let i=0;i<40;i++){
+    const n=g.houses[i]||0;
+    if(!n)continue;
+    for(const spot of buildingPlacement(i,n)){
+     const original=buildingModels.get(spot.type);
+     if(!original)continue;
+     const mesh=original.clone(true);
+     mesh.position.set(spot.x,spot.y,spot.z);
+     mesh.rotation.y=spot.rotation;
+     mesh.scale.setScalar(spot.scale);
+     buildings.add(mesh);
+    }
+   }
+  };
   const rebuildMarks=g=>{
    marks.children.slice().forEach(o=>{marks.remove(o);o.material.dispose();resources.delete(o.material);});
    for(let i=0;i<40;i++){
     const p=squarePosition(i),c=squareCenter(i),inner={bottom:[0,-1],top:[0,1],left:[1,0],right:[-1,0],corner:[0,0]}[c.side];
-    if(g.owners[i]!==null){const marker=new THREE.Mesh(ringGeo,keep(new THREE.MeshBasicMaterial({color:g.players[g.owners[i]].color})));marker.rotation.x=-Math.PI/2;marker.position.set(p.x-inner[0]*.9,.03,p.z-inner[1]*.9);marker.scale.setScalar(.4);marks.add(marker);}
-    const n=g.houses[i];for(let k=0;k<(n===5?1:n);k++){
-     const marker=new THREE.Mesh(squareGeo,keep(new THREE.MeshBasicMaterial({color:n===5?0xe32a2a:0x1fa24a})));marker.rotation.x=-Math.PI/2;
-     marker.position.set(p.x+inner[0]*.9+(c.side==='bottom'||c.side==='top'?(k-(n-1)/2)*.38:0),.035,p.z+inner[1]*.9+(c.side==='left'||c.side==='right'?(k-(n-1)/2)*.38:0));
-     if(n===5)marker.scale.set(1.8,1,1);marks.add(marker);
-    }
+    if(g.owners[i]!==null&&!g.houses[i]){const marker=new THREE.Mesh(ringGeo,keep(new THREE.MeshBasicMaterial({color:g.players[g.owners[i]].color})));marker.rotation.x=-Math.PI/2;marker.position.set(p.x-inner[0]*.9,.03,p.z-inner[1]*.9);marker.scale.setScalar(.4);marks.add(marker);}
    }
   };
   const draw=now=>{
@@ -80,6 +104,7 @@ export default function MonopolyBoard3D({ game, positions, travel, selected, cam
    const canShow=textureReady&&g.players.every(p=>p.bankrupt||loaded.has(PIECES[p.piece]?.id||'cannon'));
    if(canShow&&!notified){notified=true;props.onReady?.();}
    if(g!==previousGame){rebuildMarks(g);previousGame=g;dirty=true;}
+   if(g!==previousBuildings){rebuildBuildings(g);previousBuildings=g;dirty=true;}
    if(props.selected!==previousSelected){
     previousSelected=props.selected;selection.visible=props.selected!==null;
     if(selection.visible){const p=squarePosition(props.selected),c=squareCenter(props.selected);selection.position.set(p.x,.045,p.z);selection.scale.set((c.side==='left'||c.side==='right'||c.side==='corner'? .1328:(1-2*.1328)/9)*BOARD_SIZE,(c.side==='bottom'||c.side==='top'||c.side==='corner'?.1328:(1-2*.1328)/9)*BOARD_SIZE,1);}dirty=true;
