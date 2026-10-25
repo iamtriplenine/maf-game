@@ -17,3 +17,5 @@ export const leave = async id => (await walletRequest(`${base}/${id}/leave`,{met
 export const propose = async (id,count) => (await walletRequest(`${base}/${id}/propose`,{method:'POST',body:{count}})).room;
 export const vote = async (id,accept) => (await walletRequest(`${base}/${id}/vote`,{method:'POST',body:{accept}})).room;
 export const action = async (id,action,square) => (await walletRequest(`${base}/${id}/action`,{method:'POST',body:{action,...(Number.isInteger(square)?{square}:{})}})).room;
+
+export const presence = async (id,state) => (await walletRequest(`${base}/${id}/presence`,{method:'POST',body:{state}})).room;

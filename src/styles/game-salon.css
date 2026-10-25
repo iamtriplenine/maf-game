@@ -58,3 +58,6 @@ body:has(.game-hub__detail--monopoly-fullscreen) .refresh-control { display:none
 .game-hub__detail--monopoly-fullscreen .mono-play-screen {min-height:0;}
 .game-hub__mine--monopoly-return {display:flex; justify-content:space-between; align-items:center; gap:10px;}
 .game-hub__mine--monopoly-return strong {color:var(--accent-2);font-size:12px;white-space:nowrap;}
+
+/* Joueur absent du plateau : avertissement visible aux autres joueurs. */
+.mono-online-absence{margin:0;padding:8px 10px;border:1px solid rgba(255,175,66,.55);border-radius:10px;background:rgba(122,68,17,.13);font-size:12px;line-height:1.4;color:var(--text);}

@@ -18,6 +18,8 @@ const IMPORTANT_KINDS = new Set([
   'house-built',
   'hotel-built',
   'sale',
+  'player-away',
+  'player-return',
 ]);
 
 function isImportant(entry) {

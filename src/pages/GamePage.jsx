@@ -375,6 +375,7 @@ export default function GamePage() {
   const isParticipant = isHost || isGuest;
   const myHostedRooms = myRooms.filter((room) => room.is_host);
   const activeMonopoly = monopolyMine?.status === 'playing' ? monopolyMine : null;
+  const myMonopolyAwayAt = activeMonopoly?.game?.presence?.away?.[String(session?.id)];
   const hostedMonopoly = monopolyMine && Number(monopolyMine.hostId) === Number(session?.id)
     && ['waiting', 'proposed', 'playing'].includes(monopolyMine.status) ? monopolyMine : null;
   const visibleMonopolyRooms = monopolyRooms.filter((room) => ['waiting', 'proposed'].includes(room.status));
@@ -426,7 +427,9 @@ export default function GamePage() {
 
           {activeMonopoly && (!selectedMonopoly || Number(selectedMonopoly.id) !== Number(activeMonopoly.id)) &&
             <button type="button" className="game-hub__mine game-hub__mine--monopoly-return" onClick={() => openMonopolyRoom(activeMonopoly)}>
-              <span>🎩 Partie Monopoly #{activeMonopoly.code} en cours</span><strong>Revenir au plateau →</strong>
+              <span>{myMonopolyAwayAt!==undefined
+                ? `⚠ Monopoly #${activeMonopoly.code} · ${Math.max(0,Math.ceil((Number(myMonopolyAwayAt)+120000-clock)/1000))} s pour revenir`
+                : `🎩 Partie Monopoly #${activeMonopoly.code} en cours`}</span><strong>Revenir au plateau →</strong>
             </button>}
           {session && <MultiRoomSlots rooms={myHostedRooms} monopolyRoom={hostedMonopoly} busy={busy}
             onOpen={(room) => void openRoom(room)} onOpenMonopoly={openMonopolyRoom}
@@ -472,7 +475,13 @@ export default function GamePage() {
               <h3>{monopolyOnlinePlaying ? '🎩 Monopoly · Partie en cours' : `🎩 Monopoly · Salon #${selectedMonopoly.code}`}</h3>
               <button type="button" className="game-hub__close"
                 aria-label={monopolyOnlinePlaying ? 'Revenir aux salons sans abandonner' : 'Fermer les détails du salon'}
-                onClick={() => {setSelectedMonopoly(null);setMonopolyOnlinePlaying(false);window.scrollTo(0,0);}}>
+                onClick={async () => {
+                  if (monopolyOnlinePlaying) {
+                    try { await monopolyApi.presence(selectedMonopoly.id,'away'); }
+                    catch (e) { setError(e.message || 'Impossible de signaler ton depart.'); return; }
+                  }
+                  setSelectedMonopoly(null);setMonopolyOnlinePlaying(false);window.scrollTo(0,0);
+                }}>
                 {monopolyOnlinePlaying ? '← Salons' : '×'}</button>
             </div>
             <MonopolyOnline mode="detail" selectedRoomId={selectedMonopoly.id} previewRoom={selectedMonopoly}

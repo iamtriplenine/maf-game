@@ -33,6 +33,9 @@ function BoardMatch({room, session, busy, send}) {
   const sells=isMyTurn?sellOptions(game):[];
   const canAct=isMyTurn&&!busy&&!walking;
   const allowedBuy=canAct&&canBuy(game);
+  const awayPlayers=room.players.filter(p=>game.presence?.away?.[String(p.id)]!==undefined&&!game.players[room.players.indexOf(p)]?.bankrupt);
+  const [clockNow,setClockNow]=useState(Date.now());
+  useEffect(()=>{const timer=window.setInterval(()=>setClockNow(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
   const winner=room.winnerId===session?.id;
   const hint=game.phase==='over'?'Partie terminee.'
     : !isMyTurn?`Au tour de ${active?.name || 'un autre joueur'}. La partie se met a jour automatiquement.`
@@ -48,6 +51,9 @@ function BoardMatch({room, session, busy, send}) {
           cameraFocused={focused} onCameraReadyChange={setCameraReady}
           renderCenter={()=><MonopolyActivity game={game} paused={walking||!!panel}/>}/>
         <div className="mono-console">
+          {awayPlayers.map(p=><p className="mono-online-absence" role="status" key={p.id}>
+            {p.name} a quitté le plateau · retour sous {Math.max(0,Math.ceil((Number(game.presence.away[String(p.id)])+120000-clockNow)/1000))} s, sinon élimination.
+          </p>)}
           <div className="mono-statusline">
             <span><span className="mono-token" style={{background:active?.color}}>{PIECES[active?.piece||0].emoji}</span><strong>{active?.name}</strong></span>
             <span>{cash(active?.balance||0)} <small>· Tour {game.turn}</small></span>
@@ -120,6 +126,18 @@ export default function MonopolyOnline({onPlayingChange,mode='create',selectedRo
     const id=window.setInterval(()=>{if(!document.hidden)void refresh();},2500);
     return()=>window.clearInterval(id);
   },[session?.id,refresh]);
+  // La presence est maintenue uniquement quand le plateau est ouvert.
+  // Quitter vers Salons arrete ce signal et lance le delai de reconnexion.
+  useEffect(()=>{
+    if(mode!=='detail'||room?.status!=='playing'||!session?.id)return undefined;
+    const id=room.id;
+    const ping=()=>{if(!document.hidden)void api.presence(id,'here').catch(()=>{});};
+    ping();
+    const timer=window.setInterval(ping,10000);
+    const resume=()=>{if(!document.hidden)ping();};
+    document.addEventListener('visibilitychange',resume);
+    return()=>{window.clearInterval(timer);document.removeEventListener('visibilitychange',resume);};
+  },[mode,room?.id,room?.status,session?.id]);
   useEffect(()=>{onPlayingChange?.(mode==='detail'&&(room?.status==='playing'||room?.status==='finished'));
     return()=>onPlayingChange?.(false);},[mode,room?.status,onPlayingChange]);
   useEffect(()=>{if(room?.status==='playing'||room?.status==='finished')void syncWallet().catch(()=>{});},[room?.status,room?.payout]);
