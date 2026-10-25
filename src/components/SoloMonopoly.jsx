@@ -170,8 +170,7 @@ export default function SoloMonopoly({ onPlayingChange }) {
     const next = buy(game);
     if (next === game) return;
     setGame(next);
-    // Proposer directement la premiere maison sur le terrain tout juste achete.
-    if (next.purchasedThisTurn != null && buildOptions(next).length) setPanel('build');
+    // Le bouton Construire reste disponible, mais l'achat n'ouvre pas la fenetre.
   };
 
   return (
