@@ -175,3 +175,8 @@ body:has(.game-hub--monopoly-playing) .refresh-control { display:none; }
 .mono-console .btn.mono-roll-timed{position:relative;isolation:isolate;background:rgba(225,56,148,.16);border-color:#e14c9a;overflow:hidden;color:white;}
 .mono-console .btn.mono-roll-timed::before{content:"";position:absolute;inset:0 auto 0 0;width:var(--mono-roll-width,100%);background:linear-gradient(90deg,#b82881,#ef65b2);z-index:0;pointer-events:none;}
 .mono-console .btn.mono-roll-timed svg,.mono-console .btn.mono-roll-timed span{position:relative;z-index:1;}
+
+/* Vert : la jauge Fin se remplit de gauche vers la droite en 60s. */
+.mono-console .btn.mono-end-timed{position:relative;isolation:isolate;background:rgba(22,164,95,.16);border-color:#2faf74;overflow:hidden;color:white;}
+.mono-console .btn.mono-end-timed::before{content:"";position:absolute;inset:0 auto 0 0;width:var(--mono-end-width,0%);background:linear-gradient(90deg,#167e4a,#38c984);z-index:0;pointer-events:none;}
+.mono-console .btn.mono-end-timed svg,.mono-console .btn.mono-end-timed span{position:relative;z-index:1;}

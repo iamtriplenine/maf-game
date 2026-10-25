@@ -36,6 +36,7 @@ function BoardMatch({room, session, busy, send}) {
   const awayPlayers=room.players.filter(p=>game.presence?.away?.[String(p.id)]!==undefined&&!game.players[room.players.indexOf(p)]?.bankrupt);
   const [clockNow,setClockNow]=useState(Date.now());
   const rollRemaining=Math.max(0,Math.min(100,((Number(game.turnClock?.dueAt)||clockNow)-clockNow)/500));
+  const endProgress=Math.max(0,Math.min(100,((clockNow-Number(game.turnClock?.startedAt||clockNow))/600)));
   useEffect(()=>{const timer=window.setInterval(()=>setClockNow(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
   const winner=room.winnerId===session?.id;
   const hint=game.phase==='over'?'Partie terminee.'
@@ -67,7 +68,7 @@ function BoardMatch({room, session, busy, send}) {
             <div className="mono-actions">
               <button type="button" className={`btn btn--primary btn--sm${isMyTurn&&game.phase==='roll'?' mono-roll-timed':''}`} style={{'--mono-roll-width':`${rollRemaining}%`}} disabled={!canAct||game.phase!=='roll'} onClick={()=>onAction('roll')}><MonopolyActionIcon name="roll"/><span>Lancer</span></button>
               <button type="button" className="btn btn--sm" disabled={!allowedBuy} onClick={()=>onAction('buy')}><MonopolyActionIcon name="buy"/><span>Acheter</span></button>
-              <button type="button" className="btn btn--sm" disabled={!canAct||game.phase!=='after'} onClick={()=>onAction('end')}><MonopolyActionIcon name="end"/><span>Fin</span></button>
+              <button type="button" className={`btn btn--sm${isMyTurn&&['after','debt'].includes(game.phase)?' mono-end-timed':''}`} style={{'--mono-end-width':`${endProgress}%`}} disabled={!canAct||game.phase!=='after'} onClick={()=>onAction('end')}><MonopolyActionIcon name="end"/><span>Fin</span></button>
             </div>
             <div className="mono-secondary-actions">
               <button type="button" className="btn btn--sm" disabled={!canAct||!builds.length} onClick={()=>setPanel('build')}><MonopolyActionIcon name="build"/><span>Maison</span></button>
