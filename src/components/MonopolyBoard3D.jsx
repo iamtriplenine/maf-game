@@ -157,12 +157,34 @@ export default function MonopolyBoard3D({ game, positions, travel, selected, cam
    camera.position.copy(overview).lerp(new THREE.Vector3(targetX+2.5,6.3,targetZ+4.4),focus);
    look.set(0,0,0).lerp(new THREE.Vector3(targetX,.3,targetZ),focus);
    camera.lookAt(look);
+   // Les des sont poses au centre DU PLATEAU, et non au centre de la camera.
+   // On projette ce point fixe pendant le zoom pour eviter de recouvrir le pion.
+   const diceStage=el.parentElement?.querySelector('.mono-dice-stage');
+   if(diceStage){
+    if(showPerspective){
+     const projected=new THREE.Vector3(0,.08,0).project(camera);
+     const boardX=(projected.x+1)*50;
+     const boardY=(1-projected.y)*50;
+     // La zone .mono-center occupe les 68% centraux du plateau.
+     diceStage.style.setProperty('--mono-dice-x',`${((boardX-16)/.68).toFixed(2)}%`);
+     diceStage.style.setProperty('--mono-dice-y',`${((boardY-16)/.68).toFixed(2)}%`);
+     diceStage.classList.add('is-world-anchored');
+    }else{
+     diceStage.classList.remove('is-world-anchored');
+     diceStage.style.removeProperty('--mono-dice-x');
+     diceStage.style.removeProperty('--mono-dice-y');
+    }
+   }
    el.dataset.view=focus>.02?'suivi':'ensemble';
    if(active||wasTravelling||dirty||changedMotion){renderer.render(scene,camera);dirty=false;}
    wasTravelling=active;
   };
   raf=requestAnimationFrame(draw);
   return()=>{
+   const diceStage=el.parentElement?.querySelector('.mono-dice-stage');
+   diceStage?.classList.remove('is-world-anchored');
+   diceStage?.style.removeProperty('--mono-dice-x');
+   diceStage?.style.removeProperty('--mono-dice-y');
    stopped=true;cancelAnimationFrame(raf);observer?.disconnect();renderer.domElement.removeEventListener('click',click);renderer.domElement.removeEventListener('webglcontextlost',lost);
    resources.forEach(r=>r.dispose?.());renderer.dispose();renderer.domElement.remove();
   };
