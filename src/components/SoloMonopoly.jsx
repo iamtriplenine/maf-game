@@ -76,6 +76,8 @@ export default function SoloMonopoly({ onPlayingChange }) {
   const rollTimeout = useRef(null);
   const screenRef = useRef(null), consoleRef = useRef(null);
   const [panel, setPanel] = useState(null);
+  const [cameraFocused, setCameraFocused] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   useMonopolyViewport(!!game, screenRef, consoleRef);
   useEffect(() => { onPlayingChange?.(!!game); }, [!!game, onPlayingChange]);
   useEffect(() => () => onPlayingChange?.(false), [onPlayingChange]);
@@ -93,6 +95,7 @@ export default function SoloMonopoly({ onPlayingChange }) {
   const { shown, walking, travel } = usePawnTravel(game);
 
   const start = () => {
+    setCameraFocused(false);
     setAuto(false);
     setGame(createGame({ names: names.slice(0, count).map((n, i) => n.trim() || `Joueur ${i + 1}`), dice }));
     setSelected(null);
@@ -166,6 +169,7 @@ export default function SoloMonopoly({ onPlayingChange }) {
       <section className="mono-play-screen" ref={screenRef} aria-label="Partie de Monopoly">
         <MonopolyBoard game={game} selected={selected} onSelect={setSelected}
           rolling={rolling} diceFaces={faces} positions={shown} travel={travel}
+          cameraFocused={cameraFocused} onCameraReadyChange={setCameraReady}
           renderCenter={() => <MonopolyActivity game={game} paused={rolling || walking || !!panel} />} />
         <div className="mono-console" ref={consoleRef}>
           <div className="mono-statusline">
@@ -188,6 +192,12 @@ export default function SoloMonopoly({ onPlayingChange }) {
             <div className="mono-secondary-actions">
               <button type="button" className="btn btn--sm" disabled={!builds.length || walking || rolling} onClick={() => setPanel('build')}>🏠 Construire</button>
               <button type="button" className="btn btn--sm" disabled={(!sells.length && game.phase !== 'debt') || walking || rolling} onClick={() => setPanel('sell')}>🏷️ Vendre</button>
+              <button type="button" className={`btn btn--sm${cameraFocused ? ' btn--primary' : ''}`}
+                disabled={!cameraReady} aria-pressed={cameraFocused}
+                title={cameraFocused ? 'Revenir à la vue générale du plateau' : 'Centrer la caméra sur le pion du joueur actif'}
+                onClick={() => setCameraFocused((focused) => !focused)}>
+                {cameraFocused ? '🗺️ Vue plateau' : '🎯 Mon pion'}
+              </button>
               <button type="button" className="btn btn--sm" onClick={() => setPanel('more')}>••• Plus</button>
             </div>
           </>}

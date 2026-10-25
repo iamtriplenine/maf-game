@@ -13,7 +13,7 @@
 .mono-board { position:relative; width:100%; max-width:640px; margin:0 auto; aspect-ratio:1/1; container-type:inline-size; border-radius:14px; overflow:hidden; box-shadow:0 14px 40px rgba(0,0,0,.45); background:#cfe5cf; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
 .mono-board__img { position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; }
 .mono-sq { position:absolute; transform:translate(-50%,-50%); }
-.mono-occupancy { position:absolute; transform:translate(-50%,-50%); z-index:2; pointer-events:none; border-radius:2.2cqw; overflow:hidden; }
+.mono-occupancy { position:absolute; transform:translate(-50%,-50%); z-index:0; pointer-events:none; border-radius:2.2cqw; overflow:hidden; }
 .mono-occupancy::after { content:""; position:absolute; left:0; right:0; bottom:0; height:32%; background:var(--mono-player-glow); border-radius:0 0 1.8cqw 1.8cqw; box-shadow:inset 0 -.1cqw .18cqw rgba(255,255,255,.16); }
 .mono-sq__hit { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; background:transparent; cursor:pointer; }
 .mono-sq.is-selected::after { content:""; position:absolute; inset:0; border:.6cqw solid #fff; box-shadow:0 0 0 .3cqw var(--accent), 0 0 2cqw var(--accent); pointer-events:none; }
@@ -92,7 +92,8 @@
 .mono-scene3d { position:absolute; inset:0; z-index:1; opacity:0; pointer-events:none; }
 .mono-scene3d canvas { width:100%; height:100%; display:block; }
 .mono-board.is-3d .mono-scene3d { opacity:1; pointer-events:auto; }
-.mono-board.is-3d > .mono-sq, .mono-board.is-3d > .mono-pawn, .mono-board.is-3d.is-travelling > .mono-board__img { visibility:hidden; }
+.mono-board.is-3d > .mono-sq, .mono-board.is-3d > .mono-pawn, .mono-board.is-3d.is-travelling > .mono-board__img, .mono-board.is-3d.is-perspective > .mono-board__img { visibility:hidden; }
+.mono-board.is-3d.is-perspective > .mono-occupancy { visibility:hidden; }
 .mono-board.is-travelling .mono-dice-stage { visibility:hidden; }
 
 /* MAF_MONOPOLY_SHARP_FRAME_V1 : image plein cadre au repos, perspective en mouvement. */
@@ -117,7 +118,8 @@
 .mono-statusline small { color:var(--text-dim); white-space:nowrap; }
 .mono-statusline .mono-token { width:23px; height:23px; border-width:1px; font-size:13px; }
 .mono-console .mono-hint { min-height:32px; max-height:40px; padding:5px 9px; font-size:11px; line-height:15px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.mono-console .mono-actions, .mono-secondary-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.mono-console .mono-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.mono-secondary-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
 .mono-console .mono-actions .btn { min-width:0; min-height:44px; padding:5px 4px; font-size:12px; line-height:15px; letter-spacing:0; }
 .mono-secondary-actions .btn { min-width:0; min-height:36px; padding:5px 4px; font-size:11px; line-height:14px; letter-spacing:0; }
 .mono-history { margin-top:calc(var(--mono-dock-space,0px) + 24px); margin-bottom:24px; }

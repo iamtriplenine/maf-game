@@ -56,7 +56,7 @@ function squareGlow(colors) {
   return `linear-gradient(to right, ${segments}), linear-gradient(to top, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 100%)`;
 }
 
-export default function MonopolyBoard({ game, selected, onSelect, rolling, diceFaces, renderCenter, positions, travel }) {
+export default function MonopolyBoard({ game, selected, onSelect, rolling, diceFaces, renderCenter, positions, travel, cameraFocused, onCameraReadyChange }) {
   const [toast, setToast] = useState(null);
   const toastId = useRef(0), keyboardCase = useRef(0), selectRef = useRef(onSelect);
   selectRef.current = onSelect;
@@ -74,6 +74,7 @@ export default function MonopolyBoard({ game, selected, onSelect, rolling, diceF
   const toastSquare = toast ? SQUARES[toast.id] : null;
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [perspective, setPerspective] = useState(false);
   const locOf = (p, idx) => (positions && positions[idx] !== undefined ? positions[idx] : p.location);
   const pawnsBySquare = {};
   game.players.forEach((p, idx) => {
@@ -81,14 +82,17 @@ export default function MonopolyBoard({ game, selected, onSelect, rolling, diceF
     (pawnsBySquare[locOf(p, idx)] ||= []).push(p);
   });
   return (
-    <div className={`mono-board${ready && !failed ? ' is-3d' : ''}${travel ? ' is-travelling' : ''}`} role="group" aria-label="Plateau de Monopoly. Utilise les flèches pour parcourir les cases." tabIndex={0}
+    <div className={`mono-board${ready && !failed ? ' is-3d' : ''}${travel ? ' is-travelling' : ''}${perspective ? ' is-perspective' : ''}`}  role="group" aria-label="Plateau de Monopoly. Utilise les flèches pour parcourir les cases." tabIndex={0}
       onKeyDown={e => {
         if (e.target !== e.currentTarget) return;
         const step = {ArrowRight:1,ArrowLeft:-1,ArrowUp:10,ArrowDown:-10}[e.key];
         if (step !== undefined) { e.preventDefault(); e.stopPropagation(); showCase((keyboardCase.current + step + 40) % 40); }
         else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); showCase(keyboardCase.current); }
       }}>
-      {!failed && <Suspense fallback={null}><MonopolyBoard3D game={game} positions={positions} travel={travel} selected={selected} onSelect={showCase} onReady={() => setReady(true)} onFail={() => {setReady(false);setFailed(true);}} /></Suspense>}
+      {!failed && <Suspense fallback={null}><MonopolyBoard3D game={game} positions={positions} travel={travel} selected={selected}
+        cameraFocused={cameraFocused} onCameraViewChange={setPerspective}
+        onSelect={showCase} onReady={() => {setReady(true);onCameraReadyChange?.(true);}}
+        onFail={() => {setReady(false);setFailed(true);setPerspective(false);onCameraReadyChange?.(false);}} /></Suspense>}
       <img className="mono-board__img" src="/games/monopoly/board.jpg" alt="" draggable="false" />
 
       {Object.entries(pawnsBySquare).map(([id, players]) => {
