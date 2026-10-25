@@ -45,15 +45,15 @@ function colorWithAlpha(color, alpha) {
 function squareGlow(colors) {
   const list = (colors || []).filter(Boolean);
   if (!list.length) return null;
-  if (list.length === 1) return colorWithAlpha(list[0], 0.28);
+  const alpha = list.length > 1 ? 0.32 : 0.26;
+  if (list.length === 1) return `linear-gradient(to top, ${colorWithAlpha(list[0], alpha)} 0%, ${colorWithAlpha(list[0], alpha * 0.82)} 12%, ${colorWithAlpha(list[0], alpha * 0.46)} 22%, ${colorWithAlpha(list[0], 0)} 32%)`;
   const step = 100 / list.length;
-  const stops = list.flatMap((color, index) => {
+  const segments = list.flatMap((color, index) => {
     const start = (index * step).toFixed(2);
     const end = ((index + 1) * step).toFixed(2);
-    const tint = colorWithAlpha(color, 0.24);
-    return [`${tint} ${start}%`, `${tint} ${end}%`];
-  });
-  return `linear-gradient(135deg, ${stops.join(', ')})`;
+    return [`${colorWithAlpha(color, alpha)} ${start}%`, `${colorWithAlpha(color, alpha)} ${end}%`];
+  }).join(', ');
+  return `linear-gradient(to right, ${segments}), linear-gradient(to top, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 100%)`;
 }
 
 export default function MonopolyBoard({ game, selected, onSelect, rolling, diceFaces, renderCenter, positions, travel }) {
@@ -99,7 +99,7 @@ export default function MonopolyBoard({ game, selected, onSelect, rolling, diceF
           top: pct(c.y),
           width: pct(c.side === 'left' || c.side === 'right' ? C : (c.side === 'corner' ? C : T)),
           height: pct(c.side === 'bottom' || c.side === 'top' ? C : (c.side === 'corner' ? C : T)),
-          background: squareGlow(players.map((player) => player.color)),
+          '--mono-player-glow': squareGlow(players.map((player) => player.color)),
         };
         return <span key={`occupancy-${squareId}`} className="mono-occupancy" style={style} title={`Présence : ${players.map((player) => player.name).join(', ')}`} />;
       })}
