@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { render, buildBackground } from './TankRun/render';
+import { SnapshotBuffer } from './TankRun/netInterp'; // MAF_TANKRUN_LAG_V1
 import { getTankRunSnapshot, sendTankRunInput, setTankRunSetup } from '../api/tankrun';
 import './TankRun/TankBattle.css';
 import './TankRunOnline.css';
@@ -31,13 +32,16 @@ export default function TankRunOnline({room,match,onStart,onExit,onForfeit,busy}
   const [orientation,setOrientation] = useState('portrait');
   const [ammo,setAmmo] = useState('standard');
   const [state,setState] = useState(null);
-  const snapshotRef=useRef(null);
-  const prevRef=useRef(null);
+  const [netBuffer]=useState(()=>new SnapshotBuffer());
+  const bufRef=useRef(netBuffer);
+  const staticsRef=useRef(null);
+  const lockRef=useRef(null);      // angle fige du char pendant que le serveur confirme l'appui
+  const viewRef=useRef({rt:0,ownAngle:null}); // ce que le joueur voit en ce moment
+  const pressStart=useRef(0);
   const canvasRef=useRef(null);
   const wrapRef=useRef(null);
   const pointer=useRef(null);
   const pressed=useRef(false);
-  const busyPoll=useRef(false);
   const viewer=room.is_host?'host':'guest';
   const viewerRole = room.is_host ? 'Joueur 1' : 'Joueur 2';
   const own=(room.tankrun_setup||{})[viewer];
@@ -59,24 +63,32 @@ export default function TankRunOnline({room,match,onStart,onExit,onForfeit,busy}
     if(own?.skin) setSkin(own.skin);
   },[own?.arena, own?.skin]);
 
+  // MAF_TANKRUN_LAG_V1 : images legeres ~20/s, plusieurs requetes possibles en meme temps
+  // (une reponse lente ne bloque plus les suivantes), terrain demande une seule fois.
   useEffect(()=>{
     if(!active || room.status==='finished')return undefined;
-    let running=true;
+    let running=true,inflight=0;
+    bufRef.current.reset();staticsRef.current=null;lockRef.current=null;
     const poll=async()=>{
-      if(busyPoll.current)return;
-      busyPoll.current=true;
+      if(inflight>=4)return;
+      inflight++;
       try{
-        const next=await getTankRunSnapshot(room.id);
+        const next=await getTankRunSnapshot(room.id,{full:!staticsRef.current});
         if(!running)return;
         if(next.finished){setState(next);return}
-        prevRef.current=snapshotRef.current;
-        snapshotRef.current={...next,at:performance.now()};
-        setState({phase:next.phase,winner:next.winner});
-        setMessage('');
+        if(next.rects){staticsRef.current={w:next.w,h:next.h,cfg:next.cfg,arena:next.arena,rects:next.rects}}
+        if(!next.lite&&typeof next.time==='number'){ // ancien serveur (pas encore mis a jour) : image complete sans identifiants
+          next.t=next.time;next.ack=[];next.ackEpoch=[];
+          next.bullets=(next.bullets||[]).map((b,i)=>({...b,id:b.id??`${b.owner}:${i}`}));
+        }
+        if(!staticsRef.current||typeof next.t!=='number')return;
+        bufRef.current.push(next,performance.now());
+        setState(old=>old&&old.phase===next.phase&&old.winner===next.winner?old:{phase:next.phase,winner:next.winner});
+        setMessage(m=>m?'':m);
       }catch(e){if(running)setMessage(e.message)}
-      finally{busyPoll.current=false}
+      finally{inflight--}
     };
-    void poll(); const interval=window.setInterval(poll,100);
+    void poll(); const interval=window.setInterval(poll,50);
     return ()=>{running=false;clearInterval(interval)};
   },[room.id,room.status,active]);
 
@@ -98,45 +110,56 @@ export default function TankRunOnline({room,match,onStart,onExit,onForfeit,busy}
     const obs=typeof ResizeObserver!=='undefined'?new ResizeObserver(resize):null;
     obs?.observe(wrap);window.addEventListener('resize',resize);resize();
     let raf=0;
+    const me=viewer==='host'?0:1;
     const frame=()=>{
-      const snap=snapshotRef.current;
-      if(snap&&view.W){
-        const prev=prevRef.current;
-        const delay=Math.min(1,Math.max(0,(performance.now()-snap.at)/120));
-        let scene=snap;
-        if(prev?.tanks?.length===snap.tanks?.length){
-          scene={...snap,tanks:snap.tanks.map((t,i)=>{
-            const old=prev.tanks[i];
-            return {...t,px:old.x,py:old.y,pangle:old.angle,
-              x:old.x+(t.x-old.x)*delay,y:old.y+(t.y-old.y)*delay,
-              angle:old.angle+Math.atan2(Math.sin(t.angle-old.angle),Math.cos(t.angle-old.angle))*delay};
-          })};
+      const buf=bufRef.current,statics=staticsRef.current;
+      const rt=view.W&&statics?buf.renderTime(performance.now()):null;
+      if(rt!=null){
+        // Le serveur a-t-il deja pris en compte mon dernier appui ? Alors je lache l'angle fige.
+        const lock=lockRef.current;
+        if(lock){
+          const low=buf.lower(rt);
+          const confirmed=low&&low.ackEpoch?.[me]===epoch.current&&low.ack?.[me]>=lock.seq;
+          if(confirmed||performance.now()-lock.at>1500||low?.phase==='over')lockRef.current=null;
         }
-        const arenaId=scene.arena?.id||'original';
-        if(arenaId!==oldArena){view.bg=buildBackground(scene,view.scale,view.dpr);oldArena=arenaId}
-        render(ctx,scene,view,1);
+        const scene=buf.sceneAt(rt,statics,me,lockRef.current?lockRef.current.angle:null);
+        if(scene){
+          viewRef.current={rt,ownAngle:scene.tanks[me]?scene.tanks[me].angle:null};
+          const arenaId=scene.arena?.id||'original';
+          if(arenaId!==oldArena){view.bg=buildBackground(scene,view.scale,view.dpr);oldArena=arenaId}
+          render(ctx,scene,view,1);
+        }
       }
       raf=requestAnimationFrame(frame);
     };
     raf=requestAnimationFrame(frame);
     return ()=>{cancelAnimationFrame(raf);obs?.disconnect();window.removeEventListener('resize',resize)};
-  },[active,room.id]);
+  },[active,room.id,viewer]);
 
-  const send=(down,selected=latestAmmo.current)=>{
-    void sendTankRunInput(room.id,{down,ammo:selected,seq:++sequence.current,epoch:epoch.current}).catch(e=>setMessage(e.message));
+  const send=(down,selected=latestAmmo.current,extra)=>{
+    const seq=++sequence.current;
+    void sendTankRunInput(room.id,{down,ammo:selected,seq,epoch:epoch.current,...extra}).catch(e=>setMessage(e.message));
+    return seq;
   };
   const handleDown=e=>{
     if(room.status!=='playing'||pointer.current!==null||e.target.closest?.('[data-ui]'))return;
-    pointer.current=e.pointerId;pressed.current=true;
+    pointer.current=e.pointerId;pressed.current=true;pressStart.current=performance.now();
     try{e.currentTarget.setPointerCapture(e.pointerId)}catch{/* pass */}
-    send(true);
+    // On dit au serveur QUEL angle je vois (et a quel instant) : le tir part la ou je vise,
+    // meme si le reseau a pris du retard. Mon char reste fige a cet angle en attendant.
+    const view=viewRef.current;
+    const lock=lockRef.current;
+    const aim=lock?lock.angle:view.ownAngle;
+    const seq=send(true,latestAmmo.current,aim!=null?{vt:view.rt,aim}:undefined);
+    if(aim!=null)lockRef.current={seq,angle:aim,at:performance.now()};
   };
   const handleUp=e=>{
     if(pointer.current!==e.pointerId)return;
-    pointer.current=null;pressed.current=false;send(false);
+    pointer.current=null;pressed.current=false;
+    send(false,latestAmmo.current,{held:(performance.now()-pressStart.current)/1000});
   };
   useEffect(()=>{
-    const stop=()=>{if(pressed.current){pressed.current=false;pointer.current=null;send(false)}};
+    const stop=()=>{if(pressed.current){pressed.current=false;pointer.current=null;send(false,latestAmmo.current,{held:(performance.now()-pressStart.current)/1000})}};
     window.addEventListener('blur',stop);
     const visibility=()=>{if(document.hidden)stop()};
     document.addEventListener('visibilitychange',visibility);
