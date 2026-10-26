@@ -1,5 +1,7 @@
 // MAF_DICE_FRONTEND_V1 — Duel de des serveur, mode manches ou cumul.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import WinDicePicker, { useWinDice } from './WinDicePicker';
+import { finishWinRoomMatch, winModeIsEnabled } from '../utils/winMode';
 import { createPortal } from 'react-dom';
 
 const pips = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
@@ -19,6 +21,9 @@ function DiceFaces({ values, hidden = false }) {
 export default function DiceArena({ room, match, busy, error, onStart, onRoll, onForfeit, onBack, onExit }) {
   const [confirmForfeit, setConfirmForfeit] = useState(false);
   const ready = room.status === 'ready';
+  const win=useWinDice('dice',false,`${room.id}:${match?.round}:${match?.viewer}`,match?.diceCount??room.dice_count);
+  const winAvailable=win.enabled && !!match?.winModeAvailable;
+  useEffect(()=>{if(room.status==='finished')finishWinRoomMatch('dice');},[room.id,room.status]);
   if (!ready && (!match || !['playing','finished'].includes(room.status)))
     return <p role="status">Chargement de la partie de dés...</p>;
   const viewer = match?.viewer || (room.is_host ? 'host' : 'guest');
@@ -70,7 +75,8 @@ export default function DiceArena({ room, match, busy, error, onStart, onRoll, o
           </> : <>
             <strong>{last ? 'À toi de lancer pour le prochain coup !' : 'À toi de jouer !'}</strong>
             <p>Appuie sur le bouton pour lancer {diceText(count).toLowerCase()}.</p>
-            <button type="button" className="maf-dice__roll" disabled={busy} onClick={onRoll}>🎲 {busy ? 'Lancement...' : `Lancer ${count === 1 ? 'le dé' : 'les 2 dés'}`}</button>
+            {winAvailable && <WinDicePicker count={count} value={win.value} onChange={win.choose} disabled={busy}/>}
+            <button type="button" className="maf-dice__roll" disabled={busy||(winAvailable&&win.incomplete)} onClick={()=>onRoll(winAvailable&&winModeIsEnabled('dice')?win.faces:undefined)}>🎲 {busy ? 'Lancement...' : `Lancer ${count === 1 ? 'le dé' : 'les 2 dés'}`}</button>
           </>}
           {match.opponentRolled && !match.myRolled && <p>✓ L’adversaire a déjà lancé.</p>}
         </div>}

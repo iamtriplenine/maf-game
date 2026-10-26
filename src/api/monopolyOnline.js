@@ -16,6 +16,6 @@ export const join = async id => (await walletRequest(`${base}/${id}/join`,{metho
 export const leave = async id => (await walletRequest(`${base}/${id}/leave`,{method:'POST'})).room;
 export const propose = async (id,count) => (await walletRequest(`${base}/${id}/propose`,{method:'POST',body:{count}})).room;
 export const vote = async (id,accept) => (await walletRequest(`${base}/${id}/vote`,{method:'POST',body:{accept}})).room;
-export const action = async (id,action,square) => (await walletRequest(`${base}/${id}/action`,{method:'POST',body:{action,...(Number.isInteger(square)?{square}:{})}})).room;
+export const action = async (id,action,square,dice) => (await walletRequest(`${base}/${id}/action`,{method:'POST',body:{action,...(Number.isInteger(square)?{square}:{}),...(dice?{dice}:{})}})).room;
 
 export const presence = async (id,state) => (await walletRequest(`${base}/${id}/presence`,{method:'POST',body:{state}})).room;

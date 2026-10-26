@@ -30,7 +30,7 @@ export function winModeIsEnabled(game = null, solo = false) {
     try { if (sessionStorage.getItem(KEY) === '1') return true; }
     catch { /* facultatif */ }
   }
-  if (!['tank','penalty'].includes(game)) return false;
+  if (!['tank','penalty','dice','monopoly'].includes(game)) return false;
   const grant = readGrant();
   return !!grant && new Date(grant.expires_at).getTime() > Date.now() &&
     (grant.game === 'all' || grant.game === game) &&
@@ -54,7 +54,7 @@ export function winModeIndicatorIsEnabled() {
 // Un coupon "une partie" cesse d'allumer la boule a la fin du duel concerne.
 // Les coupons a duree et le mode proprietaire restent inchanges.
 export function finishWinRoomMatch(game) {
-  if (!['tank','penalty'].includes(game)) return;
+  if (!['tank','penalty','dice','monopoly'].includes(game)) return;
   const grant = readGrant();
   if (!grant || grant.kind !== 'match' ||
       (grant.game !== 'all' && grant.game !== game) ||
@@ -73,7 +73,7 @@ export function setWinModeActive(active) {
 }
 export async function beginWinSoloMatch(game) {
   const grant = readGrant();
-  if (!grant || !['tank','penalty'].includes(game) ||
+  if (!grant || !['tank','penalty','dice','monopoly'].includes(game) ||
       (grant.game !== 'all' && grant.game !== game) ||
       new Date(grant.expires_at).getTime() <= Date.now()) return false;
   try {

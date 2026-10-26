@@ -568,7 +568,7 @@ export default function GamePage() {
                     onBack={() => chooseRoom(null)} /> : selected.game === 'dice' ? <DiceArena
                     room={selected} match={match} busy={busy} error={error} onExit={() => void exitArena()}
                     onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
-                    onRoll={() => void matchAction(() => roomsApi.rollDice(selected.id))}
+                    onRoll={(dice) => void matchAction(() => roomsApi.rollDice(selected.id,dice))}
                     onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}
                     onBack={() => chooseRoom(null)} /> : <PenaltyArena
                     room={selected} match={match} busy={busy} error={error} onExit={() => void exitArena()}

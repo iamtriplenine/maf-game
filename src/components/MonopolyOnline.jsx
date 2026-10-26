@@ -4,6 +4,8 @@ import { useSession } from '../auth/useSession';
 import { syncWallet } from '../api/accounts';
 import * as api from '../api/monopolyOnline';
 import MonopolyBoard from './MonopolyBoard';
+import WinDicePicker, { useWinDice } from './WinDicePicker';
+import { finishWinRoomMatch, winModeIsEnabled } from '../utils/winMode';
 import MonopolyActionIcon from './MonopolyActionIcon';
 import MonopolyActivity from './MonopolyActivity';
 import MonopolySheet from './MonopolySheet';
@@ -22,6 +24,9 @@ const minPlayers = 2;
 
 function BoardMatch({room, session, busy, send}) {
   const game=room.game;
+  const win=useWinDice('monopoly',false,`${room.id}:${game.turn}:${game.current}`,game.dice);
+  const winAvailable=win.enabled && !!room.winModeAvailable;
+  useEffect(()=>{if(room.status==='finished'||room.status==='closed')finishWinRoomMatch('monopoly');},[room.id,room.status]);
   const meIndex=room.players.findIndex(p=>Number(p.id)===Number(session?.id));
   const isMyTurn=meIndex===game.current && game.phase!=='over';
   const active=game.players[game.current];
@@ -48,7 +53,7 @@ function BoardMatch({room, session, busy, send}) {
     : game.phase==='debt'?`${me.name}, il faut vendre pour regler ta dette.`
     : game.phase==='roll'?'Tu peux construire sur tes terrains avant de lancer les des.'
     : allowedBuy?'Tu peux acheter ce terrain puis construire directement dessus.':'Construis, vends ou termine ton tour.';
-  const onAction=async (action,square) => { const ok=await send(()=>api.action(room.id,action,square)); if(ok&&action==='build'&&game.phase==='after')setPanel(null); };
+  const onAction=async (action,square) => { const ok=await send(()=>api.action(room.id,action,square,action==='roll'&&winAvailable&&winModeIsEnabled('monopoly')?win.faces:undefined)); if(ok&&action==='build'&&game.phase==='after')setPanel(null); };
   return (
     <div className="mono mono--playing mono-online-match">
       <section className="mono-play-screen" aria-label="Monopoly multijoueur">
@@ -72,8 +77,9 @@ function BoardMatch({room, session, busy, send}) {
             <p>{winner?`Gain : ${francs(room.payout)}`:!room.winnerId?'Les mises ont été remboursées.':`Tu as perdu ta mise de ${francs(room.stake)}.`}</p>
           </div>:<>
             <p className="mono-hint">{hint}</p>
+            {winAvailable&&isMyTurn&&game.phase==='roll'&&<WinDicePicker count={game.dice} value={win.value} onChange={win.choose} disabled={!canAct}/>}
             <div className="mono-actions">
-              <button type="button" className={`btn btn--primary btn--sm${isMyTurn&&game.phase==='roll'?' mono-roll-timed':''}`} style={{'--mono-roll-width':`${rollRemaining}%`}} disabled={!canAct||game.phase!=='roll'} onClick={()=>onAction('roll')}><MonopolyActionIcon name="roll"/><span>Lancer</span></button>
+              <button type="button" className={`btn btn--primary btn--sm${isMyTurn&&game.phase==='roll'?' mono-roll-timed':''}`} style={{'--mono-roll-width':`${rollRemaining}%`}} disabled={!canAct||game.phase!=='roll'||(winAvailable&&win.incomplete)} onClick={()=>onAction('roll')}><MonopolyActionIcon name="roll"/><span>Lancer</span></button>
               <button type="button" className="btn btn--sm" disabled={!allowedBuy} onClick={()=>onAction('buy')}><MonopolyActionIcon name="buy"/><span>Acheter</span></button>
               <button type="button" className={`btn btn--sm${isMyTurn&&['after','debt'].includes(game.phase)?' mono-end-timed':''}`} style={{'--mono-end-width':`${endProgress}%`}} disabled={!canAct||game.phase!=='after'} onClick={()=>onAction('end')}><MonopolyActionIcon name="end"/><span>Fin</span></button>
             </div>

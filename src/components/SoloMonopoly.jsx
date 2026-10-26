@@ -1,6 +1,8 @@
 // MAF_MONOPOLY_V1_SOLO (etape 4) : Monopoly - mode entrainement (un seul ecran, aucun serveur, aucune mise)
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MonopolyBoard from './MonopolyBoard';
+import WinDicePicker, { useWinDice } from './WinDicePicker';
+import { beginWinSoloMatch, finishWinSoloMatch, winModeIsEnabled } from '../utils/winMode';
 import MonopolyActionIcon from './MonopolyActionIcon';
 import MonopolyActivity from './MonopolyActivity';
 import MonopolySheet from './MonopolySheet';
@@ -67,6 +69,12 @@ export default function SoloMonopoly({ onPlayingChange }) {
   const [names, setNames] = useState(['Joueur 1', 'Joueur 2', 'Joueur 3', 'Joueur 4', 'Joueur 5', 'Joueur 6', 'Joueur 7']);
   const [game, setGame] = useState(loadSaved);
   const [rolling, setRolling] = useState(false);
+  const [sessionNumber,setSessionNumber]=useState(0);
+  const starting=useRef(false);
+  const [startingGame,setStartingGame]=useState(false);
+  const win=useWinDice('monopoly',true,`${sessionNumber}:${game?.turn}:${game?.current}`,game?.dice??dice);
+  useEffect(()=>{if(game?.phase==='over')finishWinSoloMatch('monopoly');},[game?.phase]);
+  useEffect(()=>()=>finishWinSoloMatch('monopoly'),[]);
   const [tmpFaces, setTmpFaces] = useState([]);
   const [selected, setSelected] = useState(null);
   const [forced, setForced] = useState([0, 0]); // 0 = aleatoire
@@ -95,23 +103,31 @@ export default function SoloMonopoly({ onPlayingChange }) {
 
   const { shown, walking, travel } = usePawnTravel(game);
 
-  const start = () => {
-    setCameraFocused(false);
-    setAuto(false);
-    setGame(createGame({ names: names.slice(0, count).map((n, i) => n.trim() || `Joueur ${i + 1}`), dice }));
-    setSelected(null);
+  const start = async () => {
+    if(starting.current)return;
+    starting.current=true;setStartingGame(true);
+    try {
+      finishWinSoloMatch('monopoly');
+      await beginWinSoloMatch('monopoly');
+      setSessionNumber(n=>n+1);
+      setCameraFocused(false);
+      setAuto(false);
+      setGame(createGame({ names: names.slice(0, count).map((n, i) => n.trim() || `Joueur ${i + 1}`), dice }));
+      setSelected(null);
+    } finally { starting.current=false;setStartingGame(false); }
   };
 
   const onRoll = useCallback(() => {
-    if (!game || game.phase !== 'roll' || rolling || walking) return;
+    if (!game || game.phase !== 'roll' || rolling || walking || starting.current || (win.enabled&&win.incomplete)) return;
+    const selectedDice=winModeIsEnabled('monopoly',true)&&win.faces ? [...win.faces] : null;
     setRolling(true);
     timer.current = setInterval(() => setTmpFaces(Array.from({ length: game.dice }, () => 1 + Math.floor(Math.random() * 6))), 90);
     rollTimeout.current = setTimeout(() => {
       clearInterval(timer.current);
-      setGame((g) => rollDice(g, { forced: forced.slice(0, g.dice).map((v) => v || null) }));
+      setGame((g) => rollDice(g, { forced: selectedDice || forced.slice(0, g.dice).map((v) => v || null) }));
       setRolling(false);
     }, 850);
-  }, [game, rolling, walking, forced]);
+  }, [game, rolling, walking, forced, win.enabled, win.incomplete, win.faces]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -144,7 +160,7 @@ export default function SoloMonopoly({ onPlayingChange }) {
             <input key={i} value={names[i]} maxLength={14} aria-label={`Nom du joueur ${i + 1}`}
               onChange={(e) => setNames((a) => a.map((v, k) => (k === i ? e.target.value : v)))} />
           ))}</div>
-          <button type="button" className="btn btn--primary btn--block" onClick={start}>Commencer l'entraînement</button>
+          <button type="button" className="btn btn--primary btn--block" disabled={startingGame} onClick={start}>Commencer l'entraînement</button>
           <Rules />
         </div>
       </div>
@@ -189,13 +205,14 @@ export default function SoloMonopoly({ onPlayingChange }) {
           {game.phase === 'over' ? (
             <div className="mono-win">
               <h3>{game.winner >= 0 ? `🏆 ${game.players[game.winner].name} gagne !` : 'Partie terminée'}</h3>
-              <button type="button" className="btn btn--primary btn--sm" onClick={start}>Rejouer</button>
+              <button type="button" className="btn btn--primary btn--sm" disabled={startingGame} onClick={start}>Rejouer</button>
               <button type="button" className="btn btn--sm" onClick={() => setGame(null)}>Changer les réglages</button>
             </div>
           ) : <>
             <p className={`mono-hint${game.phase === 'debt' ? ' mono-hint--warn' : ''}`} title={hint}>{hint}</p>
+            {win.enabled&&game.phase==='roll'&&<WinDicePicker count={game.dice} value={win.value} onChange={win.choose} disabled={rolling||walking||auto}/>}
             <div className="mono-actions">
-              <button type="button" className="btn btn--primary btn--sm" disabled={game.phase !== 'roll' || rolling || walking} onClick={onRoll}><MonopolyActionIcon name="roll"/><span>Lancer</span></button>
+              <button type="button" className="btn btn--primary btn--sm" disabled={game.phase !== 'roll' || rolling || walking || (win.enabled&&win.incomplete)} onClick={onRoll}><MonopolyActionIcon name="roll"/><span>Lancer</span></button>
               <button type="button" className="btn btn--sm" disabled={!canBuy(game) || walking || rolling} onClick={onBuy}><MonopolyActionIcon name="buy"/><span>Acheter</span></button>
               <button type="button" className="btn btn--sm" disabled={game.phase !== 'after' || walking || rolling} onClick={() => setGame(g => endTurn(g))}><MonopolyActionIcon name="end"/><span>Fin</span></button>
             </div>

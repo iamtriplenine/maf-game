@@ -36,13 +36,15 @@ export default function OwnerWinCodes() {
     catch { setError('Selectionne le code pour le copier.'); }
   }
   return <section className="win-codes">
-    <p className="sheet__text">Génère un code personnel de Mode Win. Il fonctionne dans les parties contre le robot et les parties à deux. Les mises et les gains suivent les règles habituelles du jeu.</p>
+    <p className="sheet__text">Génère un code personnel de Mode Win. Il fonctionne dans les parties contre le robot et les parties multijoueurs. Les mises et les gains suivent les règles habituelles du jeu.</p>
     <form className="wallet-form" onSubmit={create}>
       <label className="wallet-label">Jeu
         <select value={game} onChange={e=>setGame(e.target.value)} disabled={busy}>
-          <option value="all">Tir au but + Tank Battle</option>
+          <option value="all">Tous les jeux compatibles</option>
           <option value="penalty">Tir au but</option>
           <option value="tank">Tank Battle</option>
+          <option value="dice">Lancer de dés</option>
+          <option value="monopoly">Monopoly</option>
         </select>
       </label>
       <label className="wallet-label">Validité après utilisation du coupon

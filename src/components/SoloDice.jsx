@@ -1,5 +1,7 @@
 // MAF_DICE_SOLO_V1 : mode entrainement sur cet appareil, sans argent et sans salon.
 import { useEffect, useRef, useState } from 'react';
+import WinDicePicker, { useWinDice } from './WinDicePicker';
+import { beginWinSoloMatch, finishWinSoloMatch, winModeIsEnabled } from '../utils/winMode';
 import { addDicePracticeRound, dicePracticeRoll, startDicePractice } from '../utils/diceTrainingEngine';
 
 const faces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
@@ -15,18 +17,31 @@ export default function SoloDice({ diceCount = 1, rounds = 3, mode = 'separate' 
   const [game, setGame] = useState(null);
   const [rolling, setRolling] = useState(false);
   const timer = useRef(null);
+  const starting=useRef(false);
+  const [startingGame,setStartingGame]=useState(false);
+  const [sessionNumber,setSessionNumber]=useState(0);
+  const win=useWinDice('dice',true,`${sessionNumber}:${game?.history.length}`,game?.diceCount??diceCount);
+  useEffect(()=>{if(game?.finished)finishWinSoloMatch('dice');},[game?.finished]);
+  useEffect(()=>()=>finishWinSoloMatch('dice'),[]);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
-  const reset = () => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null;
-    setRolling(false);
-    setGame(startDicePractice(diceCount, rounds, mode));
+  const reset = async () => {
+    if(starting.current)return;
+    starting.current=true;setStartingGame(true);
+    try {
+      finishWinSoloMatch('dice');
+      await beginWinSoloMatch('dice');
+      setSessionNumber(n=>n+1);
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = null;
+      setRolling(false);
+      setGame(startDicePractice(diceCount, rounds, mode));
+    } finally { starting.current=false;setStartingGame(false); }
   };
   const play = () => {
-    if (!game || game.finished || rolling) return;
+    if (!game || game.finished || rolling || starting.current || (win.enabled&&win.incomplete)) return;
     setRolling(true);
-    const mine = dicePracticeRoll(game.diceCount);
+    const mine = winModeIsEnabled('dice',true)&&win.faces ? [...win.faces] : dicePracticeRoll(game.diceCount);
     const robot = dicePracticeRoll(game.diceCount);
     timer.current = setTimeout(() => {
       setGame(previous => previous && !previous.finished
@@ -41,7 +56,7 @@ export default function SoloDice({ diceCount = 1, rounds = 3, mode = 'separate' 
     <h3>Essayer le lancer de dés</h3>
     <p>Affronte un robot, gratuitement et sans créer de salon. Tu peux tester toutes les règles.</p>
     <p className="maf-solo-dice__config">{diceCount} dé{diceCount === 2 ? 's' : ''} · {rounds} coup{rounds > 1 ? 's' : ''} · {mode === 'cumulative' ? 'Résultats cumulés' : 'Manches séparées'}</p>
-    <button type="button" className="maf-solo-dice__button" onClick={reset}>🎲 Commencer l'entraînement</button>
+    <button type="button" className="maf-solo-dice__button" disabled={startingGame} onClick={reset}>🎲 Commencer l'entraînement</button>
   </div>;
 
   const last = game.history.at(-1);
@@ -71,10 +86,11 @@ export default function SoloDice({ diceCount = 1, rounds = 3, mode = 'separate' 
       {game.finished ? <>
         <strong>{summary}</strong>
         <p>Résultat final : {game[category].host} – {game[category].guest} {game.mode === 'cumulative' ? 'points' : 'manches'}.</p>
-        <button type="button" className="maf-solo-dice__button" onClick={reset}>↻ Rejouer gratuitement</button>
+        <button type="button" className="maf-solo-dice__button" disabled={startingGame} onClick={reset}>↻ Rejouer gratuitement</button>
       </> : <>
         <p>{rolling ? 'Les dés roulent…' : 'Lance tes dés : le robot joue le même coup automatiquement.'}</p>
-        <button type="button" className="maf-solo-dice__button" disabled={rolling} onClick={play}>
+        {win.enabled&&<WinDicePicker count={game.diceCount} value={win.value} onChange={win.choose} disabled={rolling||startingGame}/>}
+        <button type="button" className="maf-solo-dice__button" disabled={rolling||startingGame||(win.enabled&&win.incomplete)} onClick={play}>
           {rolling ? '🎲 Lancement…' : `🎲 Lancer ${game.diceCount === 1 ? 'le dé' : 'les 2 dés'}`}
         </button>
       </>}

@@ -1,0 +1,10 @@
+.win-dice{box-sizing:border-box;min-width:0;width:100%;margin:8px 0;padding:10px;border:1px solid #37bc7b;border-radius:12px;background:#113326;color:#e5fff1;text-align:left}
+.win-dice legend{padding:0 5px;font-size:.8rem;font-weight:700;color:#a8f5ca}
+.win-dice__row{display:grid;grid-template-columns:38px minmax(0,1fr);gap:6px;align-items:center;margin:6px 0;font-size:.8rem}
+.win-dice__faces{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
+.win-dice__faces button{min-width:0;min-height:36px;padding:4px;border:1px solid #649880;border-radius:7px;background:#143b2b;color:#fff;font:inherit;font-weight:700;cursor:pointer}
+.win-dice__faces button[aria-pressed=true]{background:#73e8a8;color:#102b1d;border-color:#b7ffcf}
+.win-dice__faces button:focus-visible,.win-dice__selection button:focus-visible{outline:2px solid white;outline-offset:2px}
+.win-dice:disabled{opacity:.6}.win-dice:disabled button{cursor:default}
+.win-dice__selection{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;font-size:.8rem}
+.win-dice__selection button{border:0;background:transparent;color:#a8f5ca;text-decoration:underline;font:inherit;cursor:pointer}
