@@ -38,12 +38,12 @@ function Game({ item:g }) {
   const score = g.scores && Number.isFinite(g.scores[mine]) && Number.isFinite(g.scores[theirs]);
   const labels = { won:'Victoire',lost:'Défaite',cancelled:'Partie annulée',ongoing:g.status === 'ready' ? 'En attente de lancement' : 'Partie en cours',unknown:'Résultat indisponible' };
   return <article className="history-card">
-    <div className="history-card__top"><h3>Tir au but</h3><span className={'history-result history-result--'+g.outcome}>{labels[g.outcome]}</span></div>
+    <div className="history-card__top"><h3>{g.game === 'monopoly' ? 'Monopoly' : 'Tir au but'}</h3><span className={'history-result history-result--'+g.outcome}>{labels[g.outcome]}</span></div>
     <p className="history-opponent">Toi contre <strong>{g.opponent || 'Adversaire'}</strong></p>
     {score && <p className="history-score" aria-label={`Ton score ${g.scores[mine]}, adversaire ${g.scores[theirs]}`}>{g.scores[mine]} <span>–</span> {g.scores[theirs]}</p>}
     {g.forfeit_side && <p className="history-muted">{g.forfeit_side === mine ? 'Tu as abandonné la partie.' : 'Ton adversaire a abandonné la partie.'}</p>}
     <dl className="history-game-money"><div><dt>Mise</dt><dd>{money(g.stake)} F CFA</dd></div><div><dt>{g.outcome === 'cancelled' ? 'Remboursé' : 'Reçu'}</dt><dd>{g.received === null ? 'En attente' : `${money(g.received)} F CFA`}</dd></div><div><dt>Bilan net</dt><dd className={'history-amount--'+tone(g.net)}>{g.net === null ? 'En attente' : `${signed(g.net)} F CFA`}</dd></div></dl>
-    <p className="history-muted">Salon {g.code} · {g.shots} tirs par joueur{g.net === null && g.status === 'finished' ? ' · Règlement non confirmé' : ''}</p>
+    <p className="history-muted">Salon {g.code}{g.game === 'monopoly' ? '' : ` · ${g.shots} tirs par joueur`}{g.net === null && g.status === 'finished' ? ' · Règlement non confirmé' : ''}</p>
     <time className="history-date" dateTime={g.updated_at}>{date(g.updated_at)}</time>
   </article>;
 }
@@ -84,7 +84,7 @@ export default function AccountHistory() {
     <div className="history-toolbar"><span>{loading ? 'Chargement…' : `${money(result.total)} élément(s)`}</span><button type="button" className="btn btn--glass btn--sm" disabled={loading} onClick={() => setRevision(n => n+1)}>Actualiser</button></div>
     {!loading && result.error && <p className="sheet__error" role="alert">{result.error}</p>}
     <div className="history-list" aria-busy={loading} aria-label={tab === 'games' ? 'Historique des jeux' : 'Historique des transactions'}>
-      {loading ? <HourglassLoader/> : result.items.length === 0 && !result.error ? <p className="history-empty">{tab === 'games' ? 'Aucune partie jouée pour le moment.' : 'Aucune transaction pour le moment.'}</p> : result.items.map(item => tab === 'games' ? <Game key={item.id} item={item}/> : <Transaction key={item.id} item={item}/>)}
+      {loading ? <HourglassLoader/> : result.items.length === 0 && !result.error ? <p className="history-empty">{tab === 'games' ? 'Aucune partie jouée pour le moment.' : 'Aucune transaction pour le moment.'}</p> : result.items.map(item => tab === 'games' ? <Game key={`${item.game}:${item.id}`} item={item}/> : <Transaction key={item.id} item={item}/>)}
     </div>
     {!loading && result.total > 0 && <div className="history-pagination">
       <button type="button" className="btn btn--glass btn--sm" disabled={offset === 0} onClick={() => setOffset(n => Math.max(0,n-PAGE))}>Précédent</button>
