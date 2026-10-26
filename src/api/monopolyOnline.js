@@ -19,3 +19,5 @@ export const vote = async (id,accept) => (await walletRequest(`${base}/${id}/vot
 export const action = async (id,action,square,dice) => (await walletRequest(`${base}/${id}/action`,{method:'POST',body:{action,...(Number.isInteger(square)?{square}:{}),...(dice?{dice}:{})}})).room;
 
 export const presence = async (id,state) => (await walletRequest(`${base}/${id}/presence`,{method:'POST',body:{state}})).room;
+
+export const chooseWinDice = async (id,dice,turn,playerId) => (await walletRequest(`${base}/${id}/win-dice`,{method:'POST',body:{dice,turn,playerId}})).room;

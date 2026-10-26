@@ -18,9 +18,9 @@ export function useWinDice(game,solo,turnKey,count) {
     choose:values=>setChoice({key:turnKey,values})};
 }
 
-export default function WinDicePicker({count,value,onChange,disabled=false}) {
+export default function WinDicePicker({count,value,onChange,disabled=false,label='Prochain lancer'}) {
   return <fieldset className="win-dice" disabled={disabled}>
-    <legend>🟢 Mode Win · Prochain lancer</legend>
+    <legend>🟢 Mode Win · {label}</legend>
     {Array.from({length:count===2?2:1},(_,i)=><div className="win-dice__row" key={i}>
       <span>Dé {i+1}</span>
       <div className="win-dice__faces" role="group" aria-label={`Face du dé ${i+1}`}>

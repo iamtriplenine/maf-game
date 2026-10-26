@@ -4,6 +4,8 @@ import { useSession } from '../auth/useSession';
 import { syncWallet } from '../api/accounts';
 import * as api from '../api/monopolyOnline';
 import MonopolyBoard from './MonopolyBoard';
+import MonopolyBalance from './MonopolyBalance';
+import useMonopolySounds from '../games/monopoly/useMonopolySounds';
 import WinDicePicker, { useWinDice } from './WinDicePicker';
 import { finishWinRoomMatch, winModeIsEnabled } from '../utils/winMode';
 import MonopolyActionIcon from './MonopolyActionIcon';
@@ -32,6 +34,7 @@ function BoardMatch({room, session, busy, send}) {
   const active=game.players[game.current];
   const me=game.players[meIndex];
   const {shown,travel,walking}=usePawnTravel(game);
+  const sound=useMonopolySounds(game,travel);
   const [panel,setPanel]=useState(null);
   const [selected,setSelected]=useState(null);
   const [focused,setFocused]=useState(false);
@@ -70,14 +73,21 @@ function BoardMatch({room, session, busy, send}) {
           </p>)}
           <div className="mono-statusline">
             <span><span className="mono-token" style={{background:active?.color}}>{PIECES[active?.piece||0].emoji}</span><strong>{active?.name}</strong></span>
-            <span>{cash(active?.balance||0)} <small>· Tour {game.turn}</small></span>
+            <span><MonopolyBalance player={active} gameKey={`online:${room.id}`}/> <small>· Tour {game.turn}</small><button type="button" className="mono-sound" aria-label={sound.muted?"Activer les sons":"Couper les sons"} aria-pressed={!sound.muted} onClick={sound.toggle}>{sound.muted?"🔇":"🔊"}</button></span>
           </div>
           {room.status==='finished'?<div className="mono-win">
             <h3>{winner?'🏆 Tu as gagné !':!room.winnerId?'Partie annulée':`🏆 ${room.players.find(p=>p.id===room.winnerId)?.name||'Partie terminée'} gagne la partie`}</h3>
             <p>{winner?`Gain : ${francs(room.payout)}`:!room.winnerId?'Les mises ont été remboursées.':`Tu as perdu ta mise de ${francs(room.stake)}.`}</p>
           </div>:<>
             <p className="mono-hint">{hint}</p>
-            {winAvailable&&isMyTurn&&game.phase==='roll'&&<WinDicePicker count={game.dice} value={win.value} onChange={win.choose} disabled={!canAct}/>}
+            {winAvailable&&!me?.bankrupt&&game.phase==='roll'&&<div>
+              <WinDicePicker count={game.dice} value={win.value} onChange={win.choose} disabled={busy||walking} label={`Dés de ${active?.name||'ce joueur'}`}/>
+              <button type="button" className="btn btn--sm" disabled={busy||walking||!win.faces}
+                onClick={()=>send(()=>api.chooseWinDice(room.id,win.faces,game.turn,room.players[game.current].id))}>Enregistrer pour {active?.name}</button>
+              {room.winDiceSelection&&<p className="mono__note" role="status">Choix enregistré : {room.winDiceSelection.dice.join(' + ')}.
+                <button type="button" className="btn btn--sm" disabled={busy} onClick={()=>send(()=>api.chooseWinDice(room.id,null,game.turn,room.players[game.current].id))}>Annuler ce choix</button>
+              </p>}
+            </div>}
             <div className="mono-actions">
               <button type="button" className={`btn btn--primary btn--sm${isMyTurn&&game.phase==='roll'?' mono-roll-timed':''}`} style={{'--mono-roll-width':`${rollRemaining}%`}} disabled={!canAct||game.phase!=='roll'||(winAvailable&&win.incomplete)} onClick={()=>onAction('roll')}><MonopolyActionIcon name="roll"/><span>Lancer</span></button>
               <button type="button" className="btn btn--sm" disabled={!allowedBuy} onClick={()=>onAction('buy')}><MonopolyActionIcon name="buy"/><span>Acheter</span></button>
@@ -95,7 +105,7 @@ function BoardMatch({room, session, busy, send}) {
       <section className="mono-panel mono-history"><h3>Joueurs · {room.players.length}</h3>
         <div className="mono-online-players">{game.players.map((p,i)=><div key={i} className="mono-online-player">
           <i style={{background:p.color}}/>{p.name} {room.players[i]?.id===session?.id?'(toi)':''}
-          <span>{p.bankrupt?'Faillite':`${cash(p.balance)} · ${ownedBy(game,i).length} terrain(s)`}</span>
+          <span><MonopolyBalance player={p} gameKey={`online:${room.id}`}/> · {p.bankrupt?'Faillite':`${ownedBy(game,i).length} terrain(s)`}</span>
         </div>)}</div>
         <h3>Activites</h3><ul className="mono-log">{game.log.slice(0,35).map(l=><li key={l.n}>{l.player!==null?`${game.players[l.player]?.name||''} `:''}{l.text}</li>)}</ul>
         <button type="button" className="btn btn--sm btn--outline mono-more-bottom" aria-haspopup="dialog" onClick={()=>setPanel('more')}><MonopolyActionIcon name="more"/><span>Plus · conditions · abandon</span></button>

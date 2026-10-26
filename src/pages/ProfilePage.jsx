@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
+import AnimatedAmount from "../components/AnimatedAmount";
 import SkinCarousel from "../components/SkinCarousel";
 import GuidePage from "../components/GuidePage";
 import CommunityLinks from "../components/CommunityLinks";
@@ -20,7 +21,7 @@ import AuthForm from "../components/AuthForm";
 import AdminPanel from "../components/AdminPanel";
 import OwnerCommissionSummary from "../components/OwnerCommissionSummary";
 import OwnerWinCodes from "../components/OwnerWinCodes";
-import { wakeServer, saveSkin } from "../api/accounts";
+import { wakeServer, saveSkin, syncWallet } from "../api/accounts";
 import { DEFAULT_SKIN, SKINS, validSkin } from "../characters/skins";
 import { clearAdminAccess } from "../api/accounts";
 import { WalletBalances, CouponForm, RechargeForm } from "../components/WalletForms";
@@ -113,6 +114,19 @@ export default function ProfilePage({ onOpenStudio }) {
       setChatFull(true);
     },
   });
+  useEffect(()=>{
+    if(!session?.id)return undefined;
+    let pending=false;
+    const refresh=async()=>{
+      if(document.hidden||pending)return;
+      pending=true;try{await syncWallet();}catch{/* Le solde deja affiche reste disponible. */}finally{pending=false;}
+    };
+    void refresh();
+    const timer=window.setInterval(()=>void refresh(),15000);
+    const visible=()=>{if(!document.hidden)void refresh();};
+    document.addEventListener('visibilitychange',visible);
+    return()=>{window.clearInterval(timer);document.removeEventListener('visibilitychange',visible);};
+  },[session?.id]);
   const commissionsButton = useLongPress({
     onClick: () => setSheet('owner-commissions'),
     onLong: () => setSheet('owner-win-codes'),
@@ -383,7 +397,7 @@ export default function ProfilePage({ onOpenStudio }) {
             <p className="sheet__text">
               Pseudo : <strong>{session.pseudo}</strong>
               <br />
-              Solde : <strong>{session.balance}</strong>
+              Solde : <strong><AnimatedAmount value={session.balance} cacheKey={`wallet:${session.id}:F`}/></strong>
             </p>
             <button
               type="button"

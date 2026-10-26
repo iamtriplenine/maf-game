@@ -1,6 +1,8 @@
 // MAF_MONOPOLY_V1_SOLO (etape 4) : Monopoly - mode entrainement (un seul ecran, aucun serveur, aucune mise)
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MonopolyBoard from './MonopolyBoard';
+import MonopolyBalance from './MonopolyBalance';
+import useMonopolySounds from '../games/monopoly/useMonopolySounds';
 import WinDicePicker, { useWinDice } from './WinDicePicker';
 import { beginWinSoloMatch, finishWinSoloMatch, winModeIsEnabled } from '../utils/winMode';
 import MonopolyActionIcon from './MonopolyActionIcon';
@@ -41,23 +43,13 @@ function Rules() {
   );
 }
 
-function PlayerRow({ p, isCurrent, props }) {
-  const prev = useRef(p.balance);
-  const [delta, setDelta] = useState(null);
-  useEffect(() => {
-    if (prev.current === p.balance) return undefined;
-    setDelta({ v: p.balance - prev.current, k: Date.now() });
-    prev.current = p.balance;
-    const t = setTimeout(() => setDelta(null), 1700);
-    return () => clearTimeout(t);
-  }, [p.balance]);
+function PlayerRow({ p, isCurrent, props, gameKey }) {
   return (
     <div className={`mono-player${isCurrent ? ' is-current' : ''}${p.bankrupt ? ' is-out' : ''}`}>
       <span className="mono-token" style={{ background: p.color }}>{PIECES[p.piece].emoji}</span>
       <span><strong>{p.name}</strong><small>{p.bankrupt ? 'Faillite' : `${props} propriété${props > 1 ? 's' : ''}`}</small></span>
       <span className="mono-money">
-        {usd(p.balance)}
-        {delta && <span key={delta.k} className={`mono-delta ${delta.v > 0 ? 'is-up' : 'is-down'}`}>{delta.v > 0 ? '+' : ''}{delta.v}</span>}
+        <MonopolyBalance player={p} gameKey={gameKey}/>
       </span>
     </div>
   );
@@ -102,6 +94,8 @@ export default function SoloMonopoly({ onPlayingChange }) {
   }, [game]);
 
   const { shown, walking, travel } = usePawnTravel(game);
+  const sound=useMonopolySounds(game,travel);
+  const gameKey=game?.presentationId||'legacy-local';
 
   const start = async () => {
     if(starting.current)return;
@@ -112,7 +106,7 @@ export default function SoloMonopoly({ onPlayingChange }) {
       setSessionNumber(n=>n+1);
       setCameraFocused(false);
       setAuto(false);
-      setGame(createGame({ names: names.slice(0, count).map((n, i) => n.trim() || `Joueur ${i + 1}`), dice }));
+      setGame({...createGame({ names: names.slice(0, count).map((n, i) => n.trim() || `Joueur ${i + 1}`), dice }),presentationId:globalThis.crypto?.randomUUID?.()||String(Date.now())});
       setSelected(null);
     } finally { starting.current=false;setStartingGame(false); }
   };
@@ -200,7 +194,7 @@ export default function SoloMonopoly({ onPlayingChange }) {
         <div className="mono-console" ref={consoleRef}>
           <div className="mono-statusline">
             <span><span className="mono-token" style={{ background: me.color }}>{PIECES[me.piece].emoji}</span><strong>{me.name}</strong></span>
-            <span>{usd(me.balance)} <small>· Tour {game.turn}</small></span>
+            <span><MonopolyBalance player={me} gameKey={gameKey}/> <small>· Tour {game.turn}</small><button type="button" className="mono-sound" aria-label={sound.muted?"Activer les sons":"Couper les sons"} aria-pressed={!sound.muted} onClick={sound.toggle}>{sound.muted?"🔇":"🔊"}</button></span>
           </div>
           {game.phase === 'over' ? (
             <div className="mono-win">
@@ -277,7 +271,7 @@ export default function SoloMonopoly({ onPlayingChange }) {
 
         {panel === 'more' && <>
           <section className="mono-players" aria-label="Joueurs">
-            {game.players.map(p => <PlayerRow key={p.id} p={p} isCurrent={p.id === game.current && game.phase !== 'over'} props={ownedBy(game,p.id).length} />)}
+            {game.players.map(p => <PlayerRow key={p.id} p={p} gameKey={gameKey} isCurrent={p.id === game.current && game.phase !== 'over'} props={ownedBy(game,p.id).length} />)}
           </section>
           <Rules />
       {game.phase !== 'over' && (

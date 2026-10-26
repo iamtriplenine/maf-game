@@ -1,3 +1,4 @@
+import AnimatedAmount from './AnimatedAmount';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { walletRequest } from '../api/accounts';
 import { registerRefresh } from '../api/refresh';
@@ -101,8 +102,8 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
       {((info?.has_deposit && account?.phone) || intent) && <form className="wallet-form" onSubmit={submit}>
         <fieldset className="withdrawal-fields" disabled={busy || Boolean(intent)}>
           <legend>Choisis le solde à retirer</legend>
-          <label className="wallet-check"><input type="radio" name="withdrawal-currency" checked={currency === 'F'} onChange={() => setCurrency('F')}/>Argent réel · {money(user.balance)} F CFA</label>
-          <label className="wallet-check"><input type="radio" name="withdrawal-currency" checked={currency === 'V'} onChange={() => setCurrency('V')}/>Bonus · {money(user.bonus_balance)} V</label>
+          <label className="wallet-check"><input type="radio" name="withdrawal-currency" checked={currency === 'F'} onChange={() => setCurrency('F')}/>Argent réel · <AnimatedAmount value={user.balance} cacheKey={`wallet:${user.id}:F`} suffix=" F CFA"/></label>
+          <label className="wallet-check"><input type="radio" name="withdrawal-currency" checked={currency === 'V'} onChange={() => setCurrency('V')}/>Bonus · <AnimatedAmount value={user.bonus_balance} cacheKey={`wallet:${user.id}:V`} suffix=" V"/></label>
           <label className="wallet-label">Montant à recevoir en F CFA<input type="number" inputMode="numeric" min="100" max="1000000" step="1" required value={amount} onChange={e => setAmount(e.target.value)}/></label>
         </fieldset>
         {costs && <div className="wallet-fees" role="status" aria-live="polite"><span>Montant à recevoir : <strong>{money(value)} F CFA</strong></span><span>Frais de service (1 %) : <strong>{money(fee)} {currency === 'V' ? 'V' : 'F CFA'}</strong></span><span>Frais de retrait (18 %) : <strong>{money(ownerFee)} {currency === 'V' ? 'V' : 'F CFA'}</strong></span><span className="wallet-fees__total">Total débité (19 % de frais) : <strong>{money(total)} {currency === 'V' ? 'V' : 'F CFA'}</strong></span></div>}

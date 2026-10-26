@@ -1,3 +1,4 @@
+import AnimatedAmount from './AnimatedAmount';
 import { registerRefresh } from '../api/refresh';
 import { useEffect, useRef, useState } from 'react';
 import { walletRequest, setAdminAccess } from '../api/accounts';
@@ -11,8 +12,8 @@ const format = n => new Intl.NumberFormat('fr-CI').format(n || 0);
 const labels = { awaiting_payment:'Paiement et capture attendus', pending:'En cours de verification', approved:'Recharge confirmee', rejected:'Demande refusee' };
 export function WalletBalances({ user }) {
   return <div className="wallet-balances" aria-label="Mes soldes">
-    <div className="wallet-balance"><IconFranc size={26}/><span><small>Solde · F CFA</small><strong>{format(user?.balance)}</strong></span></div>
-    <div className="wallet-balance wallet-balance--bonus"><IconV size={22}/><span><small>Bonus · V</small><strong>{format(user?.bonus_balance)}</strong></span></div>
+    <div className="wallet-balance"><IconFranc size={26}/><span><small>Solde · F CFA</small><strong><AnimatedAmount value={user?.balance} cacheKey={`wallet:${user?.id||'guest'}:F`}/></strong></span></div>
+    <div className="wallet-balance wallet-balance--bonus"><IconV size={22}/><span><small>Bonus · V</small><strong><AnimatedAmount value={user?.bonus_balance} cacheKey={`wallet:${user?.id||'guest'}:V`}/></strong></span></div>
   </div>;
 }
 export function CouponForm({ onUser, onAdmin }) {

@@ -1,3 +1,5 @@
+import AnimatedAmount from './AnimatedAmount';
+import {currentSession} from '../api/accounts';
 import {useEffect,useState} from 'react';
 import {walletRequest} from '../api/accounts';
 import '../styles/owner-commissions.css';
@@ -18,7 +20,7 @@ export default function OwnerCommissionSummary(){
         <div><span>Aujourd’hui</span><strong>{fmt(data.today)} V</strong></div>
         <div><span>7 derniers jours</span><strong>{fmt(data.last_7_days)} V</strong></div>
         <div><span>Commissions cumulées</span><strong>{fmt(data.total)} V</strong></div>
-        <div><span>Bonus actuel du compte</span><strong>{fmt(data.owner_bonus_balance)} V</strong></div>
+        <div><span>Bonus actuel du compte</span><strong><AnimatedAmount value={data.owner_bonus_balance} cacheKey={`wallet:${currentSession()?.id}:V`} suffix=" V"/></strong></div>
       </div>
       <p className="sheet__text">{data.withdrawal_count} retrait(s) validé(s) ayant généré une commission. Historique daté à Abidjan (UTC+0).</p>
       <h3>Détail par jour</h3>
