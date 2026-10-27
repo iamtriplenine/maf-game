@@ -7,6 +7,7 @@ import TournamentStepFiveLab from './TournamentStepFiveLab';
 import TournamentStepSixLab from './TournamentStepSixLab';
 import TournamentStepSevenLab from './TournamentStepSevenLab';
 import TournamentStepEightLab from './TournamentStepEightLab';
+import TournamentStepNineLab from './TournamentStepNineLab';
 import TournamentFivePlayerLab from './TournamentFivePlayerLab';
 import TournamentDeletionPanel from './TournamentDeletionPanel';
 import TournamentPolicy from './TournamentPolicy';
@@ -204,6 +205,7 @@ export default function TournamentHub({ session }) {
     {manager&&owner&&<TournamentStepSixLab/>}
     {manager&&owner&&<TournamentStepSevenLab/>}
     {manager&&owner&&<TournamentStepEightLab/>}
+    {manager&&owner&&<TournamentStepNineLab/>}
     {manager&&owner&&<TournamentFivePlayerLab/>}
     {manager&&owner&&<TournamentDeletionPanel refreshKey={generation} onDeleted={()=>{setDeleteGeneration(n=>n+1);setGeneration(n=>n+1);}}/>}
     {loading&&<p role="status" className="tourney-empty">Chargement des tournois…</p>}

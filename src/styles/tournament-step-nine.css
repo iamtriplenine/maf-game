@@ -1,0 +1,18 @@
+.tourney-nine{margin:18px 0;padding:14px;border:1px solid rgba(218,188,127,.5);border-radius:20px;background:#172438;color:#f7f3ee}
+.tourney-nine__toggle{display:block;width:100%;padding:14px;border:1px solid #c2a36b;border-radius:12px;background:#292f3e;color:inherit;text-align:left;font-size:1rem;font-weight:700}
+.tourney-nine__body{display:grid;gap:14px;padding-top:14px}.tourney-nine p{margin:0;line-height:1.5}
+.tourney-nine label{display:grid;gap:6px;font-weight:650}.tourney-nine select{width:100%;min-width:0;padding:12px;color:inherit;background:#152134;border:1px solid #768091;border-radius:10px}
+.tourney-nine__skins{display:grid;grid-template-columns:1fr;gap:10px}
+.tourney-nine__skin{display:grid;align-content:center;justify-items:center;gap:7px;min-height:145px;padding:10px;text-align:center;border-radius:14px;border:1px solid rgba(251,216,146,.65);background:radial-gradient(circle at 50% 0%,#425078,#152037 75%)}
+.tourney-nine__skin--participation{min-height:175px}
+.tourney-nine__skin--finalist{background:radial-gradient(circle at 50% 0%,#806138,#211c22 74%)}
+.tourney-nine__skin-icon{font-size:2.9rem;color:#f5d58d}.tourney-nine__skin strong{font-size:.91rem}.tourney-nine__skin small{opacity:.8;font-size:.72rem}
+.tourney-nine__controls{display:flex;flex-wrap:wrap;gap:8px}.tourney-nine__controls button{flex:1;min-width:120px;padding:11px 8px;border:1px solid #edc782;border-radius:10px;background:#313748;color:white;font-weight:700}
+.tourney-nine__controls button:last-child{background:#e2b967;color:#182236}.tourney-nine button:disabled{opacity:.55}
+.tourney-nine__result{padding:18px;border:1px solid #a88a5a;border-radius:14px;background:linear-gradient(150deg,#253250,#111c2d);display:grid;gap:14px;animation:tourney-nine-show .36s ease-out both}
+.tourney-nine__ribbon{color:#f2ca78;font-weight:800}.tourney-nine__result h4{font-size:1.23rem;color:#ffe09b;margin:0}
+.tourney-nine__money{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tourney-nine__money span{border-radius:10px;padding:10px;background:rgba(255,255,255,.06)}.tourney-nine__money strong{font-size:1.1rem;color:#ffe6ab}
+.tourney-nine__note,.tourney-nine__warning{font-size:.89rem;opacity:.86}.tourney-nine__warning{border-left:3px solid #f3b66d;padding-left:10px}.tourney-nine__error{padding:12px;border-radius:12px;background:#592b38}
+@keyframes tourney-nine-show{from{opacity:.3;transform:translateY(12px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.tourney-nine__result{animation:none}}
+@media(max-width:340px){.tourney-nine__skins{grid-template-columns:1fr}}
