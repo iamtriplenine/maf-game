@@ -1,0 +1,15 @@
+/* Isolé du style des salons classiques, uniquement pour la simulation locale. */
+.tourney-lab { margin: 1rem 0; padding: .75rem; border: 1px solid var(--border, #566); border-radius: 14px; }
+.tourney-lab__toggle { width: 100%; padding: .7rem 1rem; text-align: left; font-weight: 700; }
+.tourney-lab__content { padding-top: .65rem; }
+.tourney-lab__layout { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(220px, .7fr); align-items: start; gap: 1rem; }
+.tourney-lab__board { width: 100%; min-width: 0; }
+.tourney-lab__controls { display: grid; gap: .55rem; align-content: start; }
+.tourney-lab__controls h4 { margin: .3rem 0; }
+.tourney-lab__actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.tourney-lab__controls button, .tourney-lab__actions button { min-height: 36px; padding: .45rem .6rem; }
+.tourney-lab__players { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .5rem; padding: 0; list-style: none; }
+.tourney-lab__players li { border-left: 4px solid var(--lab-color); background: rgba(127,127,127,.08); padding: .65rem; border-radius: 5px; display: flex; flex-direction: column; gap: .3rem; }
+.tourney-lab__players li[aria-current="true"] { outline: 2px solid var(--lab-color); }
+.tourney-lab__players span { font-size: .85rem; }
+@media (max-width: 760px) { .tourney-lab__layout { grid-template-columns: minmax(0,1fr); } .tourney-lab { padding: .5rem; } }

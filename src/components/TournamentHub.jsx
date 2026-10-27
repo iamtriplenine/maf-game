@@ -3,6 +3,7 @@ import { publicTournaments, ownerTournaments, saveTournament, reserveTournament,
 import { refreshSession } from '../api/accounts';
 import { abidjanDate, countdown, dateFromInput, dateInput, francs, newTournament } from '../tournaments/presentation';
 import '../styles/tournaments.css';
+import TournamentFivePlayerLab from './TournamentFivePlayerLab';
 import TournamentDeletionPanel from './TournamentDeletionPanel';
 import TournamentPolicy from './TournamentPolicy';
 import '../styles/tournaments-reservation.css'; // MAF_TOURNOI_ETAPE2_V1
@@ -195,6 +196,7 @@ export default function TournamentHub({ session }) {
       onKeyUp={cancel} onBlur={cancel} aria-label={owner?'Tournoi. Maintenir pour gérer les tournois.':'Tournoi'}>Tournoi</button></h2>
       <span className="tourney-section-note">LES GRANDS RENDEZ-VOUS</span></div>
     {manager&&owner&&<TournamentManager key={deleteGeneration} onClose={()=>setManager(false)} onSaved={()=>setGeneration(n=>n+1)}/>}
+    {manager&&owner&&<TournamentFivePlayerLab/>}
     {manager&&owner&&<TournamentDeletionPanel refreshKey={generation} onDeleted={()=>{setDeleteGeneration(n=>n+1);setGeneration(n=>n+1);}}/>}
     {loading&&<p role="status" className="tourney-empty">Chargement des tournois…</p>}
     {error&&<div className="tourney-error" role="alert">{error}<button type="button" onClick={()=>setGeneration(n=>n+1)}>Réessayer</button></div>}
