@@ -1,0 +1,18 @@
+.tourney-eight{margin:18px 0;padding:14px;border:1px solid rgba(218,188,127,.5);border-radius:20px;background:#172438;color:#f7f3ee}
+.tourney-eight__toggle{width:100%;padding:13px;border:1px solid #c2a36b;border-radius:12px;background:#292f3e;color:inherit;text-align:left;font-size:1rem;font-weight:700}
+.tourney-eight__body{display:grid;gap:12px;padding:14px 0 0}
+.tourney-eight p{margin:0;line-height:1.55}
+.tourney-eight label{display:grid;gap:6px;font-weight:600}
+.tourney-eight select{width:100%;min-width:0;padding:12px;color:inherit;background:#152134;border:1px solid #768091;border-radius:10px}
+.tourney-eight__results{padding:13px;border:1px solid #827255;border-radius:13px;background:rgba(255,255,255,.045);display:grid;gap:11px}
+.tourney-eight h4{margin:0;color:#f5cf86;font-size:1rem}
+.tourney-eight__table-wrap{overflow-x:auto}
+.tourney-eight table{border-collapse:collapse;width:100%;font-size:.9rem}
+.tourney-eight th,.tourney-eight td{text-align:left;padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.16);white-space:nowrap}
+.tourney-eight__figures{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tourney-eight__figures span{padding:9px;border-radius:8px;background:rgba(255,255,255,.07);font-size:.85rem}
+.tourney-eight__figures b{display:block;font-size:1rem;margin-top:3px}
+.tourney-eight__note,.tourney-eight__warning{font-size:.89rem;opacity:.87}
+.tourney-eight__warning{border-left:3px solid #f3b66d;padding-left:9px}
+.tourney-eight button:disabled{opacity:.65}
+@media(max-width:350px){.tourney-eight__figures{grid-template-columns:1fr}}
