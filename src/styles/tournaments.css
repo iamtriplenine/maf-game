@@ -1,0 +1,45 @@
+.tourney-hub{--tr-gold:#ffd88c;--tr-ink:#121d35;--tr-muted:#b6c4dc;color:#f4f7ff;min-width:0}
+.tourney-heading{font:inherit;color:inherit;background:none;border:0;padding:6px 0;text-align:left;cursor:default;touch-action:pan-y;transition:color .25s}
+.tourney-heading.is-holding{color:var(--tr-gold)}
+.tourney-heading:focus-visible,.tourney-hub summary:focus-visible{outline:2px solid var(--tr-gold);outline-offset:4px}
+.tourney-section-note{font-size:9px;letter-spacing:.12em;color:var(--tr-muted);text-align:right}
+.tourney-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:20px;align-items:start}
+.tourney-card{overflow:hidden;border:1px solid #819ac03d;border-radius:24px;background:#101b30;box-shadow:0 18px 46px #03091333;animation:tourney-in .45s ease-out}
+.tourney-card__hero{position:relative;padding:20px;background:radial-gradient(ellipse at 80% 30%,#b7934729,transparent 58%),linear-gradient(145deg,#203651,#122037 70%);overflow:hidden}
+.tourney-card__top{display:flex;gap:8px;justify-content:space-between;align-items:center}
+.tourney-tag{font-size:9px;font-weight:800;letter-spacing:.08em;border:1px solid #a4bdd13d;border-radius:30px;padding:7px 9px;color:#d3e5f6}
+.tourney-tag--gold{color:var(--tr-gold);border-color:#ffd88c55;background:#e6a93612}
+.tourney-card__art{position:relative;height:92px;display:grid;place-items:center;margin:6px 0}
+.tourney-card__art>span{font-size:65px;filter:drop-shadow(0 12px 12px #0006);animation:tourney-float 5s ease-in-out infinite}
+.tourney-card__art i,.tourney-card__art b{position:absolute;color:var(--tr-gold);font-size:23px;left:26%;top:15px}.tourney-card__art b{left:auto;right:25%;top:58px;font-size:12px}
+.tourney-card__eyebrow{color:var(--tr-gold);font-size:9px;letter-spacing:.15em;margin:4px 0 8px;text-align:center}
+.tourney-card h3{font-size:clamp(23px,6vw,30px);line-height:1.13;margin:0;text-align:center;overflow-wrap:anywhere;color:#fff}
+.tourney-card__date{font-size:12px;color:#cbd8ec;text-align:center;line-height:1.6;margin:10px 0 16px}
+.tourney-countdown{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
+.tourney-countdown>div{display:flex;flex-direction:column;align-items:center;background:#06132780;border:1px solid #adc4df24;border-radius:12px;padding:10px 2px}
+.tourney-countdown strong{font-size:28px;font-variant-numeric:tabular-nums;line-height:1.1;letter-spacing:.03em;color:var(--tr-gold)}
+.tourney-countdown span{font-size:9px;color:#c7d4e5;margin-top:6px}
+.tourney-card__places{display:flex;justify-content:space-between;font-size:12px;color:#cbd8ec;gap:8px}.tourney-card__places strong{color:#fff}
+.tourney-card progress{display:block;width:100%;height:5px;margin:10px 0 16px;border:0;border-radius:9px;overflow:hidden;background:#fff2;accent-color:var(--tr-gold)}
+.tourney-card progress::-webkit-progress-bar{background:#fff2}.tourney-card progress::-webkit-progress-value{background:var(--tr-gold);transition:width .4s}
+.tourney-cta{width:100%;border:0;border-radius:12px;padding:13px 12px;background:linear-gradient(120deg,#ffe0a2,#eabb69);color:#2b2115;font-weight:800;font-size:13px;cursor:pointer}
+.tourney-cta:disabled{background:#2d405c;color:#ccdaef;cursor:default}
+.tourney-card__note{font-size:10px;line-height:1.6;color:var(--tr-muted);text-align:center;margin:10px 0 0}
+.tourney-card__waiting{color:var(--tr-gold);font-size:12px;text-align:center}
+.tourney-card__details{padding:0 17px 8px}.tourney-description{color:#c5d2e6;font-size:12px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;margin:16px 0}
+.tourney-card details{border-top:1px solid #afc7e21c}.tourney-card summary{display:flex;gap:10px;align-items:center;cursor:pointer;list-style:none;padding:16px 0;font-size:12px;font-weight:650;color:#edf3ff}
+.tourney-card summary::-webkit-details-marker{display:none}.tourney-card summary>span{font-size:10px;color:#e8c581}.tourney-card summary>b{margin-left:auto;color:#e8c581;font-size:17px}.tourney-card details[open] summary>b{transform:rotate(45deg)}
+.tourney-detail-body{padding:0 0 14px;color:#c2cfe2;font-size:12px;line-height:1.7}.tourney-detail-body p{margin:0 0 12px}.tourney-detail-body strong{color:#eaf1fb}
+.tourney-table-wrap{overflow-x:auto}.tourney-card table{border-collapse:collapse;width:100%;font-size:11px}.tourney-card caption{text-align:left;font-size:10px;margin-bottom:8px;color:var(--tr-muted)}.tourney-card td,.tourney-card th{padding:10px 5px;border-bottom:1px solid #adc4df20;text-align:left;white-space:nowrap}.tourney-card td:nth-child(2){color:var(--tr-gold);font-weight:700}.tourney-card th{font-weight:500}
+.tourney-skins{display:grid;gap:16px}.tourney-skin{display:flex;flex-direction:column;align-items:center;text-align:center;min-height:240px;border:1px solid #bdd9ff22;border-radius:16px;padding:22px 14px;background:radial-gradient(circle at 50% 30%,#516f9238,transparent 65%),#15243a}
+.tourney-skin>span{font-size:64px;color:#b2cbe6;margin-bottom:12px}.tourney-skin small{font-size:9px;letter-spacing:.1em}.tourney-skin h4{font-size:18px;margin:12px 0}.tourney-skin p{font-size:11px}.tourney-skin--winner{background:radial-gradient(circle at 50% 30%,#a27c3738,transparent 65%),#29291f;border-color:#ffd88c40}.tourney-skin--winner>span,.tourney-skin--winner h4{color:var(--tr-gold)}
+.tourney-empty{text-align:center;background:#152239;border:1px solid #a8bfd12b;border-radius:18px;padding:36px 20px;color:var(--tr-muted);font-size:13px}.tourney-empty>span{font-size:36px}.tourney-empty h3{color:#f5f7ff;font-size:18px}
+.tourney-error,.tourney-success{padding:12px;border-radius:10px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}.tourney-error{background:#4b2430;color:#ffd2d7}.tourney-success{background:#173d36;color:#b9f0d5}.tourney-error button{margin-left:12px}
+.tourney-manager{border:1px solid #cba86170;border-radius:18px;padding:18px;margin:8px 0 22px;background:#17253a;font-size:12px;line-height:1.6}
+.tourney-manager__head{display:flex;align-items:center;justify-content:space-between;gap:10px}.tourney-manager h3{margin:0;font-size:17px}.tourney-manager p{color:var(--tr-muted)}
+.tourney-manager button:not(.tourney-cta),.tourney-error button{border:1px solid #99b1ce55;background:#243950;color:#fff;border-radius:8px;padding:7px 10px;cursor:pointer}
+.tourney-manager__list{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.tourney-manager__list button{max-width:100%;overflow-wrap:anywhere}.tourney-manager__list button[aria-pressed=true]{border-color:var(--tr-gold)}
+.tourney-manager fieldset{border:0;padding:0;margin:0;min-width:0}.tourney-manager label{display:block;margin:13px 0;color:#e0e9f8;font-size:12px}.tourney-manager input,.tourney-manager textarea,.tourney-manager select{display:block;box-sizing:border-box;width:100%;min-width:0;margin-top:5px;border:1px solid #a0b8d64a;background:#0d192b;color:#fff;border-radius:9px;padding:11px;font:inherit;font-size:16px;color-scheme:dark}.tourney-manager textarea{resize:vertical}
+@keyframes tourney-float{50%{transform:translateY(-5px) rotate(-3deg)}}@keyframes tourney-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.tourney-hub *{animation:none!important;transition:none!important}}
+@media(max-width:360px){.tourney-card__hero{padding:15px}.tourney-countdown{gap:5px}.tourney-countdown strong{font-size:24px}.tourney-section-note{display:none}}

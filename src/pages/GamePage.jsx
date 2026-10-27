@@ -1,3 +1,4 @@
+import TournamentHub from '../components/TournamentHub';
 import RoomCountdown from '../components/RoomCountdown'; // MAF_ROOM_30M_POLICY_V1
 import '../styles/room-countdown.css';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
@@ -412,8 +413,7 @@ export default function GamePage() {
 
       {tab === 'tournoi' ? (
         <section id="game-panel-tournoi" role="tabpanel" aria-labelledby="game-tab-tournoi" className="game-hub__content">
-          <div className="game-hub__line"><h2>Tournoi</h2></div>
-          <p className="game-hub__empty">Les tournois seront disponibles ici prochainement.</p>
+          <TournamentHub key={session?.id || 'guest'} session={session} />
         </section>
       ) : tab === 'salon' ? (
         <section id="game-panel-salon" role="tabpanel" aria-labelledby="game-tab-salon" className="game-hub__content">
