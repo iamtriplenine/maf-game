@@ -3,6 +3,8 @@ import { publicTournaments, ownerTournaments, saveTournament, reserveTournament,
 import { refreshSession } from '../api/accounts';
 import { abidjanDate, countdown, dateFromInput, dateInput, francs, newTournament } from '../tournaments/presentation';
 import '../styles/tournaments.css';
+import TournamentDeletionPanel from './TournamentDeletionPanel';
+import TournamentPolicy from './TournamentPolicy';
 import '../styles/tournaments-reservation.css'; // MAF_TOURNOI_ETAPE2_V1
 
 // MAF_TOURNOI_ETAPE2_V1 : action de reservation (confirmation explicite avant tout debit)
@@ -155,6 +157,7 @@ export default function TournamentHub({ session }) {
   const [manager,setManager] = useState(false), [pressing,setPressing] = useState(false);
   const [items,setItems] = useState([]), [loading,setLoading] = useState(true), [error,setError] = useState('');
   const [now,setNow] = useState(Date.now), [generation,setGeneration] = useState(0);
+  const [deleteGeneration,setDeleteGeneration] = useState(0);
   const [mine,setMine] = useState([]);
   const hold = useRef(null), origin = useRef(null), serverClock = useRef(null);
   const cancel = () => {clearTimeout(hold.current);hold.current=null;setPressing(false);};
@@ -191,10 +194,12 @@ export default function TournamentHub({ session }) {
       onKeyDown={e=>{if(owner&&!e.repeat&&(e.key==='Enter'||e.key===' ')){e.preventDefault();start({clientX:0,clientY:0});}}}
       onKeyUp={cancel} onBlur={cancel} aria-label={owner?'Tournoi. Maintenir pour gérer les tournois.':'Tournoi'}>Tournoi</button></h2>
       <span className="tourney-section-note">LES GRANDS RENDEZ-VOUS</span></div>
-    {manager&&owner&&<TournamentManager onClose={()=>setManager(false)} onSaved={()=>setGeneration(n=>n+1)}/>}
+    {manager&&owner&&<TournamentManager key={deleteGeneration} onClose={()=>setManager(false)} onSaved={()=>setGeneration(n=>n+1)}/>}
+    {manager&&owner&&<TournamentDeletionPanel refreshKey={generation} onDeleted={()=>{setDeleteGeneration(n=>n+1);setGeneration(n=>n+1);}}/>}
     {loading&&<p role="status" className="tourney-empty">Chargement des tournois…</p>}
     {error&&<div className="tourney-error" role="alert">{error}<button type="button" onClick={()=>setGeneration(n=>n+1)}>Réessayer</button></div>}
     {!loading&&!error&&!items.length&&<div className="tourney-empty"><span aria-hidden="true">🏆</span><h3>Le prochain rendez-vous se prépare</h3><p>Les tournois programmés apparaîtront ici.</p></div>}
+    <TournamentPolicy/>
     <div className="tourney-grid">{items.map(t=><TournamentCard key={t.id} tournament={t} now={now} session={session} reserved={mine.includes(t.id)} onDone={(id,ok)=>{if(ok)setMine(m=>m.includes(id)?m:[...m,id]);setGeneration(n=>n+1);}}/>)}</div>
   </div>;
 }

@@ -43,3 +43,14 @@
 @keyframes tourney-float{50%{transform:translateY(-5px) rotate(-3deg)}}@keyframes tourney-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.tourney-hub *{animation:none!important;transition:none!important}}
 @media(max-width:360px){.tourney-card__hero{padding:15px}.tourney-countdown{gap:5px}.tourney-countdown strong{font-size:24px}.tourney-section-note{display:none}}
+/* Etape 3 : cartes administrateur et regles de remboursement */
+.tourney-delete-panel{background:#18263c;border:1px solid #bfcbd840;border-radius:14px;padding:16px;margin:0 0 20px;color:#fff}
+.tourney-delete-panel h3{font-size:17px;margin:0 0 8px}
+.tourney-delete-panel p{font-size:12px;line-height:1.6;color:#c4d3e8}
+.tourney-delete-panel__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr));gap:12px;margin:14px 0}
+.tourney-delete-panel__card{display:grid;gap:7px;border-radius:12px;border:1px solid #6b84a34d;background:#101b30;padding:12px;min-width:0}
+.tourney-delete-panel__card strong{overflow-wrap:anywhere;font-size:13px}
+.tourney-delete-panel__card small{color:#c0cee3;font-size:11px}
+.tourney-delete-panel__card button{border:1px solid #e99b9b;border-radius:9px;color:#fff;background:#822d3b;padding:9px;cursor:pointer}
+.tourney-delete-panel__card button:disabled{opacity:.55;cursor:wait}
+.tourney-policy{padding:12px 15px;margin:0 0 15px;background:#192e40;border:1px solid #d1ae6759;border-radius:12px;color:#edf2fd;font-size:12px;line-height:1.7}
