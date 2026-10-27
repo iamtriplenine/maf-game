@@ -1,0 +1,15 @@
+.tourney-six{margin:18px 0;padding:16px;border:1px solid rgba(223,178,109,.36);border-radius:20px;background:rgba(30,34,48,.82);color:#fff}
+.tourney-six__toggle{width:100%;border:1px solid rgba(244,190,104,.65);background:rgba(237,184,101,.09);color:inherit;border-radius:14px;padding:14px 10px;font-weight:750;text-align:left;font-size:1rem}
+.tourney-six__body{padding:12px 1px 1px;display:grid;gap:14px}
+.tourney-six__body p{margin:0;line-height:1.55}
+.tourney-six__actions{display:flex;gap:8px;flex-wrap:wrap}
+.tourney-six__actions button{flex:1 1 150px;padding:12px 10px;border-radius:11px;background:#e7bb72;border:0;color:#201c18;font-weight:700}
+.tourney-six button:disabled{opacity:.55;cursor:not-allowed}
+.tourney-six__body select{width:100%;max-width:100%;background:#172538;color:#fff;padding:11px;border:1px solid #8491aa;border-radius:10px}
+.tourney-six__status{padding:12px;border:1px solid rgba(250,255,255,.18);border-radius:12px}
+.tourney-six__status h4{margin:0 0 6px}
+.tourney-six__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}
+.tourney-six__seat{display:flex;flex-direction:column;min-width:0;gap:6px;overflow-wrap:anywhere;background:rgba(0,0,0,.22);border-radius:12px;padding:12px}
+.tourney-six__seat span{font-size:.85rem;color:#d6dce8}
+.tourney-six__seat .tourney-six__ok{color:#96e7b4}
+@media (max-width:390px){.tourney-six__grid{grid-template-columns:1fr}}
