@@ -1,9 +1,51 @@
 import { useEffect, useRef, useState } from 'react';
-import { publicTournaments, ownerTournaments, saveTournament } from '../api/tournaments';
+import { publicTournaments, ownerTournaments, saveTournament, reserveTournament, myTournamentReservations, setTournamentRegistration } from '../api/tournaments';
+import { refreshSession } from '../api/accounts';
 import { abidjanDate, countdown, dateFromInput, dateInput, francs, newTournament } from '../tournaments/presentation';
 import '../styles/tournaments.css';
+import '../styles/tournaments-reservation.css'; // MAF_TOURNOI_ETAPE2_V1
 
-export function TournamentCard({ tournament: t, now }) {
+// MAF_TOURNOI_ETAPE2_V1 : action de reservation (confirmation explicite avant tout debit)
+function ReserveAction({ tournament: t, reached, session, reserved, onDone }) {
+  const [confirming,setConfirming] = useState(false), [busy,setBusy] = useState(false), [error,setError] = useState(''), [paid,setPaid] = useState(null);
+  const alive = useRef(true);
+  useEffect(() => { alive.current=true; return () => {alive.current=false;}; }, []);
+  if (!t.registrationOpen) return <button type="button" className="tourney-cta" disabled>Inscriptions bientôt ouvertes</button>;
+  if (reserved) return <div className="tourney-reserved" role="status"><strong>✓ Place réservée</strong>
+    <span>{paid?`${francs(paid.fee)} F débités · nouveau solde ${francs(paid.balanceAfter)} F`:'Ta place est confirmée pour ce tournoi.'}</span></div>;
+  if (!session) return <button type="button" className="tourney-cta" disabled>Connecte-toi pour réserver</button>;
+  if (t.full) return <button type="button" className="tourney-cta" disabled>Complet · {t.capacity}/{t.capacity}</button>;
+  if (reached) return <button type="button" className="tourney-cta" disabled>Inscriptions closes</button>;
+  const confirm = async () => {
+    if (busy) return;
+    setBusy(true); setError('');
+    try {
+      const data = await reserveTournament(t.id);
+      if (!alive.current) return;
+      setPaid(data.reservation.alreadyReserved?null:{fee:data.reservation.fee,balanceAfter:data.reservation.balanceAfter});
+      setConfirming(false);
+      void refreshSession();
+      onDone(t.id, true);
+    } catch (e) {
+      if (alive.current) setError(e.message || 'La réservation a échoué. Vérifie ton solde puis réessaie.');
+      onDone(t.id, false);
+    } finally { if (alive.current) setBusy(false); }
+  };
+  return <div className="tourney-reserve">
+    {!confirming
+      ? <button type="button" className="tourney-cta" onClick={()=>{setError('');setConfirming(true);}}>Réserver ma place · {francs(t.entryFee)} F</button>
+      : <div className="tourney-confirm" role="alertdialog" aria-label="Confirmer la réservation">
+          <p><strong>Confirmer la réservation ?</strong><br/>{francs(t.entryFee)} F seront débités de ton solde réel{Number.isFinite(session.balance)?` (solde actuel : ${francs(session.balance)} F)`:''}. Une seule place par compte.</p>
+          <div className="tourney-confirm__row">
+            <button type="button" className="tourney-cta" onClick={confirm} disabled={busy}>{busy?'Réservation…':`Payer ${francs(t.entryFee)} F`}</button>
+            <button type="button" className="tourney-cancel" onClick={()=>setConfirming(false)} disabled={busy}>Annuler</button>
+          </div>
+        </div>}
+    {error&&<p className="tourney-error" role="alert">{error}</p>}
+  </div>;
+}
+
+export function TournamentCard({ tournament: t, now, session = null, reserved = false, onDone = () => {} }) {
   const remaining = countdown(t.startsAt, now), reached = Date.parse(t.startsAt) <= now;
   const names = ['Jours', 'Heures', 'Minutes', 'Secondes'];
   return <article className="tourney-card">
@@ -19,8 +61,8 @@ export function TournamentCard({ tournament: t, now }) {
       {reached && <p className="tourney-card__waiting" role="status">Heure prévue atteinte · en attente du lancement</p>}
       <div className="tourney-card__places"><span><strong>{t.registered}</strong> / {t.capacity} inscrits</span><span>Entrée <strong>{francs(t.entryFee)} CFA</strong></span></div>
       <progress max={t.capacity} value={t.registered} aria-label="Places réservées" />
-      <button type="button" className="tourney-cta" disabled>Inscriptions bientôt ouvertes</button>
-      <p className="tourney-card__note">20 places limitées. La réservation à 500 F ouvrira prochainement.</p>
+      <ReserveAction tournament={t} reached={reached} session={session} reserved={reserved} onDone={onDone}/>
+      <p className="tourney-card__note">{t.registrationOpen?'20 places limitées. Une seule place par compte.':'20 places limitées. La réservation à 500 F ouvrira prochainement.'}</p>
     </div>
     <div className="tourney-card__details">
       {t.description && <p className="tourney-description">{t.description}</p>}
@@ -28,7 +70,7 @@ export function TournamentCard({ tournament: t, now }) {
         <p><strong>Qualifications :</strong> quatre plateaux de cinq joueurs, constitués au hasard. Chaque vainqueur rejoint la finale.</p>
         <p><strong>Finale prévue :</strong> {abidjanDate(t.finalAt)} (Abidjan), avec les quatre qualifiés.</p>
         <p>Si une qualification se prolonge, le départ de la finale sera décalé par tranches de cinq minutes.</p>
-        <p>Les horaires annoncent le programme du tournoi. Les inscriptions ne sont pas encore ouvertes.</p>
+        {t.registrationOpen?<p>Les réservations sont ouvertes jusqu’au début des qualifications, dans la limite des places disponibles.</p>:<p>Les horaires annoncent le programme du tournoi. Les inscriptions ne sont pas encore ouvertes.</p>}
       </div></details>
       <details><summary><span>02</span> Les récompenses <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
         <p>Montants versés sur le solde réel, mise comprise. Chaque participant reçoit aussi 100 F de bonus.</p>
@@ -43,7 +85,7 @@ export function TournamentCard({ tournament: t, now }) {
       </div></details>
       <details><summary><span>04</span> Réservation & règles <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
         <p>Inscription individuelle : 500 F par joueur, dans la limite de 20 places. Les groupes seront tirés au sort au lancement.</p>
-        <p>Les conditions de réservation, d’absence et de remboursement seront précisées avant l’ouverture des inscriptions.</p>
+        {t.registrationOpen?<p>Réservation : 500 F sont débités de ton solde réel à la confirmation, pour une place unique par compte.</p>:<p>Les conditions de réservation, d’absence et de remboursement seront précisées avant l’ouverture des inscriptions.</p>}
       </div></details>
     </div>
   </article>;
@@ -70,19 +112,37 @@ export function TournamentManager({ onSaved, onClose }) {
     } catch(e) { if(alive.current)setError(e.message); }
     finally { if(alive.current)setBusy(false); }
   };
+  const toggleRegistration = async t => {
+    if (busy) return;
+    if (!t.registrationOpen && !window.confirm('Ouvrir les réservations ? Chaque joueur qui réserve est débité de 500 F sur son solde réel.')) return;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const data = await setTournamentRegistration(t.id, !t.registrationOpen, t.revision);
+      if (!alive.current) return;
+      setForm(f => (id === t.id ? { ...f, revision: data.tournament.revision } : f));
+      setNotice(data.tournament.registrationOpen ? 'Réservations ouvertes.' : 'Réservations fermées.');
+      onSaved(); await load();
+    } catch (e) { if (alive.current) setError(e.message); }
+    finally { if (alive.current) setBusy(false); }
+  };
+  const current = items.find(t => t.id === id);
   return <section className="tourney-manager" aria-label="Gestion des tournois">
     <div className="tourney-manager__head"><h3>Programmer un tournoi</h3><button type="button" onClick={onClose} disabled={busy}>Fermer</button></div>
     <p>Les dates sont à l’heure d’Abidjan. Format : Monopoly, 20 places, entrée 500 F.</p>
     <div className="tourney-manager__list"><button type="button" disabled={busy} onClick={()=>{setId(null);setForm(newTournament());setError('');setNotice('');}}>＋ Nouveau tournoi</button>
       {items.map(t=><button key={t.id} type="button" disabled={busy} onClick={()=>edit(t)} aria-pressed={id===t.id}>{t.title} · {{draft:'Brouillon',published:'Publié',archived:'Archivé'}[t.status]}</button>)}
     </div>
+    {current&&current.status==='published'&&<div className="tourney-registration">
+      <p>Réservations : <strong>{current.registrationOpen?'OUVERTES':'fermées'}</strong> · {current.registered}/{current.capacity} places prises.</p>
+      <button type="button" disabled={busy} onClick={()=>toggleRegistration(current)}>{current.registrationOpen?'Fermer les réservations':'Ouvrir les réservations (500 F débités)'}</button>
+    </div>}
     <form onSubmit={submit}><fieldset disabled={busy}>
       <label>Titre<input name="title" maxLength={80} required value={form.title} onChange={change}/></label>
       <label>Présentation<textarea name="description" maxLength={1500} rows={3} value={form.description} onChange={change}/></label>
       <label>Qualifications — heure d’Abidjan<input name="startsAt" type="datetime-local" required value={form.startsAt} onChange={change}/></label>
       <label>Finale — heure d’Abidjan<input name="finalAt" type="datetime-local" required value={form.finalAt} onChange={change}/></label>
       <label>Visibilité<select name="status" value={form.status} onChange={change}><option value="draft">Brouillon — visible uniquement ici</option><option value="published">Publié — visible par tous</option><option value="archived">Archivé — masqué au public</option></select></label>
-      <p>Cette étape publie l’annonce. Elle n’ouvre pas les réservations et ne prélève aucune mise.</p>
+      <p>Enregistrer ne prélève aucune mise. Les réservations s’ouvrent avec le bouton ci-dessus, une fois l’annonce publiée.</p>
       <button type="submit" className="tourney-cta">{busy?'Enregistrement…':id?'Enregistrer les modifications':'Créer le tournoi'}</button>
     </fieldset></form>
     {error&&<p className="tourney-error" role="alert">{error}</p>}
@@ -95,6 +155,7 @@ export default function TournamentHub({ session }) {
   const [manager,setManager] = useState(false), [pressing,setPressing] = useState(false);
   const [items,setItems] = useState([]), [loading,setLoading] = useState(true), [error,setError] = useState('');
   const [now,setNow] = useState(Date.now), [generation,setGeneration] = useState(0);
+  const [mine,setMine] = useState([]);
   const hold = useRef(null), origin = useRef(null), serverClock = useRef(null);
   const cancel = () => {clearTimeout(hold.current);hold.current=null;setPressing(false);};
   useEffect(()=>()=>clearTimeout(hold.current),[]);
@@ -112,6 +173,7 @@ export default function TournamentHub({ session }) {
           const received=performance.now();
           serverClock.current={server:data.serverNow+(received-requestStart)/2,local:received};
           setNow(serverClock.current.server);setItems(data.tournaments);setError('');
+          if(session){try{const m=await myTournamentReservations();if(live)setMine(Array.isArray(m.reserved)?m.reserved:[]);}catch{/* l'annonce publique reste affichee */}}
         }
       } catch(e){if(live)setError(e.name==='AbortError'?'Le serveur met du temps à répondre. Réessaie.':e.message);}
       finally{clearTimeout(timeout);pending=false;if(live)setLoading(false);}
@@ -133,6 +195,6 @@ export default function TournamentHub({ session }) {
     {loading&&<p role="status" className="tourney-empty">Chargement des tournois…</p>}
     {error&&<div className="tourney-error" role="alert">{error}<button type="button" onClick={()=>setGeneration(n=>n+1)}>Réessayer</button></div>}
     {!loading&&!error&&!items.length&&<div className="tourney-empty"><span aria-hidden="true">🏆</span><h3>Le prochain rendez-vous se prépare</h3><p>Les tournois programmés apparaîtront ici.</p></div>}
-    <div className="tourney-grid">{items.map(t=><TournamentCard key={t.id} tournament={t} now={now}/>)}</div>
+    <div className="tourney-grid">{items.map(t=><TournamentCard key={t.id} tournament={t} now={now} session={session} reserved={mine.includes(t.id)} onDone={(id,ok)=>{if(ok)setMine(m=>m.includes(id)?m:[...m,id]);setGeneration(n=>n+1);}}/>)}</div>
   </div>;
 }

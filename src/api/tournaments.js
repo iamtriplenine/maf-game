@@ -8,3 +8,7 @@ export async function publicTournaments(signal) {
 }
 export const ownerTournaments = () => walletRequest('/api/tournaments/owner');
 export const saveTournament = (id, body) => walletRequest(`/api/tournaments/owner${id ? `/${id}` : ''}`, { method: id ? 'PUT' : 'POST', body });
+// MAF_TOURNOI_ETAPE2_V1 : reservation payante (le serveur debite et attribue la place en une seule operation)
+export const reserveTournament = id => walletRequest(`/api/tournaments/${id}/reserve`, { method: 'POST', body: {} });
+export const myTournamentReservations = () => walletRequest('/api/tournaments/mine');
+export const setTournamentRegistration = (id, open, revision) => walletRequest(`/api/tournaments/owner/${id}/registration`, { method: 'POST', body: { open, revision } });

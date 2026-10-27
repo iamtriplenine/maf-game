@@ -1,0 +1,10 @@
+/* MAF_TOURNOI_ETAPE2_V1 : reservation d'une place */
+.tourney-reserve{display:grid;gap:10px}
+.tourney-confirm{border:1px solid #ffd88c66;background:#0a152899;border-radius:14px;padding:14px;font-size:12px;line-height:1.6;color:#e8eef9}
+.tourney-confirm p{margin:0 0 12px}
+.tourney-confirm__row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:stretch}
+.tourney-cancel{border:1px solid #99b1ce55;background:#243950;color:#fff;border-radius:12px;padding:0 16px;font-size:12px;cursor:pointer}
+.tourney-reserved{display:grid;gap:4px;text-align:center;border:1px solid #6ad39c77;background:#143a2e;border-radius:12px;padding:13px 12px;color:#c9f5df;font-size:12px}
+.tourney-reserved strong{font-size:14px;color:#8ff0bd}
+.tourney-registration{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:14px 0;padding:12px;border:1px solid #cba86155;border-radius:12px;background:#0f1c30}
+.tourney-registration p{margin:0}
