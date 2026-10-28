@@ -1,4 +1,5 @@
 import TournamentHub from '../components/TournamentHub';
+import TournamentRewardsCenter from '../components/TournamentRewardsCenter';
 import RoomCountdown from '../components/RoomCountdown'; // MAF_ROOM_30M_POLICY_V1
 import '../styles/room-countdown.css';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
@@ -365,7 +366,7 @@ export default function GamePage() {
     const dx = touch.clientX - start.x;
     const dy = touch.clientY - start.y;
     if (Math.abs(dx) >= 70 && Math.abs(dx) > Math.abs(dy) * 1.35) {
-      const tabs = ['jeux', 'tournoi', 'salon'];
+      const tabs = ['jeux', 'tournoi', 'recompenses', 'salon'];
       const nextIndex = Math.max(0, Math.min(tabs.length - 1, tabs.indexOf(tab) + (dx < 0 ? 1 : -1)));
       setTab(tabs[nextIndex]);
     }
@@ -406,6 +407,9 @@ export default function GamePage() {
         <button id="game-tab-tournoi" type="button" role="tab" aria-controls="game-panel-tournoi"
           aria-selected={tab === 'tournoi'} className={tab === 'tournoi' ? 'is-current' : ''}
           onClick={() => setTab('tournoi')}>Tournoi</button>
+        <button id="game-tab-recompenses" type="button" role="tab" aria-controls="game-panel-recompenses"
+          aria-selected={tab === 'recompenses'} className={tab === 'recompenses' ? 'is-current' : ''}
+          onClick={() => setTab('recompenses')}>🎁 Récompenses</button>
         <button id="game-tab-salon" type="button" role="tab" aria-controls="game-panel-salon"
           aria-selected={tab === 'salon'} className={tab === 'salon' ? 'is-current' : ''}
           onClick={() => setTab('salon')}>Salon</button>
@@ -414,6 +418,10 @@ export default function GamePage() {
       {tab === 'tournoi' ? (
         <section id="game-panel-tournoi" role="tabpanel" aria-labelledby="game-tab-tournoi" className="game-hub__content">
           <TournamentHub key={session?.id || 'guest'} session={session} />
+        </section>
+      ) : tab === 'recompenses' ? (
+        <section id="game-panel-recompenses" role="tabpanel" aria-labelledby="game-tab-recompenses" className="game-hub__content">
+          <TournamentRewardsCenter key={session?.id || 'guest'} session={session} />
         </section>
       ) : tab === 'salon' ? (
         <section id="game-panel-salon" role="tabpanel" aria-labelledby="game-tab-salon" className="game-hub__content">
