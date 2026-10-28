@@ -1,0 +1,9 @@
+{
+  "id": "taunt-mixamo",
+  "name": "Taunt",
+  "description": "Personnage Mixamo · Provocation et Défaite",
+  "format": "fbx",
+  "file": "characters/taunt-mixamo/Taunt.fbx",
+  "defeatedFile": "characters/taunt-mixamo/Defeated.fbx",
+  "rotation": 0
+}

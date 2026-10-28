@@ -4,6 +4,7 @@ import samba from "./samba/character.json";
 import messi from "./messi/character.json";
 import mutant from "./mutant/character.json";
 import kushina from "./kushina/character.json";
+import taunt from "./taunt-mixamo/character.json";
 
 // Collection utilisee par la personnalisation du profil.
 // Le Studio 3D garde ses propres mouvements internes pour tester les animations.
@@ -13,6 +14,7 @@ export const SKINS = [
   { ...samba, access: "public", movement: "Danse", movementType: "dance" },
   { ...messi, access: "public", movement: "Statique", movementType: "none" },
   { ...kushina, access: "public", movement: "Defile", movementType: "walk" },
+  { ...taunt, access: "exclusive", movement: "Provocation", movementType: "taunt" },
   {
     ...mutant,
     id: "mutant-swipe",

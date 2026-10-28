@@ -210,6 +210,35 @@ function MutantCharacter(props) {
   return <AnimatedModel {...props} source={mutant} clips={clips} />;
 }
 
+// Taunt.fbx contient le personnage rigge et sa premiere animation.
+// Defeated.fbx est uniquement une animation Mixamo partageant ses 65 os :
+// on l'applique sur le MEME modele, sans creer un second personnage.
+function TauntCharacter(props) {
+  const model = useLoader(FBXLoader, `${import.meta.env.BASE_URL}${props.character.file}`);
+  const defeated = useLoader(FBXLoader, `${import.meta.env.BASE_URL}${props.character.defeatedFile}`);
+
+  const clips = useMemo(() => {
+    const pick = (source, name) => {
+      const good = source.animations.filter((clip) => clip.duration > 0 && clip.tracks.length > 0);
+      if (!good.length) return null;
+      const clip = good.reduce((best, current) => current.tracks.length > best.tracks.length ? current : best).clone();
+      clip.name = name;
+      for (const track of clip.tracks) {
+        if (!/mixamorigHips\.position$/i.test(track.name)) continue;
+        const x = track.values[0], z = track.values[2];
+        for (let i = 0; i < track.values.length; i += 3) {
+          track.values[i] = x;
+          track.values[i + 2] = z;
+        }
+      }
+      return clip;
+    };
+    return [pick(model, "Provocation"), pick(defeated, "Défaite")].filter(Boolean);
+  }, [model, defeated]);
+
+  return <AnimatedModel {...props} source={model} clips={clips} />;
+}
+
 function label(name, character, count) {
   if (character.id === "samba" && count === 1) return "Danser";
   const key = name.toLowerCase().replace(/[^a-z]/g, "");
@@ -229,9 +258,11 @@ export default function CharacterViewer({ character }) {
   const [autoRotate, setAutoRotate] = useState(false);
   const [viewKey, setViewKey] = useState(0);
 
-  const Character = ["mutant", "mutant-swipe"].includes(character.id)
-    ? MutantCharacter
-    : character.format === "fbx" ? FbxCharacter : GlbCharacter;
+  const Character = character.id === "taunt-mixamo"
+    ? TauntCharacter
+    : ["mutant", "mutant-swipe"].includes(character.id)
+      ? MutantCharacter
+      : character.format === "fbx" ? FbxCharacter : GlbCharacter;
 
   return (
     <section className="viewer-panel">
