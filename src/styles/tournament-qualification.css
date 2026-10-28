@@ -1,0 +1,6 @@
+.tourney-qualification-invite{margin:12px 0;padding:14px;border:1px solid var(--border,#aaa6);border-radius:16px;background:var(--surface,rgba(125,125,125,.12));display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.tourney-qualification-invite strong{flex-basis:100%}.tourney-qualification-invite span{flex:1;min-width:170px;font-size:13px}
+.maf-qualification-board{position:relative}.maf-qualification-countdown{position:absolute;inset:0;z-index:15;display:grid;place-items:center;pointer-events:all;background:rgba(7,12,24,.58);backdrop-filter:blur(3px)}
+.maf-qualification-countdown__inner{background:#121d30;color:white;padding:20px;border:2px solid #e6ca77;border-radius:20px;text-align:center;width:min(92%,370px);box-shadow:0 14px 55px #000b}
+.maf-qualification-countdown__time{display:block;font-weight:900;font-size:clamp(36px,10vw,62px);font-variant-numeric:tabular-nums;margin:8px;color:#ffd778}
+.maf-qualification-countdown p{margin:8px 0}.maf-qualification-countdown small{font-size:12px}

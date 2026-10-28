@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 // MAF_UNIFIED_SCHEDULER_V1 : un seul accès administrateur.
 import UnifiedTournamentScheduler from './UnifiedTournamentScheduler';
 import OfficialDuelSection from './OfficialDuelSection';
+import TournamentQualificationMatch from './TournamentQualificationMatch';
 import { publicTournaments, ownerTournaments, saveTournament, reserveTournament, myTournamentReservations, setTournamentRegistration } from '../api/tournaments';
 import { refreshSession } from '../api/accounts';
 import { abidjanDate, countdown, dateFromInput, dateInput, francs, newTournament } from '../tournaments/presentation';
@@ -72,9 +73,9 @@ export function TournamentCard({ tournament: t, now, session = null, reserved = 
     <div className="tourney-card__details">
       {t.description && <p className="tourney-description">{t.description}</p>}
       <details><summary><span>01</span> Déroulement & horaires <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
-        <p><strong>Qualifications :</strong> quatre plateaux de cinq joueurs, constitués au hasard. Chaque vainqueur rejoint la finale.</p>
-        <p><strong>Finale prévue :</strong> {abidjanDate(t.finalAt)} (Abidjan), avec les quatre qualifiés.</p>
-        <p>Si une qualification se prolonge, le départ de la finale sera décalé par tranches de cinq minutes.</p>
+        <p><strong>Qualifications :</strong> de deux à quatre plateaux de quatre ou cinq joueurs, selon les inscriptions. Chaque vainqueur rejoint la finale.</p>
+        <p><strong>Finale prévue :</strong> {abidjanDate(t.finalAt)} (Abidjan), avec les deux à quatre qualifiés.</p>
+        <p>Si une qualification se prolonge, le départ de la finale sera décalé par tranches de cinq minutes. Les joueurs ont cinq minutes pour rejoindre leur plateau et deux minutes pour revenir après une déconnexion.</p>
         {t.registrationOpen?<p>Les réservations sont ouvertes jusqu’au début des qualifications, dans la limite des places disponibles.</p>:<p>Les horaires annoncent le programme du tournoi. Les inscriptions ne sont pas encore ouvertes.</p>}
       </div></details>
       <details><summary><span>02</span> Les récompenses <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
@@ -204,6 +205,7 @@ export default function TournamentHub({ session }) {
     {loading&&<p role="status" className="tourney-empty">Chargement des tournois…</p>}
     {error&&<div className="tourney-error" role="alert">{error}<button type="button" onClick={()=>setGeneration(n=>n+1)}>Réessayer</button></div>}
     {!loading&&!error&&!items.length&&<div className="tourney-empty"><span aria-hidden="true">🏆</span><h3>Le prochain rendez-vous se prépare</h3><p>Les tournois programmés apparaîtront ici.</p></div>}
+    <TournamentQualificationMatch session={session}/>
     <OfficialDuelSection session={session} hideAdmin/>
     <div className="tourney-grid">{items.map(t=><TournamentCard key={t.id} tournament={t} now={now} session={session} reserved={mine.includes(t.id)} onDone={(id,ok)=>{if(ok)setMine(m=>m.includes(id)?m:[...m,id]);setGeneration(n=>n+1);}}/>)}</div>
   </div>;
