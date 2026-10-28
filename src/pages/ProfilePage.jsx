@@ -250,6 +250,13 @@ export default function ProfilePage({ onOpenStudio }) {
                 <IconCube />
                 <span>Studio 3D</span>
               </button>
+              {session?.pseudo === '999' && (
+                <button type="button" className={`menu-btn${commissionsButton.pressing ? ' is-pressing' : ''}`}
+                  title="Appui court : commissions · Appui long : codes Win" {...commissionsButton.handlers}>
+                  <span aria-hidden="true" style={{fontSize:22}}>◈</span>
+                  <span>Mes commissions</span>
+                </button>
+              )}
               {session && (
                 <button type="button" className="menu-btn menu-btn--danger" onClick={() => setSheet("logout")}>
                   <IconLogout />
@@ -285,13 +292,6 @@ export default function ProfilePage({ onOpenStudio }) {
                 <span className="menu-btn__symbol" aria-hidden="true">🏆</span>
                 <span>Classement</span>
               </button>
-              {session?.pseudo === '999' && (
-                <button type="button" className={`menu-btn${commissionsButton.pressing ? ' is-pressing' : ''}`}
-                  title="Appui court : commissions · Appui long : codes Win" {...commissionsButton.handlers}>
-                  <span aria-hidden="true" style={{fontSize:22}}>◈</span>
-                  <span>Mes commissions</span>
-                </button>
-              )}
               <button type="button" className="menu-btn menu-btn--gift" onClick={() => setSheet("gifts")}>
                 <span className="menu-btn__symbol" aria-hidden="true">🎁</span>
                 <span>Cadeaux</span>
