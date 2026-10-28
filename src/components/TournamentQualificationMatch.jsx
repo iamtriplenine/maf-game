@@ -45,9 +45,9 @@ export default function TournamentQualificationMatch({session}){
  const room=game?{
   id:`qualification-${info.id}`,code:`Plateau ${info.table}`,
   status:game.phase==='over'?'finished':'playing',
-  players:match.seats.map((p,i)=>({id:Number(p.userId),name:p.name,seat:i})),
+  players:match.seats.map((p,i)=>({id:Number(p.clientId),name:p.name,seat:i})),
   game,stake:500,payout:0,winModeAvailable:false,
-  winnerId:winnerSeat>=0?Number(match.seats[winnerSeat]?.userId):null,
+  winnerId:winnerSeat>=0?Number(match.seats[winnerSeat]?.clientId):null,
  }:null;
  const deadline=Date.parse(info?.deadlineAt||'');
  const seconds=Number.isFinite(deadline)?Math.max(0,Math.ceil((deadline-now-clockOffset)/1000)):0;

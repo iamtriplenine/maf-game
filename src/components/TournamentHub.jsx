@@ -3,13 +3,15 @@ import { useEffect, useRef, useState } from 'react';
 import UnifiedTournamentScheduler from './UnifiedTournamentScheduler';
 import OfficialDuelSection from './OfficialDuelSection';
 import TournamentQualificationMatch from './TournamentQualificationMatch';
+import TournamentFinalMatch from './TournamentFinalMatch';
 import { publicTournaments, ownerTournaments, saveTournament, reserveTournament, myTournamentReservations, setTournamentRegistration } from '../api/tournaments';
 import { refreshSession } from '../api/accounts';
 import { abidjanDate, countdown, dateFromInput, dateInput, francs, newTournament } from '../tournaments/presentation';
 import '../styles/tournaments.css';
 import TournamentDeletionPanel from './TournamentDeletionPanel';
 import TournamentPolicy from './TournamentPolicy';
-import '../styles/tournaments-reservation.css'; // MAF_TOURNOI_ETAPE2_V1
+import '../styles/tournaments-reservation.css';
+import '../styles/tournament-participants.css'; // MAF_TOURNOI_ETAPE2_V1
 
 // MAF_TOURNOI_ETAPE2_V1 : action de reservation (confirmation explicite avant tout debit)
 function ReserveAction({ tournament: t, reached, session, reserved, onDone }) {
@@ -71,6 +73,12 @@ export function TournamentCard({ tournament: t, now, session = null, reserved = 
       <p className="tourney-card__note">{t.registrationOpen?'20 places limitées. Une seule place par compte.':'20 places limitées. La réservation à 500 F ouvrira prochainement.'}</p>
     </div>
     <div className="tourney-card__details">
+      <details className="tourney-card__participants"><summary><span>◉</span> Participants inscrits · {t.participants?.length ?? t.registered}/{t.capacity} <b aria-hidden="true">＋</b></summary>
+        <div className="tourney-participants-grid">{(t.participants||[]).map((pseudo,i)=><div className="tourney-participant" key={`${pseudo}-${i}`} title={pseudo}>
+          <span className="tourney-participant__avatar" aria-hidden="true">◌</span><strong>{pseudo.length>8?`${pseudo.slice(0,7)}…`:pseudo}</strong>
+        </div>)}</div>
+        {!(t.participants||[]).length&&<p className="tourney-participants-empty">Aucun participant pour le moment.</p>}
+      </details>
       {t.description && <p className="tourney-description">{t.description}</p>}
       <details><summary><span>01</span> Déroulement & horaires <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
         <p><strong>Qualifications :</strong> de deux à quatre plateaux de quatre ou cinq joueurs, selon les inscriptions. Chaque vainqueur rejoint la finale.</p>
@@ -206,6 +214,7 @@ export default function TournamentHub({ session }) {
     {error&&<div className="tourney-error" role="alert">{error}<button type="button" onClick={()=>setGeneration(n=>n+1)}>Réessayer</button></div>}
     {!loading&&!error&&!items.length&&<div className="tourney-empty"><span aria-hidden="true">🏆</span><h3>Le prochain rendez-vous se prépare</h3><p>Les tournois programmés apparaîtront ici.</p></div>}
     <TournamentQualificationMatch session={session}/>
+    <TournamentFinalMatch session={session}/>
     <OfficialDuelSection session={session} hideAdmin/>
     <div className="tourney-grid">{items.map(t=><TournamentCard key={t.id} tournament={t} now={now} session={session} reserved={mine.includes(t.id)} onDone={(id,ok)=>{if(ok)setMine(m=>m.includes(id)?m:[...m,id]);setGeneration(n=>n+1);}}/>)}</div>
   </div>;

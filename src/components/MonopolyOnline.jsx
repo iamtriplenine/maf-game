@@ -51,7 +51,7 @@ export function BoardMatch({room, session, busy, send, tournamentAction=null, to
   const rollRemaining=Math.max(0,Math.min(100,((Number(game.turnClock?.dueAt)||clockNow)-clockNow)/500));
   const endProgress=Math.max(0,Math.min(100,((clockNow-Number(game.turnClock?.startedAt||clockNow))/600)));
   useEffect(()=>{const timer=window.setInterval(()=>setClockNow(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
-  const winner=room.winnerId===session?.id;
+  const winner=Number(room.winnerId)===Number(session?.id) && room.winnerId!==null;
   const hint=game.phase==='over'?'Partie terminee.'
     : me?.bankrupt?'Tu es éliminé : ta mise est perdue. Tu peux continuer à regarder la partie.'
     : !isMyTurn?`Au tour de ${active?.name || 'un autre joueur'}. La partie se met a jour automatiquement.`
@@ -83,7 +83,7 @@ export function BoardMatch({room, session, busy, send, tournamentAction=null, to
           </div>
           {room.status==='finished'?<div className="mono-win">
             <h3>{winner?'🏆 Tu as gagné !':!room.winnerId?'Partie annulée':`🏆 ${room.players.find(p=>p.id===room.winnerId)?.name||'Partie terminée'} gagne la partie`}</h3>
-            <p>{isTournament ? (room.winnerId ? tournamentKind==='qualification' ? (winner?'Tu es qualifié pour la finale !':'Qualification terminée : consulte le classement du tournoi.') : `Récompense : ${francs(winner?900:100)}, à retrouver dans Cadeaux après attribution.` : 'Partie annulée : vérifie ton solde.') : (winner?`Gain : ${francs(room.payout)}`:!room.winnerId?'Les mises ont été remboursées.':`Tu as perdu ta mise de ${francs(room.stake)}.`)}</p>
+            <p>{isTournament ? (room.winnerId ? tournamentKind==='qualification' ? (winner?'Tu es qualifié pour la finale !':'Qualification terminée : consulte le classement du tournoi.') : tournamentKind==='finale' ? (winner?'Tu es champion du tournoi ! Les gains seront affichés dans Cadeaux après validation.':'Finale terminée. Les récompenses seront affichées après validation.') : `Récompense : ${francs(winner?900:100)}, à retrouver dans Cadeaux après attribution.` : 'Partie annulée : vérifie ton solde.') : (winner?`Gain : ${francs(room.payout)}`:!room.winnerId?'Les mises ont été remboursées.':`Tu as perdu ta mise de ${francs(room.stake)}.`)}</p>
           </div>:<>
             <p className="mono-hint">{hint}</p>
             {winAvailable&&!me?.bankrupt&&game.phase==='roll'&&<div>
@@ -104,7 +104,7 @@ export function BoardMatch({room, session, busy, send, tournamentAction=null, to
               <button type="button" className="btn btn--sm" aria-haspopup="dialog" onClick={()=>setPanel('sell')}><MonopolyActionIcon name="sell"/><span>Vendre</span></button>
               <button type="button" className="btn btn--sm" disabled={!cameraReady} onClick={()=>setFocused(f=>!f)}><MonopolyActionIcon name={focused?"map":"target"}/><span>{focused?"Plateau":"Mon pion"}</span></button>
               <div className="mono-mic-slot" ref={isTournament?undefined:setMicSlot}>
-                {isTournament&&<button type="button" className="btn btn--sm" disabled title={tournamentKind==='qualification'?'Vocal de tournoi prévu dans une prochaine mise à jour':'Micro des salons classiques non disponible pour les duels'} aria-label={tournamentKind==='qualification'?'Micro des qualifications non encore activé':'Micro indisponible pour les duels'}><span aria-hidden="true">🎙️</span><span>Micro</span></button>}
+                {isTournament&&<button type="button" className="btn btn--sm" disabled title={['qualification','finale'].includes(tournamentKind)?'Vocal de tournoi prévu dans une prochaine mise à jour':'Micro des salons classiques non disponible pour les duels'} aria-label={['qualification','finale'].includes(tournamentKind)?'Micro du tournoi non encore activé':'Micro indisponible pour les duels'}><span aria-hidden="true">🎙️</span><span>Micro</span></button>}
               </div>
             </div>
           </>}
@@ -133,9 +133,9 @@ export function BoardMatch({room, session, busy, send, tournamentAction=null, to
           {sells.map(o=><div className="mono-sell__row" key={o.square}>
           <span>{SQUARES[o.square].name}</span><button type="button" className="btn btn--sm" disabled={!canAct} onClick={()=>onAction('sell',o.square)}>+{cash(o.value)}</button>
         </div>)}</div>}
-        {panel==='more'&&<div className="mono-panel">{isTournament?<p className="mono__note">{tournamentKind==='qualification'?'Qualification officielle : le gagnant de ce plateau rejoint la finale. Récompenses après la finale.':"Tournoi officiel : 900 F pour le premier, 100 F pour le second. Attribution à l'heure des cadeaux."}</p>:<EliminationRules stake={room.stake} open/>}<p className="mono__note">{isTournament?(tournamentKind==='qualification'?'Qualification':'Duel'):'Code salon'} : {room.code}. La partie reste sur le serveur si tu quittes cette page.</p>
+        {panel==='more'&&<div className="mono-panel">{isTournament?<p className="mono__note">{tournamentKind==='qualification'?'Qualification officielle : le gagnant de ce plateau rejoint la finale. Récompenses après la finale.':tournamentKind==='finale'?'Finale officielle : classement certifié par le serveur. Récompenses après validation et à l’heure des cadeaux.':"Tournoi officiel : 900 F pour le premier, 100 F pour le second. Attribution à l'heure des cadeaux."}</p>:<EliminationRules stake={room.stake} open/>}<p className="mono__note">{isTournament?(tournamentKind==='qualification'?'Qualification':tournamentKind==='finale'?'Finale':'Duel'):'Code salon'} : {room.code}. La partie reste sur le serveur si tu quittes cette page.</p>
           <button type="button" className="btn btn--sm btn--outline" disabled={busy||room.status!=='playing'||!!me?.bankrupt}
-            onClick={()=>{if(window.confirm(isTournament?(tournamentKind==='qualification'?'Abandonner ta qualification ? Tu seras éliminé.':'Abandonner le duel et laisser la victoire à ton adversaire ?'):'Abandonner ? Tu perdras la partie et ta mise.'))void onAction('abandon');}}>Abandonner la partie</button>
+            onClick={()=>{if(window.confirm(isTournament?(tournamentKind==='qualification'?'Abandonner ta qualification ? Tu seras éliminé.':tournamentKind==='finale'?'Abandonner la finale ? Tu seras éliminé.':'Abandonner le duel et laisser la victoire à ton adversaire ?'):'Abandonner ? Tu perdras la partie et ta mise.'))void onAction('abandon');}}>Abandonner la partie</button>
         </div>}
       </MonopolySheet>}
     </div>
