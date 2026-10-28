@@ -35,7 +35,6 @@ function MoneyCount({amount,kind,onComplete}){
  },[amount]);
  return <div className="maf-reveal-money"><div className="maf-reveal-money__caption">{kind==='bonus'?'BONUS REÇU':'SOLDE REÇU'}</div>
    <div className={`maf-reveal-money__number ${done?'is-done':''}`} aria-live="off"><span aria-hidden="true">+</span>{fmt(value)}<small>F</small></div>
-   <div className="maf-reveal-money__progress" aria-hidden="true"><span/></div>
  </div>;
 }
 function LotDisplay({lot,onComplete}){
@@ -68,19 +67,30 @@ export default function GiftRevealOverlay({gift,onClose}){
  };
  const current=lots[index],isMoney=current&&['balance','bonus'].includes(current.kind);
  const canContinue=!isMoney||countDone;
- const next=()=>{if(!canContinue)return;if(index<lots.length-1){setIndex(i=>i+1);setCountDone(false);}else onClose();};
+ const next=()=>{
+  if(!canContinue)return;
+  if(index<lots.length-1){setIndex(i=>i+1);setCountDone(false);}
+  else onClose();
+ };
+ // Aucun bouton de sortie dans la revelation. Echap reste disponible au clavier.
+ useEffect(()=>{
+  const escape=e=>{if(e.key==='Escape'&&phase==='reveal'&&canContinue){e.preventDefault();next();}};
+  window.addEventListener('keydown',escape);
+  return()=>window.removeEventListener('keydown',escape);
+ });
  return createPortal(<div className={`maf-reveal-stage maf-reveal-stage--${phase}`} role="dialog" aria-modal="true" aria-label={`Ouverture du cadeau ${gift.title}`}>
   {phase==='intro'||phase==='pressing'?<div className="maf-reveal-tap-scene">
-   <button type="button" className={`maf-reveal-tap ${phase==='pressing'?'is-pressed':''}`} disabled={phase!=='intro'} onClick={()=>void start()} aria-label="TAP pour ouvrir ton cadeau">
-    <span className="maf-reveal-tap__base"><span className="maf-reveal-tap__hole"/></span>
-    <span className="maf-reveal-tap__stem"/><span className="maf-reveal-tap__top"><span>TAP</span></span>
+   <button type="button" className={`maf-reveal-tap-3d ${phase==='pressing'?'is-pressed':''}`} disabled={phase!=='intro'} onClick={()=>void start()} aria-label="TAP pour ouvrir ton cadeau">
+    <span className="maf-reveal-tap-3d__head"><span className="maf-reveal-tap-3d__top"><span>TAP</span></span></span>
+    <span className="maf-reveal-tap-3d__body"><span className="maf-reveal-tap-3d__left"/><span className="maf-reveal-tap-3d__right"/></span>
+    <span className="maf-reveal-tap-3d__base"><span className="maf-reveal-tap-3d__base-body"><span className="maf-reveal-tap-3d__hole">
+     <span className="maf-reveal-tap-3d__rest"><span className="maf-reveal-tap-3d__left"/><span className="maf-reveal-tap-3d__right"/></span>
+     <span className="maf-reveal-tap-3d__shadow"/>
+    </span></span></span>
    </button>
   </div>:phase==='error'?<div className="maf-reveal-error"><p role="alert">{error}</p><button onClick={()=>{setPhase('intro');}}>Réessayer</button><button onClick={onClose}>Retour aux cadeaux</button></div>:
-   <div className="maf-reveal-lot-scene" onClick={canContinue?next:undefined}>
-    <div className="maf-reveal-lot-scene__top">{gift.title}<small>LOT {index+1} / {lots.length}</small></div>
+   <div className={`maf-reveal-lot-scene ${canContinue?'is-ready':''}`} onClick={next} role="button" tabIndex={canContinue?0:-1} onKeyDown={e=>{if(canContinue&&(e.key==='Enter'||e.key===' ')){e.preventDefault();next();}}} aria-label={index<lots.length-1?'Toucher pour voir le prochain lot':'Toucher pour revenir aux cadeaux'}>
     <div key={index} className="maf-reveal-lot-scene__content"><LotDisplay lot={current} onComplete={()=>setCountDone(true)}/></div>
-    <button type="button" className="maf-reveal-lot-scene__next" disabled={!canContinue} onClick={e=>{e.stopPropagation();next();}}>{!canContinue?'Révélation en cours…':index<lots.length-1?'Toucher pour le lot suivant':'Terminer'}</button>
    </div>}
-  {phase!=='pressing'&&phase!=='intro'&&<button type="button" className="maf-reveal-stage__exit" onClick={onClose} aria-label="Quitter la révélation">×</button>}
  </div>,document.body);
 }

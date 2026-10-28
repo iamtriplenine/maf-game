@@ -19,32 +19,58 @@
 .maf-gift-line__details>div{margin-top:7px;display:grid;gap:5px;line-height:1.45}
 .maf-gift-line__details p{margin:0}.maf-gift-line__details img{max-width:min(220px,100%);max-height:210px;object-fit:contain}
 .maf-reveal-stage{position:fixed!important;inset:0!important;z-index:2147483647!important;display:grid;place-items:center;overflow:hidden;color:#fff;background:#090a0e;isolation:isolate}
-.maf-reveal-stage__exit{position:absolute;right:clamp(12px,4vw,30px);top:max(12px,env(safe-area-inset-top));z-index:6;border:0;background:transparent;color:#adb0b9;font:28px system-ui;cursor:pointer;width:44px;height:44px}
-.maf-reveal-tap-scene{display:grid;place-items:center;width:100%;height:100%;perspective:700px}
-.maf-reveal-tap{position:relative;width:128px;height:138px;background:transparent;border:0;outline-offset:15px;cursor:pointer;transform:scale(1.35);transform-style:preserve-3d}
-.maf-reveal-tap__base{position:absolute;top:63px;left:18px;width:92px;height:92px;border-radius:13px;background:linear-gradient(145deg,#adadad,#454545);transform:rotateX(45deg) rotateZ(45deg);box-shadow:3px 6px 0 #333;display:grid;place-items:center}
-.maf-reveal-tap__hole{display:block;width:71px;height:71px;background:#292929;border-radius:9px;box-shadow:inset 3px 4px 8px #0d0d0d;border-top:2px solid #b6b6b6;border-left:2px solid #979797}
-.maf-reveal-tap__stem{position:absolute;top:27px;left:35px;width:73px;height:64px;background:linear-gradient(90deg,#a02b00,#ef5c00 60%,#c33b00);transform:skewY(-14deg);box-shadow:2px 9px 5px #d94d004d;transition:transform 1.45s cubic-bezier(.2,.9,.3,1),opacity .7s ease}
-.maf-reveal-tap__top{position:absolute;top:6px;left:28px;display:grid;place-items:center;width:73px;height:73px;background:linear-gradient(140deg,#ffba3a,#ff7b00 52%,#dd4200);border:3px solid #ff9d00;border-radius:12px;color:#fff;box-shadow:3px 6px 0 #b33a00,7px 10px 14px #0008;transform:rotateX(43deg) rotateZ(45deg);transition:transform 1.65s cubic-bezier(.25,.75,.2,1),top 1.65s cubic-bezier(.25,.75,.2,1),opacity .35s 1.55s}
-.maf-reveal-tap__top span{font:900 22px system-ui;transform:rotateZ(-45deg) rotateX(-22deg);text-shadow:0 2px 2px #933}
-.maf-reveal-tap.is-pressed .maf-reveal-tap__top{top:73px;transform:rotateX(43deg) rotateZ(45deg) scale(.56);opacity:0}
-.maf-reveal-tap.is-pressed .maf-reveal-tap__stem{transform:translateY(57px) skewY(-14deg) scaleY(.2);opacity:0}
-.maf-reveal-stage--reveal .maf-reveal-lot-scene{animation:mafSceneEnter .7s ease both}
-@keyframes mafSceneEnter{from{opacity:0;transform:scale(.91);filter:blur(13px)}to{opacity:1;transform:scale(1);filter:blur(0)}}
-.maf-reveal-lot-scene{position:relative;width:100%;height:100%;display:grid;grid-template-rows:auto 1fr auto;align-items:center;justify-items:center;padding:clamp(28px,6vw,72px) 20px;box-sizing:border-box;background:radial-gradient(ellipse at 50% 70%,#11251d,#090a0e 70%)}
-.maf-reveal-lot-scene__top{text-align:center;font-weight:800;font-size:clamp(17px,3vw,24px);width:100%}.maf-reveal-lot-scene__top small{display:block;margin-top:10px;font-size:11px;opacity:.56;letter-spacing:.25em}
+/* Bouton TAP : structure et proportions d'origine Uiverse/arthur_6104, isolées du CSS global. */
+.maf-reveal-tap-scene{display:flex;align-items:center;justify-content:center;width:100%;height:100%;perspective:700px;overflow:visible}
+.maf-reveal-tap-3d{
+ --lightest:#ffba3a;--lighter:#ff9d00;--light:#ff7b00;--neutral:#ff6200;
+ --dark:#cf3700;--dark-2:orangered;--darkest:#c83500;
+ cursor:pointer;perspective:500px;position:relative;display:block;
+ width:77px;height:25px;padding:0;border:0;border-radius:0;
+ background:transparent;color:#fff;flex:none;overflow:visible;
+ transform:translateY(-3px) scale(1.7);transform-origin:center;
+ transition:height 1.55s cubic-bezier(.2,.8,.2,1);-webkit-tap-highlight-color:transparent;
+}
+.maf-reveal-tap-3d:focus-visible{outline:2px solid #ffba3a;outline-offset:65px}
+.maf-reveal-tap-3d:disabled{cursor:default;opacity:1}
+.maf-reveal-tap-3d__head{position:absolute;top:0;left:50%;transform:translate(-50%,-50%);z-index:4}
+.maf-reveal-tap-3d__body{width:100%;height:100%;position:relative;display:block;overflow:hidden;background:var(--lighter);z-index:3;transition:height 1.55s cubic-bezier(.2,.8,.2,1),opacity .6s 1.1s}
+.maf-reveal-tap-3d__body>.maf-reveal-tap-3d__left{display:block;height:100%;width:calc(50% - 10px);background:linear-gradient(to right,var(--darkest),var(--neutral),var(--neutral),var(--light));box-shadow:5px 10px 5px var(--light)}
+.maf-reveal-tap-3d__body>.maf-reveal-tap-3d__right{position:absolute;top:0;right:0;width:calc(50% - 10px);height:100%;background:var(--dark);box-shadow:-5px 5px 5px var(--dark)}
+.maf-reveal-tap-3d__top{display:flex;align-items:center;justify-content:center;width:60px;height:60px;box-sizing:border-box;
+ background:linear-gradient(150deg,var(--lighter),var(--dark-2));color:#fff;border-radius:10px;
+ transform:rotateX(45deg) rotateZ(45deg);border-bottom:3px solid var(--lightest);border-right:3px solid var(--lighter);
+ transition:transform 1.65s cubic-bezier(.2,.75,.2,1),opacity .4s 1.3s}
+.maf-reveal-tap-3d__top>span{font-size:18px;font-weight:800;font-family:system-ui,sans-serif;line-height:1;pointer-events:none;text-shadow:0 1px 2px #9c3200}
+.maf-reveal-tap-3d__base{position:absolute;top:100%;left:50%;transform:translate(-50%,-50%);display:flex;justify-content:center;align-items:end;width:120px;overflow:hidden;z-index:1}
+.maf-reveal-tap-3d__base-body{display:flex;align-items:center;justify-content:center;width:90px;height:90px;flex:none;box-sizing:border-box;
+ background:linear-gradient(150deg,#a5a5a5,#5f5f5f);color:#fff;border-radius:10px;
+ transform:rotateX(45deg) rotateZ(45deg);box-shadow:2px 2px 0 #505050;border-bottom:2px solid #b0b0b0;border-right:2px solid #8f8f8f}
+.maf-reveal-tap-3d__hole{height:70px;width:70px;box-sizing:border-box;background:#353535;border-radius:7px;position:relative;display:block;overflow:hidden;
+ box-shadow:inset 2px 2px 5px #1f1f1f;border-top:2px solid #b0b0b0;border-left:2px solid #8f8f8f}
+.maf-reveal-tap-3d__rest{position:absolute;top:50%;left:50%;transform:translate(calc(-50% + 20px),calc(-50% + 20px)) rotate(-45deg);width:77px;height:calc(50% + 24px);overflow:hidden;background:var(--lighter)}
+.maf-reveal-tap-3d__rest>.maf-reveal-tap-3d__left{height:100%;width:calc(50% - 10px);background:linear-gradient(to right,var(--darkest),var(--neutral),var(--neutral),var(--light));box-shadow:5px 0 5px var(--light)}
+.maf-reveal-tap-3d__rest>.maf-reveal-tap-3d__right{position:absolute;top:0;right:0;width:calc(50% - 10px);height:100%;background:var(--dark);box-shadow:-5px 0 5px var(--dark)}
+.maf-reveal-tap-3d__shadow{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;height:100%;box-shadow:inset -5px -5px 4px #0005;pointer-events:none}
+.maf-reveal-tap-3d.is-pressed{height:0}
+.maf-reveal-tap-3d.is-pressed .maf-reveal-tap-3d__body{height:0;opacity:0}
+.maf-reveal-tap-3d.is-pressed .maf-reveal-tap-3d__top{transform:translateY(8px) rotateX(45deg) rotateZ(45deg) scale(.42);opacity:0}
+@media(max-width:360px){.maf-reveal-tap-3d{transform:translateY(-3px) scale(1.5)}}
+@media(prefers-reduced-motion:reduce){.maf-reveal-tap-3d,.maf-reveal-tap-3d__body,.maf-reveal-tap-3d__top{transition:none!important}}
+.maf-reveal-stage--reveal .maf-reveal-lot-scene{position:relative;width:100%;height:100%;display:grid;place-items:center;
+ padding:max(36px,env(safe-area-inset-top)) 20px max(36px,env(safe-area-inset-bottom));box-sizing:border-box;
+ background:radial-gradient(ellipse at 50% 65%,#11251d,#090a0e 72%);touch-action:manipulation;
+ -webkit-tap-highlight-color:transparent;outline:none;cursor:default}
+.maf-reveal-lot-scene.is-ready{cursor:pointer}
+.maf-reveal-lot-scene:focus-visible{outline:2px solid #6dffa3;outline-offset:-4px}
 .maf-reveal-lot-scene__content{display:grid;place-items:center;min-width:0;width:100%;animation:mafSceneEnter .5s ease}
-.maf-reveal-lot-scene__next{cursor:pointer;border:0;border-radius:999px;background:#e9fff1;color:#072b18;padding:13px 28px;min-height:46px;font-weight:800;font-size:13px;max-width:90vw}
-.maf-reveal-lot-scene__next:disabled{cursor:default;opacity:.52}
 .maf-reveal-money{text-align:center;max-width:100%;display:grid;gap:16px;justify-items:center}.maf-reveal-money__caption{font-size:12px;letter-spacing:.3em;font-weight:800;color:#6fecaa}
 .maf-reveal-money__number{font-variant-numeric:tabular-nums;font-weight:900;font-size:clamp(58px,15vw,158px);letter-spacing:-.075em;white-space:nowrap;max-width:100%;color:#e2fbea;text-shadow:0 0 25px #1bdd6955;transition:color .9s ease,filter .9s ease}
 .maf-reveal-money__number.is-done{color:#3dfa83;filter:drop-shadow(0 0 18px #36c86b70)}
 .maf-reveal-money__number small{font-size:.3em;margin-left:9px;letter-spacing:0}.maf-reveal-money__number>span{font-size:.5em;margin-right:12px}
-.maf-reveal-money__progress{height:3px;width:min(280px,70vw);background:#16412b;border-radius:99px;overflow:hidden}.maf-reveal-money__progress>span{display:block;height:100%;background:#6dffa3;animation:mafMoneyCount 5.3s linear both}@keyframes mafMoneyCount{from{width:0}to{width:100%}}
 .maf-reveal-object{text-align:center;display:grid;justify-items:center;gap:16px;max-width:90vw}.maf-reveal-object__symbol{font-size:clamp(80px,20vw,158px);color:#ffce66;text-shadow:0 0 25px #c9972360}.maf-reveal-object p{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#c3b9a3}.maf-reveal-object strong{font-size:clamp(24px,5vw,40px);overflow-wrap:anywhere}.maf-reveal-object img{max-width:min(75vw,480px);max-height:48vh;object-fit:contain}.maf-reveal-object__coupon{background:transparent;color:#fff;border:1px solid #aaa;padding:10px 15px;border-radius:10px}
 .maf-reveal-error{text-align:center;padding:20px;display:grid;gap:15px}.maf-reveal-error button{background:#fff;border:0;border-radius:10px;padding:12px 16px}
 @media(max-width:390px){.maf-gift-line__state{font-size:9px}.maf-gift-line__main{gap:5px}.maf-gift-line__main button{padding:6px 8px}}
-@media(prefers-reduced-motion:reduce){.maf-reveal-tap__top,.maf-reveal-tap__stem{transition:none}.maf-reveal-lot-scene,.maf-reveal-lot-scene__content{animation:none}}
+@media(prefers-reduced-motion:reduce){.maf-reveal-lot-scene,.maf-reveal-lot-scene__content{animation:none}}
 
 .maf-reveal-money__number{animation:mafMoneyGreen 5.3s ease both}
 @keyframes mafMoneyGreen{0%{color:#e7f2ec}65%{color:#9cfac0}100%{color:#3dfa83}}
