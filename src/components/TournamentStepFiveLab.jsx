@@ -64,6 +64,7 @@ export default function TournamentStepFiveLab() {
       {groups.length>0&&<div className="tourney-five-draw__grid">
         {groups.map(g=><article key={g.table} className="tourney-five-draw__table">
           <h4>Plateau {g.table} <small>· {g.players.length}/5</small></h4>
+          {g.reference&&<p className="tourney-five-draw__reference">Référence : <code>{g.reference}</code></p>}
           <ol>{g.players.map((p,i)=><li key={p.userId ?? i}><span>Place {i+1}</span><strong>{p.name}</strong></li>)}</ol>
         </article>)}
       </div>}

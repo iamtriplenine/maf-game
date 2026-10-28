@@ -1,0 +1,6 @@
+.maf-match-reference{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 9px;max-width:100%;font-size:12px}
+.maf-match-reference__label{opacity:.8;font-size:11px}
+.maf-match-reference code{user-select:all;-webkit-user-select:all;font-size:11px;overflow-wrap:anywhere;padding:4px 7px;border:1px solid currentColor;border-radius:6px;background:rgba(125,125,125,.12);font-weight:700}
+.maf-match-reference button{border:1px solid currentColor;border-radius:7px;background:transparent;color:inherit;padding:4px 8px;font-size:11px;cursor:pointer}
+.maf-match-reference button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.maf-match-reference small{font-size:11px}

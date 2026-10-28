@@ -3,6 +3,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {BoardMatch} from './MonopolyOnline';
+import TournamentReference from './TournamentReference';
 import {myQualification,qualificationAction,qualificationPresence} from '../api/tournamentLive';
 import '../styles/duel-fullscreen.css';
 import '../styles/tournament-qualification.css';
@@ -63,6 +64,7 @@ export default function TournamentQualificationMatch({session}){
  return <>
   <div className="tourney-qualification-invite" role="status">
     <strong>{notified?'🔔 ':''}{info.title} · Plateau {info.table}</strong>
+    <TournamentReference value={info.reference} />
     <span>{waiting?`Départ en préparation · ${info.joinedCount}/${info.totalCount} joueurs présents`:
       attention?'Aucun joueur arrivé dans le délai : intervention nécessaire':
       game?.phase==='over'?'Qualification terminée':'Ta qualification est en cours'}</span>
@@ -70,7 +72,7 @@ export default function TournamentQualificationMatch({session}){
     <button type="button" className="tourney-cta" onClick={()=>{setOpen(true);setNotified(false);setError('');}}>🎲 {waiting?'Rejoindre mon plateau':'Ouvrir mon plateau'}</button>
   </div>
   {open&&createPortal(<div className="maf-duel-fullscreen mono-online mono-online--playing maf-qualification-fullscreen" role="dialog" aria-modal="true" aria-label="Monopoly - qualification de tournoi">
-    <header className="maf-duel-fullscreen__head"><strong>🏆 {info.title} · Qualification, plateau {info.table}</strong>
+    <header className="maf-duel-fullscreen__head"><strong>🏆 {info.title} · Qualification, plateau {info.table} <TournamentReference value={info.reference}/></strong>
       <button type="button" className="btn btn--sm" onClick={()=>setOpen(false)}>✕ Quitter l'écran</button></header>
     {error&&<p role="alert" className="tourney-error">{error}</p>}
     {room?<div className="maf-qualification-board">

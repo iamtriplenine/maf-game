@@ -81,6 +81,7 @@ export default function TournamentStepSevenLab(){
       </>}
       {view&&<div className="tourney-seven__results" aria-live="polite">
         <h4>{headline}</h4>
+        {isReal&&view.reference&&<p>Référence finale : <code>{view.reference}</code></p>}
         <p>Finale programmée : <strong>{showTime(view.plannedAt)}</strong></p>
         <p>{view.status==='started'?'Départ enregistré.':`Prochain créneau : ${showTime(view.nextAt)}`}</p>
         {isReal&&<p>Finalistes enregistrés : {view.qualifiedCount}/4. Qualifications terminées : {view.qualificationsComplete?'Oui':'Non'}.</p>}

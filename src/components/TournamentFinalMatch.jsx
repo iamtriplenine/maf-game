@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {BoardMatch} from './MonopolyOnline';
+import TournamentReference from './TournamentReference';
 import {myFinale,finalePresence,finaleAction} from '../api/tournamentLive';
 import '../styles/duel-fullscreen.css';
 import '../styles/tournament-finale.css';
@@ -42,6 +43,7 @@ export default function TournamentFinalMatch({session}){
    <div className="maf-finale-invite__crown" aria-hidden="true">♛</div>
    <div className="maf-finale-invite__content"><span className="maf-finale-invite__kicker">ACCÈS FINALISTE DÉBLOQUÉ</span>
     <h3>🏆 Finale · {finale.title}</h3>
+    <TournamentReference value={finale.reference} label="Référence finale"/>
     <strong>Déjà inscrit à la finale</strong>
     <p>{finale.status==='waiting'?'Attends les autres participants pour participer.':finale.status==='finished'?'La finale est terminée.':'La finale est en cours : rejoins ton plateau !'}</p>
     <div className="maf-finale-invite__progress">{finale.finalistCount} / {finale.expectedFinalists} qualifiés
@@ -55,7 +57,7 @@ export default function TournamentFinalMatch({session}){
      <button type="button" className="maf-finale-invite__button" disabled={!finale.enabled||ready} onClick={()=>{setReady(true);void finalePresence(finale.tournamentId,'here').catch(e=>setError(e.message));}}>{ready?'✓ Présence confirmée':'Je suis prêt pour la finale'}</button>}
   </section>
   {open&&room&&createPortal(<div className="maf-duel-fullscreen mono-online mono-online--playing maf-finale-fullscreen" role="dialog" aria-modal="true" aria-label="Monopoly : finale du tournoi">
-   <header className="maf-duel-fullscreen__head"><strong>♛ FINALE · {finale.title}</strong><button type="button" className="btn btn--sm" onClick={()=>setOpen(false)}>✕ Fermer</button></header>
+   <header className="maf-duel-fullscreen__head"><strong>♛ FINALE · {finale.title} <TournamentReference value={finale.reference} label="Référence finale"/></strong><button type="button" className="btn btn--sm" onClick={()=>setOpen(false)}>✕ Fermer</button></header>
    {error&&<p className="tourney-error" role="alert">{error}</p>}
    <BoardMatch room={room} session={session} busy={busy} send={send} tournamentKind="finale" tournamentAction={(action,square)=>finaleAction(finale.tournamentId,finale.revision,action,square)}/>
   </div>,document.body)}

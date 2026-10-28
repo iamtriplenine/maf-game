@@ -4,6 +4,7 @@ import UnifiedTournamentScheduler from './UnifiedTournamentScheduler';
 import OfficialDuelSection from './OfficialDuelSection';
 import TournamentQualificationMatch from './TournamentQualificationMatch';
 import TournamentFinalMatch from './TournamentFinalMatch';
+import TournamentReference from './TournamentReference';
 import { publicTournaments, ownerTournaments, saveTournament, reserveTournament, myTournamentReservations, setTournamentRegistration } from '../api/tournaments';
 import { refreshSession } from '../api/accounts';
 import { abidjanDate, countdown, dateFromInput, dateInput, francs, newTournament } from '../tournaments/presentation';
@@ -72,6 +73,7 @@ export function TournamentCard({ tournament: t, now, session = null, reserved = 
       <p className="tourney-card__eyebrow">LE RENDEZ-VOUS DES STRATÈGES</p>
       <h3>{t.title}</h3>
       <p className="tourney-card__date">{abidjanDate(t.startsAt)} · Abidjan</p>
+      <div className="tourney-card__reference"><TournamentReference value={t.reference} label="Référence tournoi"/></div>
       <div className="tourney-countdown" role="timer" aria-label={reached ? 'Heure prévue atteinte' : 'Temps avant les qualifications'}>
         {remaining.map((n,i) => <div key={names[i]}><strong>{String(n).padStart(2,'0')}</strong><span>{names[i]}</span></div>)}
       </div>
