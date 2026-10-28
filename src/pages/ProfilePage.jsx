@@ -4,6 +4,7 @@ import AnimatedAmount from "../components/AnimatedAmount";
 import SkinCarousel from "../components/SkinCarousel";
 import GuidePage from "../components/GuidePage";
 import CommunityLinks from "../components/CommunityLinks";
+import TournamentRewardsCenter from "../components/TournamentRewardsCenter";
 import FootballLeaderboard from "../components/FootballLeaderboard";
 import ProfileIdentity from "../components/ProfileIdentity";
 import Sheet from "../components/Sheet";
@@ -224,12 +225,10 @@ export default function ProfilePage({ onOpenStudio }) {
                 <span className="menu-btn__symbol" aria-hidden="true">?</span>
                 <span>Guide</span>
               </button>
-              {session?.pseudo === '999' && (
-                <button type="button" className="menu-btn menu-btn--community" onClick={() => setSheet("community")}>
-                  <span className="menu-btn__symbol" aria-hidden="true">♧</span>
-                  <span>Communauté</span>
-                </button>
-              )}
+              <button type="button" className="menu-btn menu-btn--community" onClick={() => setSheet("community")}>
+                <span className="menu-btn__symbol" aria-hidden="true">♧</span>
+                <span>Communauté</span>
+              </button>
               <button type="button" className="menu-btn" onClick={() => setSheet(session ? "history" : "login")}>
                 <IconHistory />
                 <span>Historique</span>
@@ -280,12 +279,10 @@ export default function ProfilePage({ onOpenStudio }) {
                   <span>Mes commissions</span>
                 </button>
               )}
-              {session?.pseudo !== '999' && (
-                <button type="button" className="menu-btn menu-btn--community" onClick={() => setSheet("community")}>
-                  <span className="menu-btn__symbol" aria-hidden="true">♧</span>
-                  <span>Communauté</span>
-                </button>
-              )}
+              <button type="button" className="menu-btn menu-btn--gift" onClick={() => setSheet("gifts")}>
+                <span className="menu-btn__symbol" aria-hidden="true">🎁</span>
+                <span>Cadeaux</span>
+              </button>
               <button type="button" className="menu-btn menu-btn--more" onClick={() => setMoreOpen(true)} aria-label="Plus d'options">
                 <span className="menu-btn__symbol" aria-hidden="true">•••</span>
                 <span>More</span>
@@ -295,6 +292,9 @@ export default function ProfilePage({ onOpenStudio }) {
         </section>
       </main>
 
+      <Sheet open={sheet === "gifts"} title="Mes cadeaux" onClose={close}>
+        <TournamentRewardsCenter key={session?.id || 'guest'} session={session} />
+      </Sheet>
       <Sheet open={sheet === "community"} title="Communauté MAF Game" onClose={close}>
         <CommunityLinks />
       </Sheet>

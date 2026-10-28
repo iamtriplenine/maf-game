@@ -16,6 +16,8 @@
 @keyframes mafGiftReveal{from{transform:scale(.84);opacity:0;filter:blur(7px)}to{transform:scale(1);opacity:1;filter:blur(0)}}
 @media(max-width:430px){.maf-gift-card{flex-wrap:wrap}.maf-gift-card__open{width:100%}.maf-gifts__owner{padding:12px}}
 @media(prefers-reduced-motion:reduce){.maf-gifts__prize,.maf-gifts__reveal{animation:none}}
-/* Navigation a quatre boutons : Game, Tournoi, Recompenses, Salon. */
-.game-hub__tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
-.game-hub__tabs button{font-size:clamp(10px,2.5vw,13px);letter-spacing:0;padding:6px 3px;min-width:0;overflow-wrap:anywhere}
+
+/* Bouton Cadeaux dans le menu principal du Profil. */
+.profile .menu-btn--gift { border-color: rgba(223, 185, 95, .7); background: linear-gradient(150deg, rgba(193,142,48,.25), rgba(75,54,30,.16)); }
+.profile .menu-btn--gift .menu-btn__symbol { color: #f5cd75; font-size: 27px; }
+.profile .sheet__body .maf-gifts { max-width: 100%; padding: 4px 0 16px; }
