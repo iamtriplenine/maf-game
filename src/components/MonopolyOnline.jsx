@@ -24,10 +24,12 @@ const cash = n => `${new Intl.NumberFormat('fr-FR').format(n)} $`;
 const WAIT_LABEL = {waiting:'En attente',proposed:'Proposition de depart',playing:'Partie en cours',finished:'Partie terminee',closed:'Salon ferme'};
 const minPlayers = 2;
 
-function BoardMatch({room, session, busy, send}) {
+// MAF_DUEL_SHARED_BOARD_V1 : le duel officiel réutilise exactement le plateau et les commandes des salons.
+export function BoardMatch({room, session, busy, send, tournamentAction=null}) {
+  const isTournament=typeof tournamentAction==='function';
   const game=room.game;
   const win=useWinDice('monopoly',false,`${room.id}:${game.turn}:${game.current}`,game.dice);
-  const winAvailable=win.enabled && !!room.winModeAvailable;
+  const winAvailable=!isTournament && win.enabled && !!room.winModeAvailable;
   useEffect(()=>{if(room.status==='finished'||room.status==='closed')finishWinRoomMatch('monopoly');},[room.id,room.status]);
   const meIndex=room.players.findIndex(p=>Number(p.id)===Number(session?.id));
   const isMyTurn=meIndex===game.current && game.phase!=='over';
@@ -56,7 +58,11 @@ function BoardMatch({room, session, busy, send}) {
     : game.phase==='debt'?`${me.name}, il faut vendre pour regler ta dette.`
     : game.phase==='roll'?'Tu peux construire sur tes terrains avant de lancer les des.'
     : allowedBuy?'Tu peux acheter ce terrain puis construire directement dessus.':'Construis, vends ou termine ton tour.';
-  const onAction=async (action,square) => { const ok=await send(()=>api.action(room.id,action,square,action==='roll'&&winAvailable&&winModeIsEnabled('monopoly')?win.faces:undefined)); if(ok&&action==='build'&&game.phase==='after')setPanel(null); };
+  const onAction=async (action,square) => {
+    const ok=await send(()=>isTournament ? tournamentAction(action,square) :
+      api.action(room.id,action,square,action==='roll'&&winAvailable&&winModeIsEnabled('monopoly')?win.faces:undefined));
+    if(ok&&action==='build'&&game.phase==='after')setPanel(null);
+  };
   return (
     <div className="mono mono--playing mono-online-match">
       <section className="mono-play-screen" aria-label="Monopoly multijoueur">
@@ -65,7 +71,7 @@ function BoardMatch({room, session, busy, send}) {
             rolling={false} diceFaces={game.lastRoll?.dice||[]} positions={shown} travel={travel}
             cameraFocused={focused} onCameraReadyChange={setCameraReady}
             renderCenter={()=><MonopolyActivity game={game} paused={walking||!!panel}/>}/>
-          {room.status==='playing'&&micSlot&&<MonopolyVoices roomId={room.id} userId={session?.id} slot={micSlot}/>}
+          {!isTournament&&room.status==='playing'&&micSlot&&<MonopolyVoices roomId={room.id} userId={session?.id} slot={micSlot}/>}
         </div>
         <div className="mono-console">
           {awayPlayers.map(p=><p className="mono-online-absence" role="status" key={p.id}>
@@ -77,7 +83,7 @@ function BoardMatch({room, session, busy, send}) {
           </div>
           {room.status==='finished'?<div className="mono-win">
             <h3>{winner?'🏆 Tu as gagné !':!room.winnerId?'Partie annulée':`🏆 ${room.players.find(p=>p.id===room.winnerId)?.name||'Partie terminée'} gagne la partie`}</h3>
-            <p>{winner?`Gain : ${francs(room.payout)}`:!room.winnerId?'Les mises ont été remboursées.':`Tu as perdu ta mise de ${francs(room.stake)}.`}</p>
+            <p>{isTournament ? (room.winnerId ? `Récompense : ${francs(winner?900:100)}, à retrouver dans Cadeaux après attribution.` : 'Partie annulée : vérifie ton solde.') : (winner?`Gain : ${francs(room.payout)}`:!room.winnerId?'Les mises ont été remboursées.':`Tu as perdu ta mise de ${francs(room.stake)}.`)}</p>
           </div>:<>
             <p className="mono-hint">{hint}</p>
             {winAvailable&&!me?.bankrupt&&game.phase==='roll'&&<div>
@@ -97,7 +103,9 @@ function BoardMatch({room, session, busy, send}) {
               <button type="button" className="btn btn--sm" aria-haspopup="dialog" onClick={()=>setPanel('build')}><MonopolyActionIcon name="build"/><span>Maison</span></button>
               <button type="button" className="btn btn--sm" aria-haspopup="dialog" onClick={()=>setPanel('sell')}><MonopolyActionIcon name="sell"/><span>Vendre</span></button>
               <button type="button" className="btn btn--sm" disabled={!cameraReady} onClick={()=>setFocused(f=>!f)}><MonopolyActionIcon name={focused?"map":"target"}/><span>{focused?"Plateau":"Mon pion"}</span></button>
-              <div className="mono-mic-slot" ref={setMicSlot}/>
+              <div className="mono-mic-slot" ref={isTournament?undefined:setMicSlot}>
+                {isTournament&&<button type="button" className="btn btn--sm" disabled title="Micro des salons classiques non disponible pour les duels" aria-label="Micro indisponible pour les duels"><span aria-hidden="true">🎙️</span><span>Micro</span></button>}
+              </div>
             </div>
           </>}
         </div>
@@ -125,9 +133,9 @@ function BoardMatch({room, session, busy, send}) {
           {sells.map(o=><div className="mono-sell__row" key={o.square}>
           <span>{SQUARES[o.square].name}</span><button type="button" className="btn btn--sm" disabled={!canAct} onClick={()=>onAction('sell',o.square)}>+{cash(o.value)}</button>
         </div>)}</div>}
-        {panel==='more'&&<div className="mono-panel"><EliminationRules stake={room.stake} open/><p className="mono__note">Code salon : {room.code}. La partie reste sur le serveur si tu quittes cette page.</p>
+        {panel==='more'&&<div className="mono-panel">{isTournament?<p className="mono__note">Tournoi officiel : 900 F pour le premier, 100 F pour le second. Attribution à l'heure des cadeaux.</p>:<EliminationRules stake={room.stake} open/>}<p className="mono__note">{isTournament?'Duel':'Code salon'} : {room.code}. La partie reste sur le serveur si tu quittes cette page.</p>
           <button type="button" className="btn btn--sm btn--outline" disabled={busy||room.status!=='playing'||!!me?.bankrupt}
-            onClick={()=>{if(window.confirm('Abandonner ? Tu perdras la partie et ta mise.'))void onAction('abandon');}}>Abandonner la partie</button>
+            onClick={()=>{if(window.confirm(isTournament?'Abandonner le duel et laisser la victoire à ton adversaire ?':'Abandonner ? Tu perdras la partie et ta mise.'))void onAction('abandon');}}>Abandonner la partie</button>
         </div>}
       </MonopolySheet>}
     </div>

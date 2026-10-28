@@ -1,51 +1,48 @@
-import {useCallback,useEffect,useState} from 'react';
+import {useCallback,useEffect,useState,useRef} from 'react';
 import {publicDuels,ownerDuels,createDuel,editDuel,cancelDuel,reserveDuel,myDuels,duelGame,duelAction,duelNotices} from '../api/officialDuel';
-import MonopolyBoard from './MonopolyBoard';
-import {buildOptions,sellOptions,canBuy} from '../games/monopoly/engine';
+import {BoardMatch} from './MonopolyOnline';
+import {createPortal} from 'react-dom';
+// Le duel reprend toutes les commandes et animations de MonopolyOnline.
 import '../styles/monopoly.css';
 import '../styles/official-duel.css';
+import '../styles/duel-fullscreen.css';
 const when=s=>new Intl.DateTimeFormat('fr-FR',{timeZone:'Africa/Abidjan',dateStyle:'medium',timeStyle:'short'}).format(new Date(s));
 const timeInput=s=>s?new Date(s).toISOString().slice(0,16):'';
+// MAF_DUEL_SHARED_BOARD_V1 : même interface plein écran que le Monopoly en ligne.
 function DuelMatch({id,session,onClose}){
  const [state,setState]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
- const [square,setSquare]=useState(1);
+ const busyRef=useRef(false);
  const refresh=useCallback(async()=>{try{setState(await duelGame(id));setError('');}catch(e){setError(e.message);}},[id]);
  useEffect(()=>{void refresh();const timer=setInterval(()=>{if(!document.hidden)void refresh();},2500);return()=>clearInterval(timer);},[refresh]);
- const send=async action=>{if(!state||busy)return;setBusy(true);setError('');try{
-  await duelAction(id,state.revision,action,Number(square));await refresh();
- }catch(e){setError(e.message);await refresh();}finally{setBusy(false);}};
- const game=state?.game?.game;
- const seats=state?.game?.seats||[];
- const mine=seats.findIndex(p=>Number(p.userId)===Number(session?.id));
- const yourTurn=mine>=0&&game?.current===mine&&game.phase!=='over'&&!game.players[mine]?.bankrupt;
- const builds=game&&yourTurn?buildOptions(game):[];
- const sells=game&&yourTurn?sellOptions(game):[];
- return <section className="maf-duel-match" aria-label="Finale du tournoi a deux">
-  <header><h3>Finale du duel #{id}</h3><button type="button" onClick={onClose}>Fermer</button></header>
-  {error&&<p role="alert" className="maf-duel-error">{error}</p>}
-  {!game?<p>Partie non démarrée. Les deux joueurs doivent être inscrits et l'heure programmée doit être atteinte.</p>:<>
-   <div className="mono mono--playing"><MonopolyBoard game={game} selected={null} onSelect={()=>{}} rolling={false} diceFaces={game.lastRoll?.dice||[]}/></div>
-   <p><strong>{game.phase==='over'?'Partie terminée':`Au tour de ${game.players[game.current]?.name||'joueur'}`}</strong> · Tour {game.turn}</p>
-   <div className="maf-duel-players">{game.players.map((p,i)=><p key={i}>{p.name}{i===mine?' (toi)':''} : {p.balance} $ · {p.bankrupt?'éliminé':`case ${p.location}`}</p>)}</div>
-   {game.phase==='over'?<div role="status"><h4>🏆 {game.winner>=0?`${game.players[game.winner]?.name} gagne !`:'Duel annulé'}</h4>
-     <p>Les gains (900 F / 100 F) sont programmés à l'heure des cadeaux et seront visibles dans « Cadeaux » après crédit.</p></div>:
-    <><div className="maf-duel-actions">
-     <button type="button" disabled={!yourTurn||busy||game.phase!=='roll'} onClick={()=>send('roll')}>🎲 Lancer les dés</button>
-     <button type="button" disabled={!yourTurn||busy||!canBuy(game)} onClick={()=>send('buy')}>Acheter</button>
-     <button type="button" disabled={!yourTurn||busy||game.phase!=='after'} onClick={()=>send('end')}>Fin de tour</button>
-    </div>
-    <label>Terrain <select value={square} onChange={e=>setSquare(e.target.value)}>
-      {[...new Set([...builds,...sells].map(x=>x.square))].map(n=><option key={n} value={n}>Terrain n° {n}</option>)}
-    </select></label>
-    <div className="maf-duel-actions">
-      <button type="button" disabled={!builds.some(x=>x.square===Number(square))||busy} onClick={()=>send('build')}>Construire</button>
-      <button type="button" disabled={!sells.some(x=>x.square===Number(square))||busy} onClick={()=>send('sell')}>Vendre</button>
-      <button type="button" disabled={!yourTurn||busy} onClick={()=>{if(window.confirm('Abandonner définitivement la partie ?'))void send('abandon');}}>Abandonner</button>
-    </div></>}
-   <details><summary>Historique de partie</summary><ol>{(game.log||[]).slice(0,30).map(l=><li key={l.n}>{l.text}</li>)}</ol></details>
-  </>}
- </section>;
+ useEffect(()=>{const prior=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=prior;};},[]);
+ const send=async run=>{
+  if(busyRef.current)return false;
+  busyRef.current=true;setBusy(true);setError('');
+  try{await run();await refresh();return true;}
+  catch(e){setError(e.message);await refresh();return false;}
+  finally{busyRef.current=false;setBusy(false);}
+ };
+ const match=state?.game;
+ const game=match?.game;
+ const seats=match?.seats||[];
+ const winnerSeat=Number.isInteger(game?.winner)&&game.winner>=0?game.winner:-1;
+ const room=game&&seats.length===2?{
+  id:'tournoi-'+id,code:'#'+id,
+  status:game.phase==='over'||['finished','paid'].includes(state.status)?'finished':'playing',
+  players:seats.map((p,i)=>({id:Number(p.userId),name:p.name,seat:i})),
+  game,stake:500,payout:900,winModeAvailable:false,
+  winnerId:winnerSeat>=0?Number(seats[winnerSeat]?.userId):state.winnerId||null,
+ }:null;
+ return createPortal(<div className="maf-duel-fullscreen mono-online mono-online--playing" role="dialog" aria-modal="true" aria-label="Finale du tournoi Monopoly">
+   <header className="maf-duel-fullscreen__head"><strong>🎩 Finale Monopoly · Duel #{id}</strong>
+    <button type="button" className="btn btn--sm" onClick={onClose}>✕ Quitter l'écran</button></header>
+   {error&&<p role="alert" className="maf-duel-error">{error}</p>}
+   {room?<BoardMatch room={room} session={session} busy={busy} send={send}
+      tournamentAction={(action,square)=>duelAction(id,state.revision,action,square)}/>
+    :<p className="maf-duel-fullscreen__waiting">Partie non démarrée. Les deux réservations doivent être confirmées et l'heure prévue atteinte.</p>}
+  </div>,document.body);
 }
+
 export default function OfficialDuelSection({session}){
  const isOwner=session?.pseudo==='999';
  const [duels,setDuels]=useState([]),[mine,setMine]=useState([]),[notices,setNotices]=useState([]),[ownerItems,setOwnerItems]=useState([]),[editing,setEditing]=useState(null);
