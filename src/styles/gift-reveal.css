@@ -75,3 +75,14 @@
 .maf-reveal-money__number{animation:mafMoneyGreen 5.3s ease both}
 @keyframes mafMoneyGreen{0%{color:#e7f2ec}65%{color:#9cfac0}100%{color:#3dfa83}}
 @media(prefers-reduced-motion:reduce){.maf-reveal-money__number{animation:none}}
+
+/* Cadeau Matrix : presentation plein ecran VERT. Le profil equipe conserve le theme. */
+.maf-reveal-background{position:fixed;inset:0;overflow:hidden;pointer-events:none;background:#090b0d}
+.maf-reveal-background--matrix{--accent:#3dfa83;--accent-2:#8cffb6;--accent-deep:#087a3c}
+.maf-reveal-background>.profile-background{position:absolute;inset:0;opacity:1}
+.maf-reveal-background .profile-background__column{opacity:.84;filter:drop-shadow(0 0 5px #34ff8066)}
+.maf-reveal-background__action{position:absolute;bottom:max(44px,calc(env(safe-area-inset-bottom) + 24px));left:0;right:0;z-index:5;display:grid;justify-items:center;gap:10px;pointer-events:none}
+.maf-reveal-background__action button{pointer-events:auto;min-width:160px;border:1px solid #93ffba;border-radius:999px;padding:14px 28px;background:#e3ffee;color:#07391d;font:800 18px system-ui;cursor:pointer;box-shadow:0 0 22px #3dfa8355}
+.maf-reveal-background__action button:disabled{opacity:.6}
+.maf-reveal-background__action p{margin:0;font:600 13px system-ui;color:#e4ffef;text-shadow:0 2px 9px #000}
+@media(prefers-reduced-motion:reduce){.maf-reveal-background .profile-background__column{animation:none}}

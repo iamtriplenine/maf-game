@@ -3,7 +3,7 @@ import CharacterViewer from "../components/CharacterViewer";
 import ThemeToggle from "../components/ThemeToggle";
 import { SKINS } from "../characters/skins";
 import { useSession } from "../auth/useSession";
-import { saveProfileBackground } from "../api/accounts";
+import { saveProfileBackground, ownedProfileBackgrounds } from "../api/accounts";
 import { PROFILE_BACKGROUNDS, readGuestProfileBackground, saveGuestProfileBackground, validProfileBackground } from "../profileBackgroundCatalog";
 import "../App.css";
 import "../styles/studio-gallery.css";
@@ -14,6 +14,7 @@ export default function Studio({ onBack }) {
   const [selectedId, setSelectedId] = useState("samba");
   const [backgroundId, setBackgroundId] = useState(() => session ? validProfileBackground(session.profile_background_id) : readGuestProfileBackground());
   const [backgroundSaving, setBackgroundSaving] = useState(false);
+  const [ownedBackgrounds,setOwnedBackgrounds]=useState(['classic']);
   const [backgroundNotice, setBackgroundNotice] = useState('');
 
   useEffect(() => {
@@ -21,7 +22,17 @@ export default function Studio({ onBack }) {
     setBackgroundNotice('');
   }, [session?.id, session?.profile_background_id]);
 
+  useEffect(()=>{
+    let live=true;
+    setOwnedBackgrounds(['classic']);
+    if(session?.id)ownedProfileBackgrounds().then(ids=>{if(live)setOwnedBackgrounds(ids);}).catch(()=>{});
+    return()=>{live=false;};
+  },[session?.id]);
+
   const applyBackground = async () => {
+    if(backgroundId!=='classic'&&!ownedBackgrounds.includes(backgroundId)){
+      setBackgroundNotice('Ce decor se debloque en recevant un cadeau.');return;
+    }
     if (backgroundSaving) return;
     setBackgroundSaving(true);
     setBackgroundNotice('');
@@ -30,7 +41,7 @@ export default function Studio({ onBack }) {
         const user = await saveProfileBackground(backgroundId);
         updateUser(user);
       } else {
-        saveGuestProfileBackground(backgroundId);
+        saveGuestProfileBackground('classic');
       }
       setBackgroundNotice('Arriere-plan applique au profil.');
     } catch (error) {
@@ -97,7 +108,7 @@ export default function Studio({ onBack }) {
               aria-pressed={backgroundId === background.id}
               onClick={() => { setBackgroundId(background.id); setBackgroundNotice(''); }}>
               <strong>{background.name}</strong>
-              <small>{background.description}</small>
+              <small>{background.description}{background.access==='exclusive'&&!ownedBackgrounds.includes(background.id)?' · Verrouille':' · Disponible'}</small>
             </button>
           ))}
         </div>
@@ -109,10 +120,10 @@ export default function Studio({ onBack }) {
 
       {section === 'backgrounds' && (
         <div className="studio__background-actions">
-          <button type="button" disabled={backgroundSaving} onClick={applyBackground}>
-            {backgroundSaving ? 'Enregistrement...' : 'Appliquer sur mon profil'}
+          <button type="button" disabled={backgroundSaving || (backgroundId!=='classic'&&!ownedBackgrounds.includes(backgroundId))} onClick={applyBackground}>
+            {backgroundSaving ? 'Enregistrement...' : (backgroundId!=='classic'&&!ownedBackgrounds.includes(backgroundId) ? 'Recevoir ce fond en cadeau' : 'Appliquer sur mon profil')}
           </button>
-          <p role="status" aria-live="polite">{backgroundNotice || 'Tous les fonds actuels sont accessibles gratuitement.'}</p>
+          <p role="status" aria-live="polite">{backgroundNotice || 'Classique est public. Pluie Matrix se debloque par cadeau.'}</p>
         </div>
       )}
 

@@ -1,5 +1,8 @@
 import {useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
+import { saveProfileBackground } from '../api/accounts';
+import { useSession } from '../auth/useSession';
+import ProfileBackground from './ProfileBackground';
 import '../styles/gift-reveal.css';
 
 const MIN_COUNT_MS=5300;
@@ -37,7 +40,27 @@ function MoneyCount({amount,kind,onComplete}){
    <div className={`maf-reveal-money__number ${done?'is-done':''}`} aria-live="off"><span aria-hidden="true">+</span>{fmt(value)}<small>F</small></div>
  </div>;
 }
+function BackgroundGift({backgroundId}) {
+ const { updateUser }=useSession();
+ const [busy,setBusy]=useState(false),[notice,setNotice]=useState('');
+ const apply=async(e)=>{
+  e.stopPropagation(); if(busy)return;
+  setBusy(true);setNotice('');
+  try{const user=await saveProfileBackground(backgroundId);updateUser(user);
+   setNotice('Applique au profil.');}
+  catch(error){setNotice(error?.message||'Impossible d’appliquer ce decor.');}
+  finally{setBusy(false);}
+ };
+ return <div className={`maf-reveal-background ${backgroundId==='matrix-rain'?'maf-reveal-background--matrix':''}`}>
+   {backgroundId==='matrix-rain'&&<ProfileBackground id="matrix-rain"/>}
+   <div className="maf-reveal-background__action">
+    <button type="button" onClick={apply} disabled={busy}>{busy?'Application...':'Appliquer'}</button>
+    {notice&&<p role="status">{notice}</p>}
+   </div>
+  </div>;
+}
 function LotDisplay({lot,onComplete}){
+ if(lot.kind==='background')return <BackgroundGift backgroundId={lot.backgroundId}/>;
  if(['balance','bonus'].includes(lot.kind))return <MoneyCount key={`${lot.kind}-${lot.amount}`} amount={Number(lot.amount||0)} kind={lot.kind} onComplete={onComplete}/>;
  const title=typeName[lot.kind]||'Récompense';
  return <div className="maf-reveal-object">

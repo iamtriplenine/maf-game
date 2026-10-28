@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
 import ProfileBackground from "../components/ProfileBackground";
 import { readGuestProfileBackground, validProfileBackground } from "../profileBackgroundCatalog";
+import { ownedProfileBackgrounds } from "../api/accounts";
 import AnimatedAmount from "../components/AnimatedAmount";
 import SkinCarousel from "../components/SkinCarousel";
 import GuidePage from "../components/GuidePage";
@@ -71,7 +72,16 @@ export default function ProfilePage({ onOpenStudio }) {
   const [skinError, setSkinError] = useState("");
   const [draftSkin, setDraftSkin] = useState(null);
   const selectedSkin = session ? validSkin(session.skin_id) : guestSkin;
-  const backgroundId = session ? validProfileBackground(session.profile_background_id) : readGuestProfileBackground();
+  const [ownedBackgrounds,setOwnedBackgrounds]=useState(['classic']);
+  useEffect(()=>{
+    let live=true;
+    setOwnedBackgrounds(['classic']);
+    if(session?.id)ownedProfileBackgrounds().then(ids=>{if(live)setOwnedBackgrounds(ids);}).catch(()=>{});
+    return()=>{live=false;};
+  },[session?.id,session?.profile_background_id]);
+  const backgroundId = session
+    ? (ownedBackgrounds.includes(session.profile_background_id)?validProfileBackground(session.profile_background_id):'classic')
+    : readGuestProfileBackground();
   const activeSkin = draftSkin || selectedSkin;
   const activeSkinIndex = useMemo(() => {
     const index = availableSkins.findIndex((skin) => skin.id === activeSkin);

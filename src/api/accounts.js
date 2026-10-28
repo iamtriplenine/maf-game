@@ -185,6 +185,14 @@ export async function syncWallet() {
 }
 
 // Enregistre le fond de profil choisi, commun aux appareils du meme compte.
+// Les fonds debloques appartiennent au compte, pas au navigateur.
+export async function ownedProfileBackgrounds() {
+  const stored=readStored();
+  if(!stored)return ['classic'];
+  const result=await request('/api/gifts/backgrounds/mine',{token:stored.token});
+  return Array.isArray(result.owned)?result.owned:['classic'];
+}
+
 export async function saveProfileBackground(backgroundId) {
   const stored = readStored();
   if (!stored) throw new Error('Connecte-toi pour enregistrer ce decor.');
