@@ -1,0 +1,57 @@
+/* Matrix transparent : seul le texte descend, jamais un fond noir.
+   Couleurs lues depuis les deux themes MAF GAME, sans JavaScript additionnel. */
+.profile-background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+  contain: paint;
+}
+.profile-background__rain {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(180deg, transparent, #000 12%, #000 82%, transparent);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 12%, #000 82%, transparent);
+}
+.profile-background__column {
+  position: absolute;
+  width: 2.7778%;
+  left: calc(var(--matrix-index) * 2.7778%);
+  top: -150%;
+  display: block;
+  opacity: 0.52;
+  color: var(--accent);
+  background: linear-gradient(180deg, transparent 0%, var(--accent-2) 12%, var(--accent) 33%, var(--accent-deep) 75%, transparent 98%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-family: "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif;
+  font-size: clamp(12px, 1.45vw, 18px);
+  font-weight: 700;
+  line-height: 1.06;
+  letter-spacing: 1px;
+  writing-mode: vertical-lr;
+  white-space: nowrap;
+  will-change: transform;
+  animation: maf-matrix-fall var(--matrix-duration) linear var(--matrix-delay) infinite;
+}
+@keyframes maf-matrix-fall {
+  from { transform: translate3d(0, -8%, 0); }
+  to { transform: translate3d(0, 220%, 0); }
+}
+/* Le Canvas 3D reste au-dessus des glyphes et conserve ses gestes tactiles. */
+.profile__stage > .profile-background { z-index: 0; }
+.profile .profile__canvas { z-index: 1; }
+.studio--gallery .stage { position: relative; isolation: isolate; }
+.studio--gallery .stage > canvas { position: relative; z-index: 1; }
+.studio--gallery .stage .profile-background__column { opacity: .64; }
+@media (max-width: 600px) {
+  .profile-background__column { font-size: 12px; width: 4.16667%; left: calc(var(--matrix-index) * 4.16667%); }
+  .profile-background__column:nth-child(n + 25) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-background__column { animation: none; transform: translate3d(0, 110%, 0); opacity: .18; will-change: auto; }
+}

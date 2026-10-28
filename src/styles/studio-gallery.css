@@ -109,3 +109,30 @@
   .studio--gallery .controls button { min-height: 42px; padding: 9px 12px; }
   .studio--gallery .studio__fixed-return button { flex: 0 0 auto; }
 }
+
+/* Onglets du Studio : skins ou arriere-plans, avec un vrai retour au profil. */
+.studio--gallery .studio__tabs { display: flex; gap: 8px; padding: 14px 4px 4px; }
+.studio--gallery .studio__tabs button {
+  min-height: 44px; padding: 9px 18px; border: 0; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: #dcecf9; font: 700 13px/1.2 inherit;
+}
+.studio--gallery .studio__tabs button.is-active { background: var(--accent); color: var(--on-accent); }
+.studio--gallery .studio__background-picker { display: flex; gap: 12px; padding: 8px 4px 15px; flex-wrap: wrap; }
+.studio--gallery .studio__background-button {
+  flex: 1 1 170px; max-width: 290px; min-height: 68px;
+  display: grid; gap: 5px; text-align: left; padding: 12px 14px;
+  background: transparent; color: #dcebf7; border: 0; border-bottom: 2px solid #547087;
+}
+.studio--gallery .studio__background-button.is-selected { border-bottom-color: var(--accent); color: var(--accent-2); }
+.studio--gallery .studio__background-button strong { font-size: 15px; }
+.studio--gallery .studio__background-button small { font-size: 11px; font-weight: 400; color: #a9bad1; line-height: 1.4; }
+.studio--gallery .studio__background-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 5px 26px; }
+.studio--gallery .studio__background-actions button { min-height: 46px; padding: 12px 20px; border: 0; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-weight: 800; }
+.studio--gallery .studio__background-actions button:disabled { opacity: .6; }
+.studio--gallery .studio__background-actions p { font-size: 12px; color: #cbd8e4; margin: 0; }
+.studio--gallery .studio__showcase .stage { background: transparent; }
+@media (max-width: 560px) {
+  .studio--gallery .studio__background-button { flex-basis: calc(50% - 6px); min-width: 132px; }
+  .studio--gallery .studio__background-actions button { width: 100%; }
+}

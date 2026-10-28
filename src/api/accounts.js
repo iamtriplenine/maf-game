@@ -183,3 +183,14 @@ export async function syncWallet() {
     throw error;
   }
 }
+
+// Enregistre le fond de profil choisi, commun aux appareils du meme compte.
+export async function saveProfileBackground(backgroundId) {
+  const stored = readStored();
+  if (!stored) throw new Error('Connecte-toi pour enregistrer ce decor.');
+  const { user } = await request('/api/profile-background', {
+    method: 'PATCH', token: stored.token, body: { background_id: backgroundId },
+  });
+  if (readStored()?.token !== stored.token) throw new Error('La session a change. Reessaie.');
+  return user;
+}

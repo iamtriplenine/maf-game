@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
+import ProfileBackground from "../components/ProfileBackground";
+import { readGuestProfileBackground, validProfileBackground } from "../profileBackgroundCatalog";
 import AnimatedAmount from "../components/AnimatedAmount";
 import SkinCarousel from "../components/SkinCarousel";
 import GuidePage from "../components/GuidePage";
@@ -68,6 +70,7 @@ export default function ProfilePage({ onOpenStudio }) {
   const [skinError, setSkinError] = useState("");
   const [draftSkin, setDraftSkin] = useState(null);
   const selectedSkin = session ? validSkin(session.skin_id) : guestSkin;
+  const backgroundId = session ? validProfileBackground(session.profile_background_id) : readGuestProfileBackground();
   const activeSkin = draftSkin || selectedSkin;
   const activeSkinIndex = useMemo(() => {
     const index = availableSkins.findIndex((skin) => skin.id === activeSkin);
@@ -162,6 +165,7 @@ export default function ProfilePage({ onOpenStudio }) {
         </div>
 
         <section className="profile__stage" aria-label="Personnage">
+          <ProfileBackground id={backgroundId} />
           <ProfileStage skinId={selectedSkin} />
           <h1 className="profile__title title-tech">
             {APP_NAME[0]}

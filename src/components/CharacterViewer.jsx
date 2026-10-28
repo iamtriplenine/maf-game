@@ -5,6 +5,7 @@ import {
 } from "react";
 import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { Html, OrbitControls } from "@react-three/drei";
+import ProfileBackground from "./ProfileBackground";
 import { AnimationClip, AnimationMixer, Box3, Vector3 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
@@ -250,7 +251,7 @@ function label(name, character, count) {
   }[key] || name;
 }
 
-export default function CharacterViewer({ character }) {
+export default function CharacterViewer({ character, backgroundId }) {
   const [clips, setClips] = useState([]);
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -275,14 +276,15 @@ export default function CharacterViewer({ character }) {
       </header>
 
       <div className="stage">
+        <ProfileBackground id={backgroundId} />
         <ViewerError>
           <Canvas
             shadows
+            gl={{ alpha: true }}
             dpr={[1, 1.5]}
             camera={{ position: [2.6, 1.8, 4], fov: 38 }}
             fallback={<div className="notice">WebGL indisponible.</div>}
           >
-            <color attach="background" args={["#151e2b"]} />
             <hemisphereLight args={["#dceaff", "#444036", 2.2]} />
 
             <directionalLight
@@ -318,7 +320,7 @@ export default function CharacterViewer({ character }) {
               receiveShadow
             >
               <planeGeometry args={[200, 200]} />
-              <meshStandardMaterial color="#253044" roughness={0.95} />
+              <meshStandardMaterial color="#253044" roughness={0.95} transparent opacity={0.34} depthWrite={false} />
             </mesh>
 
             <OrbitControls
