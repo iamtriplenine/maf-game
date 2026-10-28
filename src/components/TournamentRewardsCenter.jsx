@@ -87,7 +87,8 @@ export default function TournamentRewardsCenter({session}) {
         <button type="button" onClick={()=>setSelected(null)}>Fermer</button>
       </div>}
     </>}
-    {owner&&<section className="maf-gifts__owner" aria-label="Administration des cadeaux">
+    {/* MAF_GIFT_SCHEDULE_IN_OWNER_V1 : programmation faite au moment de créer le tournoi. */}
+    {false&&owner&&<section className="maf-gifts__owner" aria-label="Administration des cadeaux">
       <h3>🔒 Propriétaire 999 · Programmation des cadeaux</h3>
       <p>La vérification du propriétaire est également réalisée côté serveur.</p>
       <form onSubmit={saveSchedule}>

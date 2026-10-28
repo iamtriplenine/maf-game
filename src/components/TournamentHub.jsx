@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+// MAF_UNIFIED_SCHEDULER_V1 : un seul accès administrateur.
+import UnifiedTournamentScheduler from './UnifiedTournamentScheduler';
 import OfficialDuelSection from './OfficialDuelSection';
 import { publicTournaments, ownerTournaments, saveTournament, reserveTournament, myTournamentReservations, setTournamentRegistration } from '../api/tournaments';
 import { refreshSession } from '../api/accounts';
@@ -195,14 +197,14 @@ export default function TournamentHub({ session }) {
       onKeyDown={e=>{if(owner&&!e.repeat&&(e.key==='Enter'||e.key===' ')){e.preventDefault();start({clientX:0,clientY:0});}}}
       onKeyUp={cancel} onBlur={cancel} aria-label={owner?'Tournoi. Maintenir pour gérer les tournois.':'Tournoi'}>Tournoi</button></h2>
       <span className="tourney-section-note">LES GRANDS RENDEZ-VOUS</span></div>
-    {manager&&owner&&<TournamentManager key={deleteGeneration} onClose={()=>setManager(false)} onSaved={()=>setGeneration(n=>n+1)}/>}
+    {manager&&owner&&<UnifiedTournamentScheduler key={deleteGeneration} onClose={()=>setManager(false)} onSaved={()=>setGeneration(n=>n+1)}/>}
 
 {manager&&owner&&<TournamentDeletionPanel refreshKey={generation} onDeleted={()=>{setDeleteGeneration(n=>n+1);setGeneration(n=>n+1);}}/>}
     {loading&&<p role="status" className="tourney-empty">Chargement des tournois…</p>}
     {error&&<div className="tourney-error" role="alert">{error}<button type="button" onClick={()=>setGeneration(n=>n+1)}>Réessayer</button></div>}
     {!loading&&!error&&!items.length&&<div className="tourney-empty"><span aria-hidden="true">🏆</span><h3>Le prochain rendez-vous se prépare</h3><p>Les tournois programmés apparaîtront ici.</p></div>}
     <TournamentPolicy/>
-    <OfficialDuelSection session={session}/>
+    <OfficialDuelSection session={session} hideAdmin/>
     <div className="tourney-grid">{items.map(t=><TournamentCard key={t.id} tournament={t} now={now} session={session} reserved={mine.includes(t.id)} onDone={(id,ok)=>{if(ok)setMine(m=>m.includes(id)?m:[...m,id]);setGeneration(n=>n+1);}}/>)}</div>
   </div>;
 }

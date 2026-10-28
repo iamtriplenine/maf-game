@@ -43,7 +43,8 @@ function DuelMatch({id,session,onClose}){
   </div>,document.body);
 }
 
-export default function OfficialDuelSection({session}){
+// MAF_OWNER_DUEL_MOVED_V1 : le formulaire est dans la gestion commune.
+export default function OfficialDuelSection({session,hideAdmin=false}){
  const isOwner=session?.pseudo==='999';
  const [duels,setDuels]=useState([]),[mine,setMine]=useState([]),[notices,setNotices]=useState([]),[ownerItems,setOwnerItems]=useState([]),[editing,setEditing]=useState(null);
  const [selected,setSelected]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[note,setNote]=useState('');
@@ -76,7 +77,7 @@ export default function OfficialDuelSection({session}){
  return <section className="maf-duels" aria-label="Tournois Monopoly a deux joueurs">
   <div className="maf-duels__title"><h3>🏆 Duels officiels · 2 joueurs</h3><p>Finale directe · mise de 500 F CFA · gagnant 900 F / deuxième 100 F.</p></div>
   {error&&<p className="maf-duel-error" role="alert">{error}</p>}{note&&<p role="status">{note}</p>}
-  {isOwner&&<details className="maf-duels__owner"><summary>Programmer un duel à deux joueurs (compte 999)</summary>
+  {isOwner&&!hideAdmin&&<details className="maf-duels__owner"><summary>Programmer un duel à deux joueurs (compte 999)</summary>
    <div className="maf-duels__drafts">
       <button type="button" onClick={()=>{setEditing(null);setTitle('Duel Monopoly');setStartsAt('');setGiftsAt('');setStatus('draft');}}>＋ Nouveau duel</button>
       {ownerItems.map(d=><div key={d.id} className="maf-duels__draft-row"><button type="button" onClick={()=>{setEditing(d);setTitle(d.title);setStartsAt(timeInput(d.startsAt));setGiftsAt(timeInput(d.giftsAt));setStatus(['draft','published'].includes(d.status)?d.status:'draft');}}>{d.title} · {d.status}</button>{['draft','published'].includes(d.status)&&<button type="button" disabled={busy} onClick={()=>void cancel(d.id)}>Supprimer / annuler</button>}{['finished','paid','cancelled'].includes(d.status)&&<button type="button" disabled={busy} onClick={()=>void archive(d.id)}>Supprimer</button>}</div>)}
