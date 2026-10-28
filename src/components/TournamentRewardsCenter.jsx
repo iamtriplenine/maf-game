@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import OfficialDuelGifts from './OfficialDuelGifts';
+import ManualGiftsPanel from './ManualGiftsPanel';
 import { myTournamentGifts, openTournamentGift, giftOwnerTournaments, scheduleTournamentGift } from '../api/tournamentGifts';
 import '../styles/tournament-rewards-center.css';
 
@@ -34,6 +35,7 @@ export default function TournamentRewardsCenter({session}) {
   const [selected,setSelected]=useState(null),[ownerTournaments,setOwnerTournaments]=useState([]);
   const [tourId,setTourId]=useState(''),[release,setRelease]=useState('');
   const [notice,setNotice]=useState('');
+  const [legacyHiddenBefore,setLegacyHiddenBefore]=useState(0);
   const refresh=useCallback(async()=>{
     if(!session?.id){setItems([]);return;}
     const result=await myTournamentGifts();setItems(result.gifts||[]);
@@ -74,11 +76,12 @@ export default function TournamentRewardsCenter({session}) {
   return <div className="maf-gifts" aria-label="Récompenses et cadeaux du tournoi">
     <header className="maf-gifts__top"><div className="maf-gifts__emblem">🎁</div>
       <div><h2>Mes récompenses</h2><p>Retrouve ici tes cadeaux et leurs heures de remise.</p></div></header>
+    <ManualGiftsPanel session={session} onVisibility={setLegacyHiddenBefore}/>
     <OfficialDuelGifts session={session}/>
     {!session?.id?<p className="maf-gifts__empty">Connecte-toi pour voir les récompenses de tes tournois.</p>:<>
       <div className="maf-gifts__toolbar"><h3>Mes coffres</h3><button type="button" disabled={busy} onClick={()=>void refresh().catch(e=>setError(e.message))}>↻ Actualiser</button></div>
       {error&&<p className="maf-gifts__error" role="alert">{error}</p>}
-      {!items.length&&<div className="maf-gifts__empty"><span aria-hidden="true">🎀</span><p>Aucun cadeau pour le moment. Tes tournois apparaîtront ici après réservation.</p></div>}
+      {!items.length&&<div className="maf-gifts__empty"><span aria-hidden="true">🎀</span><p>Aucun cadeau pour le moment.</p></div>}
       <div className="maf-gifts__list">{items.map(g=><GiftBox key={g.tournamentId} name={g.title} {...g} busy={busy} onOpen={()=>void openGift(g)}/>)}</div>
       {selected&&<div className="maf-gifts__reveal" role="status">
         <div className="maf-gifts__reveal-emoji" aria-hidden="true">🎉🎁✨</div>

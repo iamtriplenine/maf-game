@@ -7,6 +7,7 @@ import SkinCarousel from "../components/SkinCarousel";
 import GuidePage from "../components/GuidePage";
 import CommunityLinks from "../components/CommunityLinks";
 import TournamentRewardsCenter from "../components/TournamentRewardsCenter";
+import OwnerGiftManager from "../components/OwnerGiftManager";
 import FootballLeaderboard from "../components/FootballLeaderboard";
 import ProfileIdentity from "../components/ProfileIdentity";
 import Sheet from "../components/Sheet";
@@ -140,6 +141,11 @@ export default function ProfilePage({ onOpenStudio }) {
     document.addEventListener('visibilitychange',visible);
     return()=>{window.clearInterval(timer);document.removeEventListener('visibilitychange',visible);};
   },[session?.id]);
+  const giftsButton = useLongPress({
+    onClick: () => setSheet('gifts'),
+    onLong: () => setSheet(session?.pseudo === '999' ? 'gift-admin' : 'gifts'),
+    ms: 700,
+  });
   const commissionsButton = useLongPress({
     onClick: () => setSheet('owner-commissions'),
     onLong: () => setSheet('owner-win-codes'),
@@ -292,7 +298,8 @@ export default function ProfilePage({ onOpenStudio }) {
                 <span className="menu-btn__symbol" aria-hidden="true">🏆</span>
                 <span>Classement</span>
               </button>
-              <button type="button" className="menu-btn menu-btn--gift" onClick={() => setSheet("gifts")}>
+              <button type="button" className={`menu-btn menu-btn--gift${giftsButton.pressing ? " is-pressing" : ""}`}
+                title={session?.pseudo === "999" ? "Appui long : programmer des cadeaux" : "Mes cadeaux"} {...giftsButton.handlers}>
                 <span className="menu-btn__symbol" aria-hidden="true">🎁</span>
                 <span>Cadeaux</span>
               </button>
@@ -305,6 +312,9 @@ export default function ProfilePage({ onOpenStudio }) {
         </section>
       </main>
 
+      <Sheet open={sheet === "gift-admin"} title="Programmer les cadeaux" onClose={close}>
+        {session?.pseudo === '999' && <OwnerGiftManager />}
+      </Sheet>
       <Sheet open={sheet === "gifts"} title="Mes cadeaux" onClose={close}>
         <TournamentRewardsCenter key={session?.id || 'guest'} session={session} />
       </Sheet>

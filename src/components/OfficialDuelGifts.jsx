@@ -7,7 +7,7 @@ export default function OfficialDuelGifts({session}){
  const refresh=useCallback(async()=>{if(!session?.id)return;const x=await duelGifts();setGifts(x.gifts||[]);},[session?.id]);
  useEffect(()=>{void refresh().catch(e=>setError(e.message));const timer=setInterval(()=>{if(!document.hidden)void refresh().catch(()=>{});},15000);return()=>clearInterval(timer);},[refresh]);
  const open=async id=>{setBusy(true);setError('');try{const x=await openDuelGift(id);setRevealed({...x,duelId:id});await refresh();}catch(e){setError(e.message);}finally{setBusy(false);}};
- if(!session?.id)return null;
+ if(!session?.id || (!gifts.length && !error))return null;
  return <section className="maf-duels__gifts"><h3>🎁 Cadeaux des duels à deux joueurs</h3>
   {error&&<p role="alert">{error}</p>}
   {gifts.length===0&&<p>Pas encore de cadeau de duel.</p>}
