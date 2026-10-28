@@ -1,0 +1,51 @@
+/* Liste des coffres — une seule carte encadree : le bandeau Mes recompenses. */
+.maf-gift-lines{display:grid;gap:0;min-width:0}
+.maf-gift-lines__heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:16px 0 6px;font-size:13px;font-weight:800;letter-spacing:.02em;opacity:.85}
+.maf-gift-line{padding:8px 0 9px;min-width:0;border:0;border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent);background:none;border-radius:0;color:inherit}
+.maf-gift-line__main{display:flex;align-items:center;gap:8px;min-height:38px}
+.maf-gift-line__glyph{display:grid;place-items:center;width:29px;height:29px;flex:none;color:var(--accent,#64bbff);font-size:19px;font-weight:900}
+.maf-gift-line--opened .maf-gift-line__glyph{color:#28a96b}
+.maf-gift-line__copy{min-width:0;flex:1;display:grid;gap:2px}
+.maf-gift-line__copy strong{font-size:12px;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.maf-gift-line__copy small{font-size:10px;opacity:.62;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.maf-gift-line__state{font-size:10px;white-space:nowrap;color:var(--accent,#65baff)}
+.maf-gift-line--opened .maf-gift-line__state{color:#28a96b}
+.maf-gift-line--locked .maf-gift-line__state,.maf-gift-line--waiting .maf-gift-line__state{color:inherit;opacity:.57}
+.maf-gift-line__main button{border:0;border-radius:999px;background:var(--accent,#68bdff);color:#081827;font-weight:800;font-size:11px;min-height:30px;padding:6px 11px;flex:none}
+.maf-gift-line__main button:disabled{opacity:.5}
+.maf-gift-line__details{padding:3px 0 0 37px;font-size:11px;opacity:.86}
+.maf-gift-line__details summary{cursor:pointer;display:inline-flex;gap:7px;align-items:center;font-size:10px;opacity:.7;list-style:none}
+.maf-gift-line__details summary::-webkit-details-marker{display:none}
+.maf-gift-line__details>div{margin-top:7px;display:grid;gap:5px;line-height:1.45}
+.maf-gift-line__details p{margin:0}.maf-gift-line__details img{max-width:min(220px,100%);max-height:210px;object-fit:contain}
+.maf-reveal-stage{position:fixed!important;inset:0!important;z-index:2147483647!important;display:grid;place-items:center;overflow:hidden;color:#fff;background:#090a0e;isolation:isolate}
+.maf-reveal-stage__exit{position:absolute;right:clamp(12px,4vw,30px);top:max(12px,env(safe-area-inset-top));z-index:6;border:0;background:transparent;color:#adb0b9;font:28px system-ui;cursor:pointer;width:44px;height:44px}
+.maf-reveal-tap-scene{display:grid;place-items:center;width:100%;height:100%;perspective:700px}
+.maf-reveal-tap{position:relative;width:128px;height:138px;background:transparent;border:0;outline-offset:15px;cursor:pointer;transform:scale(1.35);transform-style:preserve-3d}
+.maf-reveal-tap__base{position:absolute;top:63px;left:18px;width:92px;height:92px;border-radius:13px;background:linear-gradient(145deg,#adadad,#454545);transform:rotateX(45deg) rotateZ(45deg);box-shadow:3px 6px 0 #333;display:grid;place-items:center}
+.maf-reveal-tap__hole{display:block;width:71px;height:71px;background:#292929;border-radius:9px;box-shadow:inset 3px 4px 8px #0d0d0d;border-top:2px solid #b6b6b6;border-left:2px solid #979797}
+.maf-reveal-tap__stem{position:absolute;top:27px;left:35px;width:73px;height:64px;background:linear-gradient(90deg,#a02b00,#ef5c00 60%,#c33b00);transform:skewY(-14deg);box-shadow:2px 9px 5px #d94d004d;transition:transform 1.45s cubic-bezier(.2,.9,.3,1),opacity .7s ease}
+.maf-reveal-tap__top{position:absolute;top:6px;left:28px;display:grid;place-items:center;width:73px;height:73px;background:linear-gradient(140deg,#ffba3a,#ff7b00 52%,#dd4200);border:3px solid #ff9d00;border-radius:12px;color:#fff;box-shadow:3px 6px 0 #b33a00,7px 10px 14px #0008;transform:rotateX(43deg) rotateZ(45deg);transition:transform 1.65s cubic-bezier(.25,.75,.2,1),top 1.65s cubic-bezier(.25,.75,.2,1),opacity .35s 1.55s}
+.maf-reveal-tap__top span{font:900 22px system-ui;transform:rotateZ(-45deg) rotateX(-22deg);text-shadow:0 2px 2px #933}
+.maf-reveal-tap.is-pressed .maf-reveal-tap__top{top:73px;transform:rotateX(43deg) rotateZ(45deg) scale(.56);opacity:0}
+.maf-reveal-tap.is-pressed .maf-reveal-tap__stem{transform:translateY(57px) skewY(-14deg) scaleY(.2);opacity:0}
+.maf-reveal-stage--reveal .maf-reveal-lot-scene{animation:mafSceneEnter .7s ease both}
+@keyframes mafSceneEnter{from{opacity:0;transform:scale(.91);filter:blur(13px)}to{opacity:1;transform:scale(1);filter:blur(0)}}
+.maf-reveal-lot-scene{position:relative;width:100%;height:100%;display:grid;grid-template-rows:auto 1fr auto;align-items:center;justify-items:center;padding:clamp(28px,6vw,72px) 20px;box-sizing:border-box;background:radial-gradient(ellipse at 50% 70%,#11251d,#090a0e 70%)}
+.maf-reveal-lot-scene__top{text-align:center;font-weight:800;font-size:clamp(17px,3vw,24px);width:100%}.maf-reveal-lot-scene__top small{display:block;margin-top:10px;font-size:11px;opacity:.56;letter-spacing:.25em}
+.maf-reveal-lot-scene__content{display:grid;place-items:center;min-width:0;width:100%;animation:mafSceneEnter .5s ease}
+.maf-reveal-lot-scene__next{cursor:pointer;border:0;border-radius:999px;background:#e9fff1;color:#072b18;padding:13px 28px;min-height:46px;font-weight:800;font-size:13px;max-width:90vw}
+.maf-reveal-lot-scene__next:disabled{cursor:default;opacity:.52}
+.maf-reveal-money{text-align:center;max-width:100%;display:grid;gap:16px;justify-items:center}.maf-reveal-money__caption{font-size:12px;letter-spacing:.3em;font-weight:800;color:#6fecaa}
+.maf-reveal-money__number{font-variant-numeric:tabular-nums;font-weight:900;font-size:clamp(58px,15vw,158px);letter-spacing:-.075em;white-space:nowrap;max-width:100%;color:#e2fbea;text-shadow:0 0 25px #1bdd6955;transition:color .9s ease,filter .9s ease}
+.maf-reveal-money__number.is-done{color:#3dfa83;filter:drop-shadow(0 0 18px #36c86b70)}
+.maf-reveal-money__number small{font-size:.3em;margin-left:9px;letter-spacing:0}.maf-reveal-money__number>span{font-size:.5em;margin-right:12px}
+.maf-reveal-money__progress{height:3px;width:min(280px,70vw);background:#16412b;border-radius:99px;overflow:hidden}.maf-reveal-money__progress>span{display:block;height:100%;background:#6dffa3;animation:mafMoneyCount 5.3s linear both}@keyframes mafMoneyCount{from{width:0}to{width:100%}}
+.maf-reveal-object{text-align:center;display:grid;justify-items:center;gap:16px;max-width:90vw}.maf-reveal-object__symbol{font-size:clamp(80px,20vw,158px);color:#ffce66;text-shadow:0 0 25px #c9972360}.maf-reveal-object p{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#c3b9a3}.maf-reveal-object strong{font-size:clamp(24px,5vw,40px);overflow-wrap:anywhere}.maf-reveal-object img{max-width:min(75vw,480px);max-height:48vh;object-fit:contain}.maf-reveal-object__coupon{background:transparent;color:#fff;border:1px solid #aaa;padding:10px 15px;border-radius:10px}
+.maf-reveal-error{text-align:center;padding:20px;display:grid;gap:15px}.maf-reveal-error button{background:#fff;border:0;border-radius:10px;padding:12px 16px}
+@media(max-width:390px){.maf-gift-line__state{font-size:9px}.maf-gift-line__main{gap:5px}.maf-gift-line__main button{padding:6px 8px}}
+@media(prefers-reduced-motion:reduce){.maf-reveal-tap__top,.maf-reveal-tap__stem{transition:none}.maf-reveal-lot-scene,.maf-reveal-lot-scene__content{animation:none}}
+
+.maf-reveal-money__number{animation:mafMoneyGreen 5.3s ease both}
+@keyframes mafMoneyGreen{0%{color:#e7f2ec}65%{color:#9cfac0}100%{color:#3dfa83}}
+@media(prefers-reduced-motion:reduce){.maf-reveal-money__number{animation:none}}

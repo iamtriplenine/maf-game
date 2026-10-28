@@ -1,20 +1,11 @@
 import { useCallback,useEffect,useState } from 'react';
 import { myOwnerGifts,openOwnerGift } from '../api/ownerGifts';
 import { refreshSession } from '../api/accounts';
+import GiftCompactRow from './GiftCompactRow';
 import '../styles/owner-gifts.css';
-const NAMES={coupon:'Coupon',skin:'Skin exclusif',background:'Arrière-plan',image:'Image',balance:'Solde réel',bonus:'Solde bonus'};
-function Receipt({receipt}){
- if(!receipt)return null;
- return <div className="maf-manual-gift__receipt">
-  {receipt.amount&&<strong>{receipt.amount.toLocaleString('fr-FR')} {receipt.currency==='V'?'bonus':'F CFA'}</strong>}
-  {receipt.code&&<><span>Code coupon : <strong>{receipt.code}</strong></span><button type="button" onClick={()=>navigator.clipboard?.writeText(receipt.code)}>Copier le code</button><small>Utilise ce code dans la rubrique Coupons du profil.</small></>}
-  {receipt.skinId&&<span>Skin débloqué : {receipt.skinId} · disponible dans le Studio 3D</span>}
-  {receipt.backgroundId&&<span>Arrière-plan appliqué : {receipt.backgroundId}</span>}
-  {receipt.imageData&&<img src={receipt.imageData} alt="Cadeau reçu"/>}
- </div>;
-}
-export default function ManualGiftsPanel({session,onVisibility}){
- const [gifts,setGifts]=useState([]),[busy,setBusy]=useState(null),[error,setError]=useState('');
+const NAMES={coupon:'Coupon',skin:'Skin exclusif',background:'Arrière-plan',image:'Image',balance:'Solde réel',bonus:'Solde bonus',bundle:'Coffre multi-lots'};
+export default function ManualGiftsPanel({session,onVisibility,onReveal}){
+ const [gifts,setGifts]=useState([]),[error,setError]=useState('');
  const refresh=useCallback(async()=>{
   if(!session?.id){setGifts([]);return;}
   const response=await myOwnerGifts();setGifts(response.gifts||[]);onVisibility?.(response.legacyHiddenBefore||0);
@@ -24,14 +15,19 @@ export default function ManualGiftsPanel({session,onVisibility}){
   const t=window.setInterval(()=>{if(!document.hidden)void myOwnerGifts().then(d=>{if(live){setGifts(d.gifts||[]);onVisibility?.(d.legacyHiddenBefore||0);}}).catch(()=>{});},30000);
   return()=>{live=false;clearInterval(t);};
  },[session?.id,onVisibility]);
- const open=async id=>{if(busy!==null)return;setBusy(id);setError('');try{const result=await openOwnerGift(id);if(['balance','bonus','background'].includes(result.receipt?.kind))await refreshSession();await refresh();}catch(e){setError(e.message);}finally{setBusy(null);}};
  if(!session?.id || (!gifts.length && !error))return null;
- return <section className="maf-manual-gifts" aria-label="Cadeaux personnels"><h3>Mes cadeaux personnels</h3>
+ return <section className="maf-gift-lines" aria-label="Cadeaux personnels">
+  <h3 className="maf-gift-lines__heading">Cadeaux personnels <span>{gifts.length}</span></h3>
   {error&&<p role="alert">{error}</p>}
   {!gifts.length&&<p>Aucun cadeau personnel pour le moment.</p>}
-  {gifts.map(g=><article key={g.id} className="maf-manual-gift"><div className="maf-manual-gift__head"><span aria-hidden="true">🎁</span><div><h4>{g.title}</h4><small>{NAMES[g.kind]||'Cadeau'}</small></div></div>
-    {g.message&&<p>{g.message}</p>}
-    {g.openedAt?<Receipt receipt={g.receipt}/>:<button type="button" disabled={busy!==null} onClick={()=>void open(g.id)}>{busy===g.id?'Ouverture…':'Ouvrir mon cadeau'}</button>}
-   </article>)}
+  {gifts.map(g=><GiftCompactRow key={g.id} title={g.title}
+    subtitle={`${NAMES[g.kind]||'Cadeau'}${g.lotCount>1?` · ${g.lotCount} lots`:''}`}
+    status={g.openedAt?'opened':'ready'}
+    detail={<>{g.message&&<p>{g.message}</p>}{g.lots?.length>1&&<p>{g.lots.map(l=>NAMES[l.kind]||l.kind).join(' · ')}</p>}{g.openedAt&&<small>Déjà ouvert — tu peux revoir sa présentation sans second crédit.</small>}</>}
+    onOpen={()=>onReveal?.({title:g.title,existing:g.openedAt?g.receipt:null,claim:async()=>{
+      const result=await openOwnerGift(g.id);
+      if(['balance','bonus','background','bundle'].includes(result.receipt?.kind))await refreshSession();
+      await refresh();return result.receipt;
+    }})}/>) }
  </section>;
 }

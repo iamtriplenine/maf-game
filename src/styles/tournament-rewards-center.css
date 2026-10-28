@@ -21,3 +21,13 @@
 .profile .menu-btn--gift { border-color: rgba(223, 185, 95, .7); background: linear-gradient(150deg, rgba(193,142,48,.25), rgba(75,54,30,.16)); }
 .profile .menu-btn--gift .menu-btn__symbol { color: #f5cd75; font-size: 27px; }
 .profile .sheet__body .maf-gifts { max-width: 100%; padding: 4px 0 16px; }
+
+/* Le seul cadre conserve est le bandeau titre Mes recompenses. */
+.maf-gifts{gap:8px;max-width:900px;padding:10px 4px 24px}
+.maf-gifts__top{margin:0 0 8px}
+.maf-gifts__toolbar{margin-top:8px}
+.maf-gifts__toolbar button{padding:5px 10px;background:transparent;color:inherit;border:0;font-size:12px}
+.maf-gifts__list{gap:0}
+.maf-gifts__empty{border:0;background:transparent;padding:15px 0}
+.maf-gifts__empty span{font-size:24px}
+.maf-gifts .maf-gift-line{color:inherit;background:transparent}

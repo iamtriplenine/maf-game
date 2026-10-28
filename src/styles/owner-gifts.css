@@ -15,3 +15,12 @@
 .maf-manual-gift{display:grid;gap:9px;border-radius:15px;padding:14px;background:color-mix(in srgb,var(--accent,#5dbdfc) 8%,transparent)}
 .maf-manual-gift__head{display:flex;gap:10px;align-items:center}.maf-manual-gift__head>span{font-size:27px}.maf-manual-gift h4{margin:0}.maf-manual-gift small{opacity:.72}.maf-manual-gift p{margin:0}.maf-manual-gift__receipt{display:grid;gap:8px}.maf-manual-gift__receipt img{max-width:100%;max-height:290px;object-fit:contain;border-radius:12px}.maf-manual-gift__receipt button{justify-self:start}
 @media(max-width:480px){.maf-owner-gifts__history-row{flex-direction:column;align-items:stretch}.maf-owner-gifts__history-row button{align-self:start}}
+
+.maf-manual-gifts{padding:0;gap:0;display:grid}
+.maf-manual-gift{padding:8px 0;border:0;border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent);border-radius:0;background:transparent}
+
+.maf-owner-gifts__multi-toggle{display:flex!important;align-items:center;gap:10px;cursor:pointer}.maf-owner-gifts__multi-toggle input{width:18px!important;min-height:18px!important}
+.maf-owner-gifts__lots{display:grid;gap:12px}.maf-owner-gifts__lot{padding:12px 0;border-top:1px solid color-mix(in srgb,currentColor 15%,transparent)}
+.maf-owner-gifts__lot-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.maf-owner-gifts__lot-head button,.maf-owner-gifts__lots>button{border:0;background:transparent;color:inherit;text-decoration:underline;cursor:pointer}
+.maf-owner-gifts__lot-fields{display:grid;gap:9px}
