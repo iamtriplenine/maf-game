@@ -5,6 +5,7 @@ import messi from "./messi/character.json";
 import mutant from "./mutant/character.json";
 import kushina from "./kushina/character.json";
 import taunt from "./taunt-mixamo/character.json";
+import ladybug from "./ladybug/character.json";
 
 // Collection utilisee par la personnalisation du profil.
 // Le Studio 3D garde ses propres mouvements internes pour tester les animations.
@@ -15,6 +16,7 @@ export const SKINS = [
   { ...messi, access: "public", movement: "Statique", movementType: "none" },
   { ...kushina, access: "public", movement: "Defile", movementType: "walk" },
   { ...taunt, access: "exclusive", movement: "Provocation", movementType: "taunt" },
+  { ...ladybug, access: "exclusive", movement: "Défilé", movementType: "walk" },
   {
     ...mutant,
     id: "mutant-swipe",

@@ -156,8 +156,25 @@ function FbxMotionSkin({ skin, source }) {
   return <AnimatedSkin source={source} clips={motion.animations} skin={skin} />;
 }
 
+// Le Profil joue la marche de Bailarina sur le MODELE Ladybug.
+// La translation des hanches est retiree pour ne pas importer l'echelle GLB.
+function FbxBorrowedWalkSkin({ skin, source }) {
+  const walk = useLoader(GLTFLoader, `${import.meta.env.BASE_URL}${skin.walkFile}`);
+  const clips = useMemo(() => walk.animations
+    .filter((clip) => clip.duration > 0 && clip.tracks.length > 0)
+    .slice(0, 1)
+    .map((clip) => {
+      const copy = clip.clone();
+      copy.name = "Marcher";
+      copy.tracks = copy.tracks.filter((track) => !/mixamorigHips\.position$/i.test(track.name));
+      return copy;
+    }), [walk]);
+  return <AnimatedSkin source={source} clips={clips} skin={skin} />;
+}
+
 function FbxSkin({ skin }) {
   const data = useLoader(FBXLoader, `${import.meta.env.BASE_URL}${skin.file}`);
+  if (skin.walkFile) return <FbxBorrowedWalkSkin skin={skin} source={data} />;
   if (skin.animationFile) {
     return <FbxMotionSkin skin={skin} source={data} />;
   }

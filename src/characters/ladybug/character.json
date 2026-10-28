@@ -1,0 +1,11 @@
+{
+  "id": "ladybug-mixamo",
+  "name": "Ladybug",
+  "description": "Ladybug · Breakdance, Flair, Défaite et Défilé",
+  "format": "fbx",
+  "file": "characters/ladybug/Breakdance.fbx",
+  "flairFile": "characters/ladybug/Flair.fbx",
+  "defeatedFile": "characters/ladybug/Defeated.fbx",
+  "walkFile": "characters/bailarina/model.glb",
+  "rotation": 0
+}

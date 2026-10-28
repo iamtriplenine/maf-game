@@ -240,6 +240,45 @@ function TauntCharacter(props) {
   return <AnimatedModel {...props} source={model} clips={clips} />;
 }
 
+// Ladybug utilise UN modele FBX unique. Flair et Defeated ne fournissent que
+// leurs animations ; le defile de Bailarina partage les noms d'os Mixamo.
+function LadybugCharacter(props) {
+  const model = useLoader(FBXLoader, `${import.meta.env.BASE_URL}${props.character.file}`);
+  const flair = useLoader(FBXLoader, `${import.meta.env.BASE_URL}${props.character.flairFile}`);
+  const defeated = useLoader(FBXLoader, `${import.meta.env.BASE_URL}${props.character.defeatedFile}`);
+  const walk = useLoader(GLTFLoader, `${import.meta.env.BASE_URL}${props.character.walkFile}`);
+
+  const clips = useMemo(() => {
+    const pick = (source, name, removeHipsPosition = false) => {
+      const good = source.animations.filter((clip) => clip.duration > 0 && clip.tracks.length > 0);
+      if (!good.length) return null;
+      const clip = good.reduce((best, current) => current.tracks.length > best.tracks.length ? current : best).clone();
+      clip.name = name;
+      clip.tracks = clip.tracks.filter((track) => {
+        if (!/mixamorigHips\.position$/i.test(track.name)) return true;
+        // La marche GLB et le corps FBX n'ont pas la meme unite de translation.
+        // Ne pas importer la hauteur du personnage Bailarina sur Ladybug.
+        if (removeHipsPosition) return false;
+        const x = track.values[0], z = track.values[2];
+        for (let i = 0; i < track.values.length; i += 3) {
+          track.values[i] = x;
+          track.values[i + 2] = z;
+        }
+        return true;
+      });
+      return clip;
+    };
+    return [
+      pick(model, "Breakdance"),
+      pick(flair, "Flair"),
+      pick(defeated, "Défaite"),
+      pick(walk, "Marcher (Bailarina)", true),
+    ].filter(Boolean);
+  }, [model, flair, defeated, walk]);
+
+  return <AnimatedModel {...props} source={model} clips={clips} />;
+}
+
 function label(name, character, count) {
   if (character.id === "samba" && count === 1) return "Danser";
   const key = name.toLowerCase().replace(/[^a-z]/g, "");
@@ -259,7 +298,9 @@ export default function CharacterViewer({ character, backgroundId }) {
   const [autoRotate, setAutoRotate] = useState(false);
   const [viewKey, setViewKey] = useState(0);
 
-  const Character = character.id === "taunt-mixamo"
+  const Character = character.id === "ladybug-mixamo"
+    ? LadybugCharacter
+    : character.id === "taunt-mixamo"
     ? TauntCharacter
     : ["mutant", "mutant-swipe"].includes(character.id)
       ? MutantCharacter
