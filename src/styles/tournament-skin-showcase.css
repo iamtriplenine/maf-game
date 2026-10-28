@@ -1,0 +1,17 @@
+/* Apercu des skins choisis : 1 seul Canvas et uniquement au volet ouvert. */
+.tourney-skin-showcase__inner{padding:0 0 17px;color:#e7f0ff;min-width:0}
+.tourney-skin-showcase__choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:14px}
+.tourney-skin-showcase__choice{min-width:0;display:flex;flex-direction:column;gap:5px;padding:11px 10px;border:1px solid #a0b9dc39;border-radius:11px;background:#1a2b42;color:#eaf1fb;text-align:left;cursor:pointer}
+.tourney-skin-showcase__choice.is-selected{border-color:var(--tr-gold,#ecc37e);background:#24334a}
+.tourney-skin-showcase__choice small{font-size:10px;letter-spacing:.06em;color:#b9cbe5}
+.tourney-skin-showcase__choice strong{font-size:13px;overflow-wrap:anywhere}
+.tourney-skin-showcase__display{text-align:center;min-width:0}
+.tourney-skin-showcase__eyebrow{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#bccee9;margin:2px 0 3px!important}
+.tourney-skin-showcase__display h4{font-size:18px;color:var(--tr-gold,#f4c77f);margin:5px 0 8px}
+.tourney-skin-showcase__viewer{position:relative;width:100%;height:clamp(235px,58vw,350px);overflow:hidden;isolation:isolate;border-radius:12px;background:radial-gradient(ellipse at 50% 70%,#5a78914d,transparent 68%)}
+.tourney-skin-showcase__viewer .profile__canvas{position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
+.tourney-skin-showcase__viewer .profile__canvas:active{cursor:grabbing}
+.tourney-skin-showcase__viewer canvas{display:block;width:100%;height:100%}
+.tourney-skin-showcase__hint{font-size:11px;line-height:1.5;color:#bdcce1;margin:11px 0 0!important}
+.tourney-skin-showcase__empty,.tourney-skin-showcase__loading{font-size:12px;line-height:1.6;color:#bdcce1;padding:30px 10px}
+@media(prefers-reduced-motion:reduce){.tourney-skin-showcase__choice{transition:none}}

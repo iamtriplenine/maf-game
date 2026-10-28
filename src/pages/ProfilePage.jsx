@@ -1,3 +1,5 @@
+import "../styles/gift-menu-indicator.css";
+import usePendingGifts from "../components/usePendingGifts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ProfileStage from "../components/ProfileStage";
 import ProfileBackground from "../components/ProfileBackground";
@@ -56,7 +58,8 @@ const APP_NAME = ["VIVA", "CENTER"];
 export default function ProfilePage({ onOpenStudio }) {
   const { session, login, register, logout, updateUser } = useSession();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [sheet, setSheet] = useState(null); // login | signup | account | recharge
+  const [sheet, setSheet] = useState(null);
+  const pendingGiftCount = usePendingGifts(session?.id, sheet); // login | signup | account | recharge
   const [chatOn, setChatOn] = useState(readChatPref);
   const [chatFull, setChatFull] = useState(false); // chat global en plein ecran
   const [guestSkin, setGuestSkin] = useState(readGuestSkin);
@@ -312,6 +315,7 @@ export default function ProfilePage({ onOpenStudio }) {
                 title={session?.pseudo === "999" ? "Appui long : programmer des cadeaux" : "Mes cadeaux"} {...giftsButton.handlers}>
                 <span className="menu-btn__symbol" aria-hidden="true">🎁</span>
                 <span>Cadeaux</span>
+                {pendingGiftCount > 0 && <span className="menu-gift-indicator" aria-label={`${pendingGiftCount} cadeau(s) à ouvrir`}>{pendingGiftCount > 9 ? '9+' : pendingGiftCount}</span>}
               </button>
               <button type="button" className="menu-btn menu-btn--more" onClick={() => setMoreOpen(true)} aria-label="Plus d'options">
                 <span className="menu-btn__symbol" aria-hidden="true">•••</span>

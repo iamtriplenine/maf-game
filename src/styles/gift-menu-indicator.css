@@ -1,0 +1,14 @@
+/* Signal discret mais visible : cadeau pret a ouvrir (hors cadeaux verrouilles). */
+.profile .menu-btn--gift{position:relative;isolation:isolate}
+.profile .menu-btn--gift .menu-gift-indicator{
+  position:absolute;right:5px;top:4px;z-index:2;
+  display:flex;align-items:center;justify-content:center;
+  min-width:19px;height:19px;box-sizing:border-box;padding:0 4px;
+  border-radius:999px;border:1.5px solid #17273c;
+  background:#f4c467;color:#282015;
+  box-shadow:0 0 0 2px #f4c46733,0 0 12px #f4c46766;
+  font-size:10px;font-weight:800;line-height:1;pointer-events:none;
+  animation:maf-gift-notify 2.6s ease-in-out infinite;
+}
+@keyframes maf-gift-notify{0%,65%,100%{box-shadow:0 0 0 2px #f4c46733,0 0 9px #f4c4674d;transform:scale(1)}35%{box-shadow:0 0 0 5px #f4c46722,0 0 20px #f4c46799;transform:scale(1.08)}}
+@media(prefers-reduced-motion:reduce){.profile .menu-btn--gift .menu-gift-indicator{animation:none}}

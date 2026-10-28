@@ -1,3 +1,4 @@
+import TournamentSkinShowcase from './TournamentSkinShowcase';
 import { useEffect, useRef, useState } from 'react';
 // MAF_UNIFIED_SCHEDULER_V1 : un seul accès administrateur.
 import UnifiedTournamentScheduler from './UnifiedTournamentScheduler';
@@ -112,10 +113,7 @@ export function TournamentCard({ tournament: t, now, session = null, reserved = 
           <p className="tourney-reward-hint">La part de l'organisateur est de {francs(format.organizerFranc)} F ; les écarts de 1 F entre éliminés sont liés aux arrondis des francs entiers.</p>
         </> : <p className="tourney-reward-hint">Prévisions indisponibles : actualise l'application après la mise à jour du serveur.</p>}
       </div></details>
-      <details><summary><span>03</span> Les skins prévus <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body tourney-skins">
-        <div className="tourney-skin"><span aria-hidden="true">◇</span><small>POUR CHAQUE JOUEUR RETENU</small><h4>{t.participantSkinName || 'Skin participant non choisi'}</h4><p>{t.participantSkinId ? `Récompense Studio 3D · ID ${t.participantSkinId}. Débloquée après certification et paiement des résultats.` : 'Aucun modèle exclusif sélectionné. Les skins publics restent gratuits.'}</p></div>
-        <div className="tourney-skin tourney-skin--winner"><span aria-hidden="true">♛</span><small>RÉSERVÉ AU CHAMPION DE LA FINALE</small><h4>{t.winnerSkinName || 'Skin gagnant non choisi'}</h4><p>{t.winnerSkinId ? `Récompense Studio 3D · ID ${t.winnerSkinId}. Seul le vainqueur certifié le débloque.` : 'Aucun modèle exclusif sélectionné. Les droits génériques de finaliste restent distincts.'}</p></div>
-      </div></details>
+      <TournamentSkinShowcase participantId={t.participantSkinId} winnerId={t.winnerSkinId} participantName={t.participantSkinName} winnerName={t.winnerSkinName} />
       <details><summary><span>04</span> Réservation & règles <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
         <p>Inscription individuelle : 500 F par joueur, 20 places au maximum. Si moins de 10 joueurs sont inscrits, le tournoi est annulé et les mises remboursées. Avec 11 à 13 inscrits, les 10 premiers jouent ; avec 16 à 17 inscrits, les 15 premiers jouent. Les derniers inscrits en surplus sont remboursés. Les groupes sont ensuite tirés au sort.</p>
         {t.registrationOpen?<p>Réservation : 500 F sont débités de ton solde réel à la confirmation, pour une place unique par compte.</p>:<p>Les conditions de paiement et de remboursement figurent ci-dessous ; les réservations ne sont pas actuellement ouvertes.</p>}
