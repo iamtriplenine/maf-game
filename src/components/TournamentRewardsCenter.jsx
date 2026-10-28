@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { myTournamentGifts, openTournamentGift, giftOwnerTournaments, scheduleTournamentGift, giftOwnerPreview } from '../api/tournamentGifts';
+import { myTournamentGifts, openTournamentGift, giftOwnerTournaments, scheduleTournamentGift } from '../api/tournamentGifts';
 import '../styles/tournament-rewards-center.css';
 
 const euro = cents => `${new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(cents/100)} F CFA`;
@@ -31,14 +31,13 @@ export default function TournamentRewardsCenter({session}) {
   const [items,setItems]=useState([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const [selected,setSelected]=useState(null),[ownerTournaments,setOwnerTournaments]=useState([]);
   const [tourId,setTourId]=useState(''),[release,setRelease]=useState('');
-  const [demo,setDemo]=useState(null),[demoCount,setDemoCount]=useState(10),[showGift,setShowGift]=useState(false);
   const [notice,setNotice]=useState('');
   const refresh=useCallback(async()=>{
     if(!session?.id){setItems([]);return;}
     const result=await myTournamentGifts();setItems(result.gifts||[]);
   },[session?.id]);
   useEffect(()=>{
-    setError('');setSelected(null);setDemo(null);setShowGift(false);
+    setError('');setSelected(null);
     if(!session?.id){setItems([]);setOwnerTournaments([]);return;}
     let live=true;
     void myTournamentGifts().then(d=>{if(live)setItems(d.gifts||[]);}).catch(e=>{if(live)setError(e.message);});
@@ -49,7 +48,7 @@ export default function TournamentRewardsCenter({session}) {
   const openGift=async g=>{
     if(busy)return;
     setBusy(true);setError('');
-    try {const data=await openTournamentGift(g.tournamentId);setSelected(data);setShowGift(false);await refresh();}
+    try {const data=await openTournamentGift(g.tournamentId);setSelected(data);await refresh();}
     catch(e){setError(e.message);}finally{setBusy(false);}
   };
   const changeTournament=value=>{
@@ -69,11 +68,6 @@ export default function TournamentRewardsCenter({session}) {
       await refresh();
     }catch(ex){setError(ex.message);}finally{setBusy(false);}
   };
-  const loadDemo=async()=>{
-    setBusy(true);setError('');setSelected(null);setShowGift(false);
-    try {const d=await giftOwnerPreview(demoCount);if(d.type!=='owner_demo')throw new Error('Simulation invalide.');setDemo(d);}
-    catch(e){setError(e.message);}finally{setBusy(false);}
-  };
   const winning=selected?.reward;
   return <div className="maf-gifts" aria-label="Récompenses et cadeaux du tournoi">
     <header className="maf-gifts__top"><div className="maf-gifts__emblem">🎁</div>
@@ -92,7 +86,7 @@ export default function TournamentRewardsCenter({session}) {
       </div>}
     </>}
     {owner&&<section className="maf-gifts__owner" aria-label="Administration des cadeaux">
-      <h3>🔒 Propriétaire 999 · Programmation et test</h3>
+      <h3>🔒 Propriétaire 999 · Programmation des cadeaux</h3>
       <p>La vérification du propriétaire est également réalisée côté serveur.</p>
       <form onSubmit={saveSchedule}>
         <label>Tournoi <select value={tourId} onChange={e=>changeTournament(e.target.value)} required>
@@ -103,23 +97,7 @@ export default function TournamentRewardsCenter({session}) {
         <button type="submit" disabled={!tourId||busy}>Enregistrer l'heure des cadeaux</button>
       </form>
       {notice&&<p className="maf-gifts__notice" role="status">{notice}</p>}
-      <div className="maf-gifts__demo"><h4>Simulation de réception des récompenses</h4>
-        <label>Participants fictifs <select value={demoCount} onChange={e=>{setDemoCount(Number(e.target.value));setDemo(null);}}>
-          {[10,14,15,18,19,20].map(n=><option key={n} value={n}>{n} joueurs</option>)}
-        </select></label>
-        <button type="button" disabled={busy} onClick={()=>void loadDemo()}>Préparer mon cadeau fictif</button>
-        {demo&&<div className="maf-gifts__demo-box">
-          <p>{demo.players} joueurs · {demo.finalists} finalistes · compte 999 champion fictif</p>
-          <button type="button" className="maf-gifts__surprise" onClick={()=>setShowGift(true)}>🎁 {showGift?'Cadeau ouvert':'Ouvrir le cadeau surprise'}</button>
-          {showGift&&<div key={`${demo.players}-${showGift}`} className="maf-gifts__prize" role="status">
-            <span aria-hidden="true">🏆 ✨ 🎊</span><h4>Champion du tournoi !</h4>
-            <p>Gain simulé : <strong>{euro(demo.champion.realCents)}</strong></p>
-            <p>Bonus simulé : <strong>{euro(demo.champion.bonusCents)}</strong></p>
-            <p>Skins prévus : participation + finaliste</p>
-            <small>Aucun argent ni skin réel n'a été attribué.</small>
-          </div>}
-        </div>}
-      </div>
+
     </section>}
   </div>;
 }

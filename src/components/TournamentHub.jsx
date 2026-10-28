@@ -3,12 +3,6 @@ import { publicTournaments, ownerTournaments, saveTournament, reserveTournament,
 import { refreshSession } from '../api/accounts';
 import { abidjanDate, countdown, dateFromInput, dateInput, francs, newTournament } from '../tournaments/presentation';
 import '../styles/tournaments.css';
-import TournamentStepFiveLab from './TournamentStepFiveLab';
-import TournamentStepSixLab from './TournamentStepSixLab';
-import TournamentStepSevenLab from './TournamentStepSevenLab';
-import TournamentStepEightLab from './TournamentStepEightLab';
-import TournamentStepNineLab from './TournamentStepNineLab';
-import TournamentFivePlayerLab from './TournamentFivePlayerLab';
 import TournamentDeletionPanel from './TournamentDeletionPanel';
 import TournamentPolicy from './TournamentPolicy';
 import '../styles/tournaments-reservation.css'; // MAF_TOURNOI_ETAPE2_V1
@@ -201,13 +195,8 @@ export default function TournamentHub({ session }) {
       onKeyUp={cancel} onBlur={cancel} aria-label={owner?'Tournoi. Maintenir pour gérer les tournois.':'Tournoi'}>Tournoi</button></h2>
       <span className="tourney-section-note">LES GRANDS RENDEZ-VOUS</span></div>
     {manager&&owner&&<TournamentManager key={deleteGeneration} onClose={()=>setManager(false)} onSaved={()=>setGeneration(n=>n+1)}/>}
-    {manager&&owner&&<TournamentStepFiveLab/>}
-    {manager&&owner&&<TournamentStepSixLab/>}
-    {manager&&owner&&<TournamentStepSevenLab/>}
-    {manager&&owner&&<TournamentStepEightLab/>}
-    {manager&&owner&&<TournamentStepNineLab/>}
-    {manager&&owner&&<TournamentFivePlayerLab/>}
-    {manager&&owner&&<TournamentDeletionPanel refreshKey={generation} onDeleted={()=>{setDeleteGeneration(n=>n+1);setGeneration(n=>n+1);}}/>}
+
+{manager&&owner&&<TournamentDeletionPanel refreshKey={generation} onDeleted={()=>{setDeleteGeneration(n=>n+1);setGeneration(n=>n+1);}}/>}
     {loading&&<p role="status" className="tourney-empty">Chargement des tournois…</p>}
     {error&&<div className="tourney-error" role="alert">{error}<button type="button" onClick={()=>setGeneration(n=>n+1)}>Réessayer</button></div>}
     {!loading&&!error&&!items.length&&<div className="tourney-empty"><span aria-hidden="true">🏆</span><h3>Le prochain rendez-vous se prépare</h3><p>Les tournois programmés apparaîtront ici.</p></div>}
