@@ -54,3 +54,11 @@
 .tourney-delete-panel__card button{border:1px solid #e99b9b;border-radius:9px;color:#fff;background:#822d3b;padding:9px;cursor:pointer}
 .tourney-delete-panel__card button:disabled{opacity:.55;cursor:wait}
 .tourney-policy{padding:12px 15px;margin:0 0 15px;background:#192e40;border:1px solid #d1ae6759;border-radius:12px;color:#edf2fd;font-size:12px;line-height:1.7}
+
+/* Etape 6 : apercu de recompenses variable, lisible sur petit ecran. */
+.tourney-reward-choice{display:grid;gap:6px;margin:10px 0 9px;color:#e6efff;font-weight:700;font-size:12px}
+.tourney-reward-choice select{min-width:0;width:100%;background:#162a46;color:#f5f8ff;
+  border:1px solid #b8cbe580;border-radius:10px;padding:10px 12px;font:inherit;font-size:14px;cursor:pointer}
+.tourney-reward-choice select:focus-visible{outline:2px solid var(--tr-gold);outline-offset:2px}
+.tourney-reward-hint{font-size:11px;color:#c5d5e9;line-height:1.6}
+.tourney-table-wrap table{min-width:315px}

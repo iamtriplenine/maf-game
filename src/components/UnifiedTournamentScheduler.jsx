@@ -89,8 +89,8 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
     setNotice('Duel enregistré : 2 places, 500 F chacune, 900 F / 100 F.');
   });};
   const toggleRegistration = t => {
-    const open = !t.registrationOpen;
-    if(open && !window.confirm('Ouvrir les inscriptions publiques ? Chaque réservation prélèvera réellement 500 F CFA. Les véritables qualifications classiques ne sont pas encore certifiées.'))return;
+    const open = !(t.registrationConfigured ?? t.registrationOpen);
+    if(open && !window.confirm('Ouvrir les inscriptions publiques ? Chaque réservation prélèvera réellement 500 F CFA. Le serveur refusera toute ouverture tant que qualifications, finale et paiements ne sont pas autorisés.'))return;
     void run(async()=>{
       await setTournamentRegistration(t.id,open,t.revision);
       setNotice(open?'Inscriptions ouvertes. Vérifie la préparation des parties réelles.':'Inscriptions fermées.');
@@ -123,7 +123,7 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
     <div className="maf-programming__top"><h3>Programmer un tournoi</h3><button type="button" onClick={onClose}>Fermer</button></div>
     <p>Choisis le format, règle les horaires et publie depuis cet espace unique. Toutes les heures sont celles d’Abidjan.</p>
     <div className="maf-programming__formats" role="group" aria-label="Format de compétition">
-      <button type="button" aria-pressed={format==='tournament'} onClick={()=>newEntry('tournament')} disabled={busy}>🏆 Tournoi classique (20 places)</button>
+      <button type="button" aria-pressed={format==='tournament'} onClick={()=>newEntry('tournament')} disabled={busy}>🏆 Tournoi classique (10 à 20 joueurs, 20 places max)</button>
       <button type="button" aria-pressed={format==='duel'} onClick={()=>newEntry('duel')} disabled={busy}>🎲 Duel direct (2 places)</button>
     </div>
     {error && <p className="tourney-error" role="alert">{error}</p>}
@@ -144,7 +144,7 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
         <button type="button" onClick={()=>newEntry('tournament')} disabled={busy}>＋ Nouveau</button>
         {tournaments.filter(t=>!t.deletedAt).map(t=><div className="maf-programming__item" key={t.id}>
           <button type="button" onClick={()=>editTournament(t)} disabled={busy}>{t.title} · {statusName[t.status]||t.status} · {t.registered}/{t.capacity}</button>
-          {t.status==='published' && <button type="button" disabled={busy} onClick={()=>toggleRegistration(t)}>{t.registrationOpen?'Fermer inscriptions':'Ouvrir inscriptions'}</button>}
+          {t.status==='published' && <button type="button" disabled={busy} onClick={()=>toggleRegistration(t)}>{(t.registrationConfigured ?? t.registrationOpen)?'Fermer inscriptions':'Ouvrir inscriptions'}</button>}
           <button type="button" onClick={()=>removeNormal(t)} disabled={busy}>Supprimer</button>
         </div>)}
       </div>
@@ -157,7 +157,7 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
         <label>Visibilité <select value={normal.status} onChange={e=>setNormal(f=>({...f,status:e.target.value}))}>
           <option value="draft">Brouillon</option><option value="published">Publié</option><option value="archived">Archivé</option>
         </select></label>
-        <p>Une annonce publiée n'ouvre pas automatiquement les réservations. Après enregistrement, tu peux les ouvrir dans la liste ci-dessus. Le backend actuel garde sa capacité de 20 et ne lance pas encore les véritables qualifications multijoueurs à effectifs variables.</p>
+        <p>Une annonce publiée n'ouvre pas automatiquement les réservations. Après enregistrement, tu peux les ouvrir dans la liste ci-dessus. Capacité maximale : 20 inscrits. Les formats jouables sont 10, 14, 15, 18, 19 ou 20 ; surplus remboursé. Les réservations payantes restent verrouillées tant que la validation de production n'est pas terminée.</p>
         <button type="submit">{busy?'Enregistrement…':normalId?'Enregistrer le tournoi':'Créer le tournoi'}</button>
       </fieldset></form>
     </> : <>

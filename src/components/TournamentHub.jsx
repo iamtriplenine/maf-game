@@ -18,9 +18,11 @@ function ReserveAction({ tournament: t, reached, session, reserved, onDone }) {
   const [confirming,setConfirming] = useState(false), [busy,setBusy] = useState(false), [error,setError] = useState(''), [paid,setPaid] = useState(null);
   const alive = useRef(true);
   useEffect(() => { alive.current=true; return () => {alive.current=false;}; }, []);
-  if (!t.registrationOpen) return <button type="button" className="tourney-cta" disabled>Inscriptions bientôt ouvertes</button>;
+  // Une place deja payee reste visible meme si les reservations ferment ensuite.
   if (reserved) return <div className="tourney-reserved" role="status"><strong>✓ Place réservée</strong>
     <span>{paid?`${francs(paid.fee)} F débités · nouveau solde ${francs(paid.balanceAfter)} F`:'Ta place est confirmée pour ce tournoi.'}</span></div>;
+  if (t.publicBookingsEnabled === false) return <button type="button" className="tourney-cta" disabled>Réservations suspendues pendant les vérifications</button>;
+  if (!t.registrationOpen) return <button type="button" className="tourney-cta" disabled>Inscriptions bientôt ouvertes</button>;
   if (!session) return <button type="button" className="tourney-cta" disabled>Connecte-toi pour réserver</button>;
   if (t.full) return <button type="button" className="tourney-cta" disabled>Complet · {t.capacity}/{t.capacity}</button>;
   if (reached) return <button type="button" className="tourney-cta" disabled>Inscriptions closes</button>;
@@ -55,10 +57,17 @@ function ReserveAction({ tournament: t, reached, session, reserved, onDone }) {
 
 export function TournamentCard({ tournament: t, now, session = null, reserved = false, onDone = () => {} }) {
   const remaining = countdown(t.startsAt, now), reached = Date.parse(t.startsAt) <= now;
+  const [requestedFormat, setRequestedFormat] = useState(null);
+  const formats = Array.isArray(t.rewardScenarios) ? t.rewardScenarios : [];
+  const predicted = formats.filter(s=>s.players<=t.registered).at(-1)?.players ?? 20;
+  const format = formats.find(s=>s.players === (requestedFormat ?? predicted));
+  const awardRange = format && (format.eliminatedMinFranc===format.eliminatedMaxFranc
+    ? francs(format.eliminatedMinFranc)
+    : `${francs(format.eliminatedMinFranc)} à ${francs(format.eliminatedMaxFranc)}`);
   const names = ['Jours', 'Heures', 'Minutes', 'Secondes'];
   return <article className="tourney-card">
     <div className="tourney-card__hero">
-      <div className="tourney-card__top"><span className="tourney-tag">ÉVÉNEMENT MONOPOLY</span><span className="tourney-tag tourney-tag--gold">20 PLACES</span></div>
+      <div className="tourney-card__top"><span className="tourney-tag">ÉVÉNEMENT MONOPOLY</span><span className="tourney-tag tourney-tag--gold">20 PLACES MAX</span></div>
       <div className="tourney-card__art" aria-hidden="true"><span>🎩</span><i>✦</i><b>◆</b></div>
       <p className="tourney-card__eyebrow">LE RENDEZ-VOUS DES STRATÈGES</p>
       <h3>{t.title}</h3>
@@ -70,7 +79,7 @@ export function TournamentCard({ tournament: t, now, session = null, reserved = 
       <div className="tourney-card__places"><span><strong>{t.registered}</strong> / {t.capacity} inscrits</span><span>Entrée <strong>{francs(t.entryFee)} CFA</strong></span></div>
       <progress max={t.capacity} value={t.registered} aria-label="Places réservées" />
       <ReserveAction tournament={t} reached={reached} session={session} reserved={reserved} onDone={onDone}/>
-      <p className="tourney-card__note">{t.registrationOpen?'20 places limitées. Une seule place par compte.':'20 places limitées. La réservation à 500 F ouvrira prochainement.'}</p>
+      <p className="tourney-card__note">{t.publicBookingsEnabled===false?'Réservations payantes suspendues pendant les vérifications du tournoi.':`Jusqu’à ${t.capacity} places · tournoi possible dès 10 joueurs (formats admissibles). Une seule place par compte.`}</p>
     </div>
     <div className="tourney-card__details">
       <details className="tourney-card__participants"><summary><span>◉</span> Participants inscrits · {t.participants?.length ?? t.registered}/{t.capacity} <b aria-hidden="true">＋</b></summary>
@@ -79,27 +88,36 @@ export function TournamentCard({ tournament: t, now, session = null, reserved = 
         </div>)}</div>
         {!(t.participants||[]).length&&<p className="tourney-participants-empty">Aucun participant pour le moment.</p>}
       </details>
-      {t.description && <p className="tourney-description">{t.description}</p>}
+      {t.description && <p className="tourney-description">{t.description === '20 joueurs. Quatre plateaux. Une finale pour devenir champion.' ? 'De 10 à 20 inscriptions · de 2 à 4 plateaux de qualification · une grande finale.' : t.description}</p>}
       <details><summary><span>01</span> Déroulement & horaires <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
         <p><strong>Qualifications :</strong> de deux à quatre plateaux de quatre ou cinq joueurs, selon les inscriptions. Chaque vainqueur rejoint la finale.</p>
         <p><strong>Finale prévue :</strong> {abidjanDate(t.finalAt)} (Abidjan), avec les deux à quatre qualifiés.</p>
         <p>Si une qualification se prolonge, le départ de la finale sera décalé par tranches de cinq minutes. Les joueurs ont cinq minutes pour rejoindre leur plateau et deux minutes pour revenir après une déconnexion.</p>
-        {t.registrationOpen?<p>Les réservations sont ouvertes jusqu’au début des qualifications, dans la limite des places disponibles.</p>:<p>Les horaires annoncent le programme du tournoi. Les inscriptions ne sont pas encore ouvertes.</p>}
+        {t.registrationOpen?<p>Les réservations sont ouvertes jusqu’au début des qualifications, dans la limite des places disponibles.</p>:<p>Les horaires annoncent le programme du tournoi. Les inscriptions sont encore fermées ou suspendues pour vérification.</p>}
       </div></details>
       <details><summary><span>02</span> Les récompenses <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
-        <p>Montants versés sur le solde réel, mise comprise. Chaque participant reçoit aussi 100 F de bonus.</p>
-        <div className="tourney-table-wrap"><table><caption>Récompenses pour 20 participants</caption><thead><tr><th>Classement</th><th>Réel</th><th>Bonus</th><th>Skins</th></tr></thead><tbody>
-          {t.rewards.real.map((amount,i) => <tr key={i}><th>{i+1}{i===0?'er':'e'}</th><td>{francs(amount)}</td><td>{francs(t.rewards.bonusEach)}</td><td>2</td></tr>)}
-          <tr><th>Chaque éliminé</th><td>{francs(t.rewards.eliminatedReal)}</td><td>{francs(t.rewards.bonusEach)}</td><td>1</td></tr>
-        </tbody></table></div>
+        <p>Les gains sont calculés en francs entiers à partir des joueurs effectivement retenus au tirage. La mise est incluse ; les montants ne seront crédités qu’après la finale certifiée.</p>
+        {format ? <>
+          <label className="tourney-reward-choice">Effectif à simuler
+            <select value={format.players} onChange={e=>setRequestedFormat(Number(e.target.value))} aria-label="Simuler les récompenses selon le nombre de joueurs">
+              {formats.map(s=><option value={s.players} key={s.players}>{s.players} joueurs · {s.groupSizes.length} plateaux</option>)}
+            </select>
+          </label>
+          <p className="tourney-reward-hint">{format.groupSizes.join(' + ')} joueurs par plateau · {format.finalists.length} finalistes. Simulation, pas un paiement effectué.</p>
+          <div className="tourney-table-wrap"><table><caption>Prévision pour {format.players} joueurs retenus</caption><thead><tr><th>Classement</th><th>Réel</th><th>Bonus</th><th>Skins prévus</th></tr></thead><tbody>
+            {format.finalists.map(p=><tr key={p.place}><th>{p.place===1?'1er':`${p.place}e`}</th><td>{francs(p.realFranc)} F</td><td>{francs(p.bonusFranc)} F</td><td>2</td></tr>)}
+            <tr><th>{format.eliminatedCount} éliminés (chacun)</th><td>{awardRange} F</td><td>{francs(format.eliminatedBonusFranc)} F</td><td>1</td></tr>
+          </tbody></table></div>
+          <p className="tourney-reward-hint">La part de l'organisateur est de {francs(format.organizerFranc)} F ; les écarts de 1 F entre éliminés sont liés aux arrondis des francs entiers.</p>
+        </> : <p className="tourney-reward-hint">Prévisions indisponibles : actualise l'application après la mise à jour du serveur.</p>}
       </div></details>
-      <details><summary><span>03</span> Les deux skins à gagner <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body tourney-skins">
-        <div className="tourney-skin"><span aria-hidden="true">◇</span><small>POUR LES 20 PARTICIPANTS</small><h4>Skin de participation</h4><p>Visuel dévoilé prochainement</p></div>
-        <div className="tourney-skin tourney-skin--winner"><span aria-hidden="true">♛</span><small>POUR LES 4 FINALISTES</small><h4>Skin des vainqueurs</h4><p>En plus du skin de participation</p><p>Visuel dévoilé prochainement</p></div>
+      <details><summary><span>03</span> Les skins prévus <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body tourney-skins">
+        <div className="tourney-skin"><span aria-hidden="true">◇</span><small>POUR CHAQUE JOUEUR RETENU</small><h4>Skin de participation</h4><p>Droit prévu après validation des résultats ; visuel et inventaire à finaliser.</p></div>
+        <div className="tourney-skin tourney-skin--winner"><span aria-hidden="true">♛</span><small>POUR LES {format?.finalists.length ?? '2 À 4'} FINALISTES</small><h4>Skin des finalistes</h4><p>En plus du skin de participation. Attribution visuelle à finaliser.</p></div>
       </div></details>
       <details><summary><span>04</span> Réservation & règles <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
-        <p>Inscription individuelle : 500 F par joueur, dans la limite de 20 places. Les groupes seront tirés au sort au lancement.</p>
-        {t.registrationOpen?<p>Réservation : 500 F sont débités de ton solde réel à la confirmation, pour une place unique par compte.</p>:<p>Les conditions de réservation, d’absence et de remboursement seront précisées avant l’ouverture des inscriptions.</p>}
+        <p>Inscription individuelle : 500 F par joueur, 20 places au maximum. Si moins de 10 joueurs sont inscrits, le tournoi est annulé et les mises remboursées. Avec 11 à 13 inscrits, les 10 premiers jouent ; avec 16 à 17 inscrits, les 15 premiers jouent. Les derniers inscrits en surplus sont remboursés. Les groupes sont ensuite tirés au sort.</p>
+        {t.registrationOpen?<p>Réservation : 500 F sont débités de ton solde réel à la confirmation, pour une place unique par compte.</p>:<p>Les conditions de paiement et de remboursement figurent ci-dessous ; les réservations ne sont pas actuellement ouvertes.</p>}
         <TournamentPolicy/>
       </div></details>
     </div>
@@ -129,10 +147,10 @@ export function TournamentManager({ onSaved, onClose }) {
   };
   const toggleRegistration = async t => {
     if (busy) return;
-    if (!t.registrationOpen && !window.confirm('Ouvrir les réservations ? Chaque joueur qui réserve est débité de 500 F sur son solde réel.')) return;
+    if (!(t.registrationConfigured ?? t.registrationOpen) && !window.confirm('Ouvrir les réservations ? Chaque joueur qui réserve est débité de 500 F sur son solde réel.')) return;
     setBusy(true); setError(''); setNotice('');
     try {
-      const data = await setTournamentRegistration(t.id, !t.registrationOpen, t.revision);
+      const data = await setTournamentRegistration(t.id, !(t.registrationConfigured ?? t.registrationOpen), t.revision);
       if (!alive.current) return;
       setForm(f => (id === t.id ? { ...f, revision: data.tournament.revision } : f));
       setNotice(data.tournament.registrationOpen ? 'Réservations ouvertes.' : 'Réservations fermées.');
@@ -143,13 +161,13 @@ export function TournamentManager({ onSaved, onClose }) {
   const current = items.find(t => t.id === id);
   return <section className="tourney-manager" aria-label="Gestion des tournois">
     <div className="tourney-manager__head"><h3>Programmer un tournoi</h3><button type="button" onClick={onClose} disabled={busy}>Fermer</button></div>
-    <p>Les dates sont à l’heure d’Abidjan. Format : Monopoly, 20 places, entrée 500 F.</p>
+    <p>Heures d’Abidjan. Monopoly : 20 places maximum ; 10, 14, 15, 18, 19 ou 20 joueurs retenus ; entrée 500 F.</p>
     <div className="tourney-manager__list"><button type="button" disabled={busy} onClick={()=>{setId(null);setForm(newTournament());setError('');setNotice('');}}>＋ Nouveau tournoi</button>
       {items.map(t=><button key={t.id} type="button" disabled={busy} onClick={()=>edit(t)} aria-pressed={id===t.id}>{t.title} · {{draft:'Brouillon',published:'Publié',archived:'Archivé'}[t.status]}</button>)}
     </div>
     {current&&current.status==='published'&&<div className="tourney-registration">
-      <p>Réservations : <strong>{current.registrationOpen?'OUVERTES':'fermées'}</strong> · {current.registered}/{current.capacity} places prises.</p>
-      <button type="button" disabled={busy} onClick={()=>toggleRegistration(current)}>{current.registrationOpen?'Fermer les réservations':'Ouvrir les réservations (500 F débités)'}</button>
+      <p>Réservations : <strong>{current.registrationConfigured?'CONFIGURÉES':'fermées'}</strong> · {current.registered}/{current.capacity} places prises.</p>
+      <button type="button" disabled={busy} onClick={()=>toggleRegistration(current)}>{current.registrationConfigured?'Fermer les réservations':'Ouvrir les réservations (500 F débités)'}</button>
     </div>}
     <form onSubmit={submit}><fieldset disabled={busy}>
       <label>Titre<input name="title" maxLength={80} required value={form.title} onChange={change}/></label>
