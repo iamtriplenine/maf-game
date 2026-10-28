@@ -23,7 +23,8 @@ import AdminPanel from "../components/AdminPanel";
 import OwnerCommissionSummary from "../components/OwnerCommissionSummary";
 import OwnerWinCodes from "../components/OwnerWinCodes";
 import { wakeServer, saveSkin, syncWallet } from "../api/accounts";
-import { DEFAULT_SKIN, SKINS, validSkin } from "../characters/skins";
+import { DEFAULT_SKIN, SKINS, PUBLIC_SKINS, validSkin } from "../characters/skins";
+import { myUnlockedStudioSkins } from "../api/tournaments";
 import { clearAdminAccess } from "../api/accounts";
 import { WalletBalances, CouponForm, RechargeForm } from "../components/WalletForms";
 import { IconVoucher } from "../components/Icons";
@@ -56,14 +57,22 @@ export default function ProfilePage({ onOpenStudio }) {
   const [chatFull, setChatFull] = useState(false); // chat global en plein ecran
   const [guestSkin, setGuestSkin] = useState(readGuestSkin);
   const [skinSaving, setSkinSaving] = useState(false);
+  const [unlockedSkins,setUnlockedSkins] = useState([]);
+  useEffect(()=>{
+    let active=true;
+    if(!session?.id){setUnlockedSkins([]);return;}
+    myUnlockedStudioSkins().then(x=>{if(active)setUnlockedSkins(x.unlocked||[]);}).catch(()=>{if(active)setUnlockedSkins([]);});
+    return ()=>{active=false;};
+  },[session?.id]);
+  const availableSkins = session ? SKINS.filter(s=>s.access==='public'||unlockedSkins.includes(s.id)) : PUBLIC_SKINS;
   const [skinError, setSkinError] = useState("");
   const [draftSkin, setDraftSkin] = useState(null);
   const selectedSkin = session ? validSkin(session.skin_id) : guestSkin;
   const activeSkin = draftSkin || selectedSkin;
   const activeSkinIndex = useMemo(() => {
-    const index = SKINS.findIndex((skin) => skin.id === activeSkin);
+    const index = availableSkins.findIndex((skin) => skin.id === activeSkin);
     return index >= 0 ? index : 0;
-  }, [activeSkin]);
+  }, [activeSkin,availableSkins]);
   const openPersonalize = () => {
     setSkinError("");
     setDraftSkin(selectedSkin);
@@ -320,11 +329,11 @@ export default function ProfilePage({ onOpenStudio }) {
       <Sheet open={sheet === "personalize"} title="Personnalisation" onClose={close}>
         <div className="skins-head">
           <p className="sheet__text">Skins : glisse le doigt sur les cartes pour tourner, choisis un personnage, puis confirme.</p>
-          <span className="skins-free">GRATUIT POUR LE MOMENT</span>
+          <span className="skins-free">Skins publics gratuits · exclusifs apres recompense</span>
         </div>
         <div className="skins-picker" aria-label="Choisir un skin">
           <SkinCarousel
-            skins={SKINS}
+            skins={availableSkins}
             activeId={activeSkin}
             disabled={skinSaving}
             onChange={setDraftSkin}
@@ -347,8 +356,8 @@ export default function ProfilePage({ onOpenStudio }) {
             }}
           />
           <div className="skins-caption">
-            <strong>{SKINS[activeSkinIndex]?.name || "Skin"}</strong>
-            <small>{SKINS[activeSkinIndex]?.movement || "Animation"}</small>
+            <strong>{availableSkins[activeSkinIndex]?.name || "Skin"}</strong>
+            <small>{availableSkins[activeSkinIndex]?.movement || "Animation"}</small>
           </div>
           <button
             type="button"

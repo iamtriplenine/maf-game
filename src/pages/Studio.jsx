@@ -1,15 +1,10 @@
-import messi from "../characters/messi/character.json";
 import { useState } from "react";
 import CharacterViewer from "../components/CharacterViewer";
 import ThemeToggle from "../components/ThemeToggle";
-import loki from "../characters/loki/character.json";
-import samba from "../characters/samba/character.json";
-import bailarina from "../characters/bailarina/character.json";
-import mutant from "../characters/mutant/character.json";
-import kushina from "../characters/kushina/character.json";
+import { SKINS } from "../characters/skins";
 import "../App.css";
 
-const characters = [loki, samba, messi, bailarina, mutant, kushina];
+const characters = SKINS;
 const statics = ["messi"];
 
 export default function Studio({ onBack }) {
@@ -43,6 +38,8 @@ export default function Studio({ onBack }) {
           >
             <span className="card-number">0{index + 1}</span>
             <strong>{character.name}</strong>
+            <span>ID : {character.id}</span>
+            <span>{character.access === 'exclusive' ? 'Exclusif · uniquement debloque par recompense' : 'Public · accessible a tous'}</span>
             <span>{character.description}</span>
             <span className="card-action">Ouvrir le personnage ↗</span>
           </button>

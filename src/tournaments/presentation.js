@@ -19,5 +19,6 @@ export function newTournament(now = Date.now()) {
   start.setUTCDate(start.getUTCDate() + ((5-start.getUTCDay()+7)%7));
   if (start.getTime() <= now) start.setUTCDate(start.getUTCDate()+7);
   return { title:'Grand tournoi Monopoly', description:'De 10 à 20 joueurs, de deux à quatre plateaux et une grande finale.',
-    startsAt:dateInput(start), finalAt:dateInput(start.getTime()+65*60000), status:'draft' };
+    startsAt:dateInput(start), finalAt:dateInput(start.getTime()+65*60000), status:'draft',
+    participantSkinId:'', winnerSkinId:'' };
 }

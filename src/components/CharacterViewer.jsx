@@ -229,7 +229,7 @@ export default function CharacterViewer({ character }) {
   const [autoRotate, setAutoRotate] = useState(false);
   const [viewKey, setViewKey] = useState(0);
 
-  const Character = character.id === "mutant"
+  const Character = ["mutant", "mutant-swipe"].includes(character.id)
     ? MutantCharacter
     : character.format === "fbx" ? FbxCharacter : GlbCharacter;
 

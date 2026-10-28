@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ownerTournaments, saveTournament, setTournamentRegistration } from '../api/tournaments';
+import { ownerTournaments, saveTournament, setTournamentRegistration, tournamentSkinCatalog } from '../api/tournaments';
 import { ownerDuels, createDuel, editDuel, archiveDuel } from '../api/officialDuel';
 import { giftOwnerTournaments, scheduleTournamentGift } from '../api/tournamentGifts';
 import { walletRequest } from '../api/accounts';
@@ -23,16 +23,18 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
   const [tournaments, setTournaments] = useState([]);
   const [duels, setDuels] = useState([]);
   const [giftSchedule, setGiftSchedule] = useState([]);
+  const [catalog,setCatalog] = useState([]);
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState('');
   const [notice,setNotice] = useState('');
 
   const refresh = useCallback(async () => {
     // Les trois API sont protégées par la session propriétaire côté serveur.
-    const [ts, ds, gs] = await Promise.all([ownerTournaments(),ownerDuels(),giftOwnerTournaments()]);
+    const [ts, ds, gs, sc] = await Promise.all([ownerTournaments(),ownerDuels(),giftOwnerTournaments(),tournamentSkinCatalog()]);
     setTournaments(ts.tournaments || []);
     setDuels(ds.duels || []);
     setGiftSchedule(gs.tournaments || []);
+    setCatalog(sc.skins || []);
   }, []);
   useEffect(() => { void refresh().catch(e => setError(e.message)); }, [refresh]);
 
@@ -43,7 +45,7 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
   };
   const editTournament = t => {
     setFormat('tournament');setNormalId(t.id);setError('');
-    setNormal({title:t.title,description:t.description,startsAt:dateInput(t.startsAt),finalAt:dateInput(t.finalAt),status:t.status,revision:t.revision});
+    setNormal({title:t.title,description:t.description,startsAt:dateInput(t.startsAt),finalAt:dateInput(t.finalAt),status:t.status,revision:t.revision,participantSkinId:t.participantSkinId||'',winnerSkinId:t.winnerSkinId||''});
     const gift = giftSchedule.find(g => Number(g.id) === Number(t.id));
     setGiftAt(gift?.releaseAt ? toInput(gift.releaseAt) : '');
   };
@@ -119,16 +121,21 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
     });
   };
 
+  const exclusiveSkins=catalog.filter(s=>s.access==='exclusive');
+  const giftTitle=id=>catalog.find(s=>s.id===id)?.name||'Aucun';
   return <section className="maf-programming" aria-label="Programmation des tournois, propriétaire 999">
-    <div className="maf-programming__top"><h3>Programmer un tournoi</h3><button type="button" onClick={onClose}>Fermer</button></div>
-    <p>Choisis le format, règle les horaires et publie depuis cet espace unique. Toutes les heures sont celles d’Abidjan.</p>
+    <header className="maf-programming__hero">
+      <div><span className="maf-programming__eyebrow">PROPRIÉTAIRE 999 · ESPACE PRIVÉ</span><h3>Centre de programmation</h3>
+        <p>Crée tes rendez-vous Monopoly, organise les horaires et prépare les récompenses. Heure d'Abidjan (UTC+0).</p></div>
+      <button type="button" className="maf-programming__close" onClick={onClose}>✕ Fermer</button>
+    </header>
     <div className="maf-programming__formats" role="group" aria-label="Format de compétition">
-      <button type="button" aria-pressed={format==='tournament'} onClick={()=>newEntry('tournament')} disabled={busy}>🏆 Tournoi classique (10 à 20 joueurs, 20 places max)</button>
-      <button type="button" aria-pressed={format==='duel'} onClick={()=>newEntry('duel')} disabled={busy}>🎲 Duel direct (2 places)</button>
+      <button type="button" aria-pressed={format==='tournament'} onClick={()=>newEntry('tournament')} disabled={busy}><span aria-hidden="true">🏆</span><strong>Grand tournoi</strong><small>10 à 20 joueurs · qualifications + finale</small></button>
+      <button type="button" aria-pressed={format==='duel'} onClick={()=>newEntry('duel')} disabled={busy}><span aria-hidden="true">🎲</span><strong>Duel de test</strong><small>2 joueurs · contrôle des mécaniques</small></button>
     </div>
     {error && <p className="tourney-error" role="alert">{error}</p>}
     {notice && <p className="tourney-success" role="status">{notice}</p>}
-    <details className="maf-programming__cleanup" open>
+    <details className="maf-programming__cleanup">
       <summary>🧹 Nettoyer les anciens duels ({duels.length})</summary>
       <p>Compte 999 uniquement. Supprime les anciens tests un par un. Un duel en cours sera interrompu avec remboursement des mises ; les récompenses déjà acquises et l'historique financier restent conservés.</p>
       {duels.length === 0 ? <p>Aucun ancien duel à supprimer.</p> : <div className="maf-programming__list">
@@ -151,9 +158,38 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
       <form onSubmit={saveNormal}><fieldset disabled={busy}>
         <label>Titre <input required maxLength={80} value={normal.title} onChange={e=>setNormal(f=>({...f,title:e.target.value}))}/></label>
         <label>Présentation <textarea maxLength={1500} rows={3} value={normal.description} onChange={e=>setNormal(f=>({...f,description:e.target.value}))}/></label>
-        <label>Qualifications — Abidjan <input required type="datetime-local" value={normal.startsAt} onChange={e=>setNormal(f=>({...f,startsAt:e.target.value}))}/></label>
-        <label>Finale — Abidjan <input required type="datetime-local" value={normal.finalAt} onChange={e=>setNormal(f=>({...f,finalAt:e.target.value}))}/></label>
-        <label>Remise des cadeaux — Abidjan <input required type="datetime-local" min={normal.finalAt} value={giftAt} onChange={e=>setGiftAt(e.target.value)}/></label>
+        <div className="maf-programming__times">
+          <div className="maf-programming__section-title"><span aria-hidden="true">🕒</span><div><h4>Calendrier de l'évènement</h4><p>Tous les horaires sont en heure d'Abidjan.</p></div></div>
+          <div className="maf-programming__time-grid">
+            <label>Qualifications <input required type="datetime-local" value={normal.startsAt} onChange={e=>setNormal(f=>({...f,startsAt:e.target.value}))}/></label>
+            <label>Finale <input required type="datetime-local" value={normal.finalAt} onChange={e=>setNormal(f=>({...f,finalAt:e.target.value}))}/></label>
+            <label>Remise des cadeaux <input required type="datetime-local" min={normal.finalAt} value={giftAt} onChange={e=>setGiftAt(e.target.value)}/></label>
+          </div>
+        </div>
+        <section className="maf-programming__gifts" aria-label="Skins cadeaux du tournoi">
+          <div className="maf-programming__section-title"><span aria-hidden="true">🎁</span><div><h4>Skins offerts en récompense</h4><p>Choisis des personnages exclusifs du Studio 3D. Les six skins actuels restent publics.</p></div></div>
+          <div className="maf-programming__gift-grid">
+            <label>Skin participant
+              <select value={normal.participantSkinId||''} onChange={e=>setNormal(f=>({...f,participantSkinId:e.target.value}))}>
+                <option value="">Aucun skin sélectionné</option>
+                {exclusiveSkins.map(s=><option key={s.id} value={s.id}>{s.name} · {s.id}</option>)}
+              </select>
+              <small>Attribué à chaque participant retenu au tournoi.</small>
+            </label>
+            <label>Skin gagnant
+              <select value={normal.winnerSkinId||''} onChange={e=>setNormal(f=>({...f,winnerSkinId:e.target.value}))}>
+                <option value="">Aucun skin sélectionné</option>
+                {exclusiveSkins.map(s=><option key={s.id} value={s.id}>{s.name} · {s.id}</option>)}
+              </select>
+              <small>Attribué uniquement au champion de la finale.</small>
+            </label>
+          </div>
+          <div className="maf-programming__gift-preview"><span>Prévisualisation des prix</span>
+            <strong>Participation : {giftTitle(normal.participantSkinId)}</strong>
+            <strong>Champion : {giftTitle(normal.winnerSkinId)}</strong>
+          </div>
+          {!exclusiveSkins.length && <p className="maf-programming__hint">Aucun skin exclusif n'a encore été importé et déclaré dans le Studio 3D. Les champs sont prêts pour tes prochains personnages ; aucun cadeau de skin n'est promis tant qu'ils restent vides.</p>}
+        </section>
         <label>Visibilité <select value={normal.status} onChange={e=>setNormal(f=>({...f,status:e.target.value}))}>
           <option value="draft">Brouillon</option><option value="published">Publié</option><option value="archived">Archivé</option>
         </select></label>

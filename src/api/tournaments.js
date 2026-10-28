@@ -12,3 +12,6 @@ export const saveTournament = (id, body) => walletRequest(`/api/tournaments/owne
 export const reserveTournament = id => walletRequest(`/api/tournaments/${id}/reserve`, { method: 'POST', body: {} });
 export const myTournamentReservations = () => walletRequest('/api/tournaments/mine');
 export const setTournamentRegistration = (id, open, revision) => walletRequest(`/api/tournaments/owner/${id}/registration`, { method: 'POST', body: { open, revision } });
+
+export const tournamentSkinCatalog = () => walletRequest('/api/tournaments/skins/catalog');
+export const myUnlockedStudioSkins = () => walletRequest('/api/tournaments/skins/mine');

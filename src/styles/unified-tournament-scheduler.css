@@ -1,22 +1,47 @@
-.maf-programming{display:grid;gap:14px;max-width:100%;padding:16px;border:1px solid rgba(170,160,120,.35);border-radius:16px;background:var(--panel-bg,#111827);color:inherit}
-.maf-programming__top{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.maf-programming__top h3{margin:0}.maf-programming__formats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+/* Programmation proprietaire : design commun aux themes ciel et rose. */
+.maf-programming{display:grid;gap:18px;max-width:100%;padding:clamp(14px,3vw,26px);border:1px solid var(--border);border-radius:24px;background:linear-gradient(140deg,var(--glass-strong),transparent 56%),var(--surface);color:var(--text);box-shadow:0 16px 40px #0002;font:inherit;min-width:0}
+.maf-programming__hero{display:flex;justify-content:space-between;align-items:start;gap:12px;border-bottom:1px solid var(--border);padding-bottom:18px}
+.maf-programming__eyebrow{font-size:10px;letter-spacing:.12em;font-weight:800;color:var(--accent-2)}
+.maf-programming__hero h3{font-size:clamp(19px,3vw,26px);margin:7px 0}
+.maf-programming__hero p{font-size:12px;line-height:1.6;color:var(--text-dim);margin:0}
 .maf-programming button,.maf-programming select,.maf-programming input,.maf-programming textarea{font:inherit}
-.maf-programming button{cursor:pointer;min-height:38px;border-radius:9px;padding:9px;border:1px solid #64748b;background:#1e293b;color:#fff}
-.maf-programming button[aria-pressed="true"]{border:2px solid #fbbf24;background:#422006}
-.maf-programming fieldset{display:grid;gap:12px;min-width:0;border:0;padding:0;margin:0}
-.maf-programming label{display:grid;gap:5px;min-width:0;font-weight:600}
-.maf-programming input,.maf-programming textarea,.maf-programming select{width:100%;box-sizing:border-box;padding:10px;min-width:0;border-radius:8px;background:#0f172a;color:white;border:1px solid #64748b;color-scheme:dark}
-.maf-programming__list{display:grid;gap:9px}
-.maf-programming__item{display:flex;align-items:center;gap:8px;min-width:0}
+.maf-programming button{cursor:pointer;min-height:42px;border-radius:12px;padding:10px 14px;border:1px solid var(--border);background:var(--glass);color:var(--text)}
+.maf-programming button:hover:not(:disabled){border-color:var(--accent)}
+.maf-programming button:focus-visible,.maf-programming input:focus-visible,.maf-programming select:focus-visible,.maf-programming textarea:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+.maf-programming button:disabled{cursor:wait;opacity:.65}
+.maf-programming__close{flex-shrink:0}
+.maf-programming__formats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.maf-programming__formats button{display:flex;flex-direction:column;align-items:start;text-align:left;gap:5px;min-width:0;min-height:106px;padding:14px}
+.maf-programming__formats button>span{font-size:22px}.maf-programming__formats strong{font-size:13px}
+.maf-programming__formats small{font-size:11px;color:var(--text-dim);line-height:1.45}
+.maf-programming__formats button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.maf-programming fieldset{display:grid;gap:16px;min-width:0;border:0;padding:0;margin:0}
+.maf-programming label{display:grid;gap:7px;min-width:0;font-weight:650;font-size:13px;color:var(--text)}
+.maf-programming input,.maf-programming textarea,.maf-programming select{width:100%;box-sizing:border-box;padding:12px;min-width:0;border-radius:12px;background:var(--bg-2);color:var(--text);border:1px solid var(--border);color-scheme:dark}
+.maf-programming label small{font-weight:400;color:var(--text-dim);line-height:1.5}
+.maf-programming fieldset>button[type=submit]{background:var(--accent-grad);color:var(--on-accent);font-weight:800;border:0;padding:14px}
+.maf-programming fieldset>p{font-size:12px;line-height:1.6;color:var(--text-dim);margin:0}
+.maf-programming__list{display:grid;gap:9px;padding:14px;background:var(--glass);border:1px solid var(--border);border-radius:16px}
+.maf-programming__list>strong{font-size:13px}
+.maf-programming__item{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
 .maf-programming__item button:first-child{flex:1;text-align:left;overflow-wrap:anywhere}
-.maf-programming__item button:last-child{color:#fecaca}
-@media(max-width:540px){.maf-programming{padding:11px}.maf-programming__formats button{font-size:12px}.maf-programming__item button{font-size:12px}}
-
-/* Nettoyage des parties de test accessible sans changer d'onglet. */
-.maf-programming__cleanup{border:1px solid currentColor;border-radius:12px;padding:12px;opacity:.98}
-.maf-programming__cleanup summary{cursor:pointer;font-weight:700}
-.maf-programming__cleanup p{font-size:12px;line-height:1.55}
-.maf-programming__duel-name{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px}
+.maf-programming__item button:last-child{color:#ffb8c4}
+.maf-programming__cleanup{border:1px solid var(--border);border-radius:14px;padding:12px;background:var(--glass)}
+.maf-programming__cleanup summary{cursor:pointer;font-weight:700;font-size:13px}
+.maf-programming__cleanup p{font-size:12px;line-height:1.55;color:var(--text-dim)}
+.maf-programming__duel-name{flex:1;min-width:0;overflow-wrap:anywhere;font-size:12px}
 .maf-programming__item .maf-programming__delete{border-color:#b65b66;color:#ffe5e6;background:#772936;flex-shrink:0}
-.maf-programming__cleanup .maf-programming__item{border-bottom:1px solid #94a3b847;padding:5px 0}
+.maf-programming__cleanup .maf-programming__item{border-bottom:1px solid var(--border);padding:5px 0}
+.maf-programming__gifts{display:grid;gap:14px;padding:18px;border:1px solid var(--accent);border-radius:18px;background:linear-gradient(145deg,var(--accent-soft),transparent 75%),var(--glass)}
+.maf-programming__section-title{display:flex;gap:11px;align-items:start}.maf-programming__section-title>span{font-size:24px}
+.maf-programming__section-title h4{margin:0 0 5px;font-size:15px}.maf-programming__section-title p{font-size:12px;color:var(--text-dim);margin:0;line-height:1.5}
+.maf-programming__gift-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.maf-programming__gift-preview{display:flex;flex-wrap:wrap;gap:6px 14px;border:1px dashed var(--border);border-radius:12px;padding:12px;font-size:11px}
+.maf-programming__gift-preview span{width:100%;color:var(--text-dim)}
+.maf-programming__hint{margin:0;font-size:12px;color:var(--text-dim);line-height:1.65}
+@media(max-width:580px){.maf-programming{padding:12px;gap:13px}.maf-programming__hero{flex-direction:column}.maf-programming__gift-grid{grid-template-columns:1fr}.maf-programming__formats button{padding:11px;min-height:100px}.maf-programming__item button{font-size:12px}}
+
+.maf-programming__times{display:grid;gap:12px;padding:14px;border:1px solid var(--border);border-radius:16px;background:var(--glass)}
+.maf-programming__time-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.maf-programming__time-grid label:last-child{grid-column:1/-1}
+@media(max-width:580px){.maf-programming__time-grid{grid-template-columns:1fr}}

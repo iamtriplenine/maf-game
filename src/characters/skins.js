@@ -8,14 +8,15 @@ import kushina from "./kushina/character.json";
 // Collection utilisee par la personnalisation du profil.
 // Le Studio 3D garde ses propres mouvements internes pour tester les animations.
 export const SKINS = [
-  { ...loki, movement: "Marche", movementType: "walk" },
-  { ...bailarina, movement: "Defile", movementType: "walk" },
-  { ...samba, movement: "Danse", movementType: "dance" },
-  { ...messi, movement: "Statique", movementType: "none" },
-  { ...kushina, movement: "Defile", movementType: "walk" },
+  { ...loki, access: "public", movement: "Marche", movementType: "walk" },
+  { ...bailarina, access: "public", movement: "Defile", movementType: "walk" },
+  { ...samba, access: "public", movement: "Danse", movementType: "dance" },
+  { ...messi, access: "public", movement: "Statique", movementType: "none" },
+  { ...kushina, access: "public", movement: "Defile", movementType: "walk" },
   {
     ...mutant,
     id: "mutant-swipe",
+    access: "public",
     name: "Mutant",
     movement: "Balayage",
     movementType: "swipe",
@@ -35,3 +36,8 @@ export function validSkin(value) {
 export function getSkin(value) {
   return SKINS.find((skin) => skin.id === validSkin(value)) || SKINS[0];
 }
+
+// Les prochains skins sont ajoutes ici avec access: "exclusive", un identifiant
+// unique et leur modele 3D importe. Le Studio les presentera mais les profils
+// ne pourront les equiper que si le serveur confirme leur deblocage.
+export const PUBLIC_SKINS = SKINS.filter(s=>s.access==='public');

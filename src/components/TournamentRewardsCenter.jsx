@@ -20,7 +20,8 @@ function GiftBox({name,releaseAt,status,reward,onOpen,busy}) {
         <strong>{reward.place ? `Place ${reward.place}` : 'Participation'}</strong>
         <span>Gain réel : {euro(reward.realCents)}</span>
         <span>Bonus : {euro(reward.bonusCents)}</span>
-        <small>Skins prévus : {reward.skinsPlanned} · attribution à l'inventaire non confirmée</small>
+        {!!reward.chosenSkins?.length && <small>Skins du Studio 3D : {reward.chosenSkins.map(s=>`${s.name} (${s.unlocked?'débloqué':'en attente'})`).join(' · ')}</small>}
+        {!reward.chosenSkins?.length && <small>Aucun skin exclusif choisi pour ce tournoi.</small>}
       </div>}
     </div>
     {status==='ready'&&<button type="button" className="maf-gift-card__open" disabled={busy} onClick={onOpen}>Ouvrir 🎁</button>}
