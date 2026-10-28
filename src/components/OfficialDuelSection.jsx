@@ -74,6 +74,7 @@ export default function OfficialDuelSection({session,hideAdmin=false}){
   setBusy(true);setError('');try{await reserveDuel(id);setNote('Réservation confirmée.');await refresh();}
   catch(e){setError(e.message);}finally{setBusy(false);}};
  const mineById=id=>mine.find(x=>x.id===id);
+ if (hideAdmin && !error && duels.length === 0 && notices.length === 0 && selected == null) return null;
  return <section className="maf-duels" aria-label="Tournois Monopoly a deux joueurs">
   <div className="maf-duels__title"><h3>🏆 Duels officiels · 2 joueurs</h3><p>Finale directe · mise de 500 F CFA · gagnant 900 F / deuxième 100 F.</p></div>
   {error&&<p className="maf-duel-error" role="alert">{error}</p>}{note&&<p role="status">{note}</p>}

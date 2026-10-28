@@ -12,3 +12,11 @@
 .maf-programming__item button:first-child{flex:1;text-align:left;overflow-wrap:anywhere}
 .maf-programming__item button:last-child{color:#fecaca}
 @media(max-width:540px){.maf-programming{padding:11px}.maf-programming__formats button{font-size:12px}.maf-programming__item button{font-size:12px}}
+
+/* Nettoyage des parties de test accessible sans changer d'onglet. */
+.maf-programming__cleanup{border:1px solid currentColor;border-radius:12px;padding:12px;opacity:.98}
+.maf-programming__cleanup summary{cursor:pointer;font-weight:700}
+.maf-programming__cleanup p{font-size:12px;line-height:1.55}
+.maf-programming__duel-name{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px}
+.maf-programming__item .maf-programming__delete{border-color:#b65b66;color:#ffe5e6;background:#772936;flex-shrink:0}
+.maf-programming__cleanup .maf-programming__item{border-bottom:1px solid #94a3b847;padding:5px 0}

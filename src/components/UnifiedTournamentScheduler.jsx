@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ownerTournaments, saveTournament, setTournamentRegistration } from '../api/tournaments';
-import { ownerDuels, createDuel, editDuel, cancelDuel, archiveDuel } from '../api/officialDuel';
+import { ownerDuels, createDuel, editDuel, archiveDuel } from '../api/officialDuel';
 import { giftOwnerTournaments, scheduleTournamentGift } from '../api/tournamentGifts';
 import { walletRequest } from '../api/accounts';
 import { newTournament, dateInput, dateFromInput } from '../tournaments/presentation';
@@ -105,12 +105,17 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
     });
   };
   const removeDuel = d => {
-    if(!window.confirm(`Retirer « ${d.title} » ? Les versements déjà dus restent enregistrés.`))return;
+    const active = ['published','playing'].includes(d.status);
+    const details = active
+      ? `Ce duel sera arrêté. Les ${d.registered} participant(s) encore inscrits seront remboursés de 500 F CFA chacun.`
+      : d.status === 'finished'
+        ? 'Le paiement des récompenses déjà prévues sera conservé et effectué à la date programmée.'
+        : 'Les gains déjà versés et les opérations financières seront conservés.';
+    if (!window.confirm(`Supprimer « ${d.title} » de la liste des tournois ?\n\n${details}\n\nCette suppression de la liste est définitive.`)) return;
     void run(async()=>{
-      if(['draft','published'].includes(d.status))await cancelDuel(d.id);
-      await archiveDuel(d.id);
+      const result = await archiveDuel(d.id, d.revision);
       if(Number(duelId)===Number(d.id)) {setDuelId(null);setDuel(blankDuel());}
-      setNotice('Duel retiré. Tu peux en programmer un nouveau.');
+      setNotice(result.refunded ? `Duel retiré. ${result.refunded} joueur(s) remboursé(s) (${result.refundTotal} F CFA).` : 'Duel retiré des listes. Historique financier conservé.');
     });
   };
 
@@ -123,6 +128,17 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
     </div>
     {error && <p className="tourney-error" role="alert">{error}</p>}
     {notice && <p className="tourney-success" role="status">{notice}</p>}
+    <details className="maf-programming__cleanup" open>
+      <summary>🧹 Nettoyer les anciens duels ({duels.length})</summary>
+      <p>Compte 999 uniquement. Supprime les anciens tests un par un. Un duel en cours sera interrompu avec remboursement des mises ; les récompenses déjà acquises et l'historique financier restent conservés.</p>
+      {duels.length === 0 ? <p>Aucun ancien duel à supprimer.</p> : <div className="maf-programming__list">
+        {duels.map(d => <div className="maf-programming__item" key={d.id}>
+          <span className="maf-programming__duel-name">{d.title} · {statusName[d.status] || d.status} · {d.registered}/2</span>
+          {format === 'duel' && ['draft','published'].includes(d.status) && <button type="button" disabled={busy} onClick={()=>editOneDuel(d)}>Modifier</button>}
+          <button type="button" className="maf-programming__delete" onClick={()=>removeDuel(d)} disabled={busy}>Supprimer</button>
+        </div>)}
+      </div>}
+    </details>
     {format === 'tournament' ? <>
       <div className="maf-programming__list"><strong>Tournois classiques programmés</strong>
         <button type="button" onClick={()=>newEntry('tournament')} disabled={busy}>＋ Nouveau</button>
@@ -145,12 +161,9 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
         <button type="submit">{busy?'Enregistrement…':normalId?'Enregistrer le tournoi':'Créer le tournoi'}</button>
       </fieldset></form>
     </> : <>
-      <div className="maf-programming__list"><strong>Duels programmés</strong>
+      <div className="maf-programming__list"><strong>Programmer un duel</strong>
         <button type="button" onClick={()=>newEntry('duel')} disabled={busy}>＋ Nouveau</button>
-        {duels.map(d=><div key={d.id} className="maf-programming__item">
-          <button type="button" onClick={()=>editOneDuel(d)} disabled={busy}>{d.title} · {statusName[d.status]||d.status} · {d.registered}/2</button>
-          <button type="button" onClick={()=>removeDuel(d)} disabled={busy}>Supprimer</button>
-        </div>)}
+        <small>Pour modifier un duel existant, utilise la liste « Nettoyer les anciens duels » ci-dessus.</small>
       </div>
       <form onSubmit={saveDuel}><fieldset disabled={busy}>
         <label>Titre <input required maxLength={80} value={duel.title} onChange={e=>setDuel(d=>({...d,title:e.target.value}))}/></label>

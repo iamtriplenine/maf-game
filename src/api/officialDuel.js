@@ -15,4 +15,4 @@ export const duelGifts=()=>walletRequest('/api/tournaments/duels/gifts/mine');
 export const openDuelGift=id=>walletRequest(`/api/tournaments/duels/gifts/${id}/open`,{method:'POST',body:{}});
 export const editDuel=(id,data)=>walletRequest(`/api/tournaments/duels/owner/${id}`,{method:'PUT',body:data});
 export const cancelDuel=id=>walletRequest(`/api/tournaments/duels/owner/${id}/cancel`,{method:'POST',body:{}});
-export const archiveDuel=id=>walletRequest(`/api/tournaments/duels/owner/${id}/archive`,{method:'POST',body:{}});
+export const archiveDuel=(id,revision)=>walletRequest(`/api/tournaments/duels/owner/${id}/archive`,{method:'POST',body:revision==null?{}:{revision}});

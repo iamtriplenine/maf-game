@@ -91,6 +91,7 @@ export function TournamentCard({ tournament: t, now, session = null, reserved = 
       <details><summary><span>04</span> Réservation & règles <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
         <p>Inscription individuelle : 500 F par joueur, dans la limite de 20 places. Les groupes seront tirés au sort au lancement.</p>
         {t.registrationOpen?<p>Réservation : 500 F sont débités de ton solde réel à la confirmation, pour une place unique par compte.</p>:<p>Les conditions de réservation, d’absence et de remboursement seront précisées avant l’ouverture des inscriptions.</p>}
+        <TournamentPolicy/>
       </div></details>
     </div>
   </article>;
@@ -203,7 +204,6 @@ export default function TournamentHub({ session }) {
     {loading&&<p role="status" className="tourney-empty">Chargement des tournois…</p>}
     {error&&<div className="tourney-error" role="alert">{error}<button type="button" onClick={()=>setGeneration(n=>n+1)}>Réessayer</button></div>}
     {!loading&&!error&&!items.length&&<div className="tourney-empty"><span aria-hidden="true">🏆</span><h3>Le prochain rendez-vous se prépare</h3><p>Les tournois programmés apparaîtront ici.</p></div>}
-    <TournamentPolicy/>
     <OfficialDuelSection session={session} hideAdmin/>
     <div className="tourney-grid">{items.map(t=><TournamentCard key={t.id} tournament={t} now={now} session={session} reserved={mine.includes(t.id)} onDone={(id,ok)=>{if(ok)setMine(m=>m.includes(id)?m:[...m,id]);setGeneration(n=>n+1);}}/>)}</div>
   </div>;
