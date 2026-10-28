@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useState,useRef} from 'react';
-import {publicDuels,ownerDuels,createDuel,editDuel,cancelDuel,reserveDuel,myDuels,duelGame,duelAction,duelNotices} from '../api/officialDuel';
+import {publicDuels,ownerDuels,createDuel,editDuel,cancelDuel,archiveDuel,reserveDuel,myDuels,duelGame,duelAction,duelNotices} from '../api/officialDuel';
 import {BoardMatch} from './MonopolyOnline';
 import {createPortal} from 'react-dom';
 // Le duel reprend toutes les commandes et animations de MonopolyOnline.
@@ -59,7 +59,16 @@ export default function OfficialDuelSection({session}){
     const data=editing?await editDuel(editing.id,payload):await createDuel(payload);
     setNote(`Duel #${data.duel.id} enregistré.`);setEditing(data.duel);await refresh();}
   catch(e){setError(e.message);}finally{setBusy(false);}};
- const cancel=async id=>{if(!window.confirm('Annuler ce duel et rembourser les inscrits ?'))return;setBusy(true);setError('');try{const d=await cancelDuel(id);setNote(`Duel annulé · ${d.refunded||0} remboursement(s).`);setEditing(null);await refresh();}catch(e){setError(e.message);}finally{setBusy(false);}};
+ const cancel=async id=>{if(!window.confirm('Annuler ce duel et rembourser les inscrits ?'))return;setBusy(true);setError('');try{const d=await cancelDuel(id);await archiveDuel(id);setNote(`Duel annulé et retiré · ${d.refunded||0} remboursement(s).`);setEditing(null);await refresh();}catch(e){setError(e.message);}finally{setBusy(false);}};
+ // MAF_DUEL_OWNER_REMOVE_V1 : masquer une partie terminée, sans supprimer ses crédits.
+ const archive=async id=>{
+  if(!window.confirm('Retirer ce duel de la liste ? Les gains, reservations et cadeaux restent conserves.'))return;
+  setBusy(true);setError('');
+  try{await archiveDuel(id);setNote('Duel retire. Tu peux programmer le suivant.');
+   setEditing(null);setSelected(null);setTitle('Duel Monopoly');setStartsAt('');setGiftsAt('');setStatus('draft');
+   await refresh();}
+  catch(e){setError(e.message);}finally{setBusy(false);}
+ };
  const reserve=async id=>{if(!window.confirm('Confirmer la réservation payante de 500 F CFA sur ton solde réel ?'))return;
   setBusy(true);setError('');try{await reserveDuel(id);setNote('Réservation confirmée.');await refresh();}
   catch(e){setError(e.message);}finally{setBusy(false);}};
@@ -70,7 +79,7 @@ export default function OfficialDuelSection({session}){
   {isOwner&&<details className="maf-duels__owner"><summary>Programmer un duel à deux joueurs (compte 999)</summary>
    <div className="maf-duels__drafts">
       <button type="button" onClick={()=>{setEditing(null);setTitle('Duel Monopoly');setStartsAt('');setGiftsAt('');setStatus('draft');}}>＋ Nouveau duel</button>
-      {ownerItems.map(d=><div key={d.id} className="maf-duels__draft-row"><button type="button" onClick={()=>{setEditing(d);setTitle(d.title);setStartsAt(timeInput(d.startsAt));setGiftsAt(timeInput(d.giftsAt));setStatus(['draft','published'].includes(d.status)?d.status:'draft');}}>{d.title} · {d.status}</button>{['draft','published'].includes(d.status)&&<button type="button" disabled={busy} onClick={()=>void cancel(d.id)}>Supprimer</button>}</div>)}
+      {ownerItems.map(d=><div key={d.id} className="maf-duels__draft-row"><button type="button" onClick={()=>{setEditing(d);setTitle(d.title);setStartsAt(timeInput(d.startsAt));setGiftsAt(timeInput(d.giftsAt));setStatus(['draft','published'].includes(d.status)?d.status:'draft');}}>{d.title} · {d.status}</button>{['draft','published'].includes(d.status)&&<button type="button" disabled={busy} onClick={()=>void cancel(d.id)}>Supprimer / annuler</button>}{['finished','paid','cancelled'].includes(d.status)&&<button type="button" disabled={busy} onClick={()=>void archive(d.id)}>Supprimer</button>}</div>)}
     </div>
    <form onSubmit={save}>
     <label>Titre<input required maxLength={80} value={title} onChange={e=>setTitle(e.target.value)}/></label>
