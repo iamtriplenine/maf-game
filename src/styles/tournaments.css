@@ -14,7 +14,11 @@
 .tourney-card__art i,.tourney-card__art b{position:absolute;color:var(--tr-gold);font-size:23px;left:26%;top:15px}.tourney-card__art b{left:auto;right:25%;top:58px;font-size:12px}
 .tourney-card__eyebrow{color:var(--tr-gold);font-size:9px;letter-spacing:.15em;margin:4px 0 8px;text-align:center}
 .tourney-card h3{font-size:clamp(23px,6vw,30px);line-height:1.13;margin:0;text-align:center;overflow-wrap:anywhere;color:#fff}
-.tourney-card__date{font-size:12px;color:#cbd8ec;text-align:center;line-height:1.6;margin:10px 0 16px}
+.tourney-card__date{font-size:12px;color:#cbd8ec;text-align:center;line-height:1.6;margin:10px 0 7px}
+/* Carte publique : description dans l'en-tete, reference libre sans encadre ni bouton. */
+.tourney-card__intro{max-width:38ch;margin:0 auto 10px;color:#cbd8ec;text-align:center;font-size:11px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.tourney-card__reference{display:flex;align-items:baseline;justify-content:center;gap:5px 8px;flex-wrap:wrap;margin:0 0 13px;color:#cbd8ec;font-size:11px;line-height:1.5}
+.tourney-card__reference strong{color:#f5f8ff;font-size:12px;font-weight:700;letter-spacing:.015em;user-select:all;-webkit-user-select:all;overflow-wrap:anywhere}
 .tourney-countdown{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
 .tourney-countdown>div{display:flex;flex-direction:column;align-items:center;background:#06132780;border:1px solid #adc4df24;border-radius:12px;padding:10px 2px}
 .tourney-countdown strong{font-size:28px;font-variant-numeric:tabular-nums;line-height:1.1;letter-spacing:.03em;color:var(--tr-gold)}

@@ -4,7 +4,6 @@ import UnifiedTournamentScheduler from './UnifiedTournamentScheduler';
 import OfficialDuelSection from './OfficialDuelSection';
 import TournamentQualificationMatch from './TournamentQualificationMatch';
 import TournamentFinalMatch from './TournamentFinalMatch';
-import TournamentReference from './TournamentReference';
 import { publicTournaments, ownerTournaments, saveTournament, reserveTournament, myTournamentReservations, setTournamentRegistration } from '../api/tournaments';
 import { refreshSession } from '../api/accounts';
 import { abidjanDate, countdown, dateFromInput, dateInput, francs, newTournament } from '../tournaments/presentation';
@@ -73,7 +72,8 @@ export function TournamentCard({ tournament: t, now, session = null, reserved = 
       <p className="tourney-card__eyebrow">LE RENDEZ-VOUS DES STRATÈGES</p>
       <h3>{t.title}</h3>
       <p className="tourney-card__date">{abidjanDate(t.startsAt)} · Abidjan</p>
-      <div className="tourney-card__reference"><TournamentReference value={t.reference} label="Référence tournoi"/></div>
+      {t.description && <p className="tourney-card__intro">{t.description === '20 joueurs. Quatre plateaux. Une finale pour devenir champion.' ? 'De 10 à 20 inscriptions · de 2 à 4 plateaux de qualification · une grande finale.' : t.description}</p>}
+      {t.reference && <p className="tourney-card__reference"><span>Référence tournoi</span> <strong>{t.reference}</strong></p>}
       <div className="tourney-countdown" role="timer" aria-label={reached ? 'Heure prévue atteinte' : 'Temps avant les qualifications'}>
         {remaining.map((n,i) => <div key={names[i]}><strong>{String(n).padStart(2,'0')}</strong><span>{names[i]}</span></div>)}
       </div>
@@ -90,7 +90,6 @@ export function TournamentCard({ tournament: t, now, session = null, reserved = 
         </div>)}</div>
         {!(t.participants||[]).length&&<p className="tourney-participants-empty">Aucun participant pour le moment.</p>}
       </details>
-      {t.description && <p className="tourney-description">{t.description === '20 joueurs. Quatre plateaux. Une finale pour devenir champion.' ? 'De 10 à 20 inscriptions · de 2 à 4 plateaux de qualification · une grande finale.' : t.description}</p>}
       <details><summary><span>01</span> Déroulement & horaires <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
         <p><strong>Qualifications :</strong> de deux à quatre plateaux de quatre ou cinq joueurs, selon les inscriptions. Chaque vainqueur rejoint la finale.</p>
         <p><strong>Finale prévue :</strong> {abidjanDate(t.finalAt)} (Abidjan), avec les deux à quatre qualifiés.</p>
