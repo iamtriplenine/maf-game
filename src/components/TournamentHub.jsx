@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import OfficialDuelSection from './OfficialDuelSection';
 import { publicTournaments, ownerTournaments, saveTournament, reserveTournament, myTournamentReservations, setTournamentRegistration } from '../api/tournaments';
 import { refreshSession } from '../api/accounts';
 import { abidjanDate, countdown, dateFromInput, dateInput, francs, newTournament } from '../tournaments/presentation';
@@ -201,6 +202,7 @@ export default function TournamentHub({ session }) {
     {error&&<div className="tourney-error" role="alert">{error}<button type="button" onClick={()=>setGeneration(n=>n+1)}>Réessayer</button></div>}
     {!loading&&!error&&!items.length&&<div className="tourney-empty"><span aria-hidden="true">🏆</span><h3>Le prochain rendez-vous se prépare</h3><p>Les tournois programmés apparaîtront ici.</p></div>}
     <TournamentPolicy/>
+    <OfficialDuelSection session={session}/>
     <div className="tourney-grid">{items.map(t=><TournamentCard key={t.id} tournament={t} now={now} session={session} reserved={mine.includes(t.id)} onDone={(id,ok)=>{if(ok)setMine(m=>m.includes(id)?m:[...m,id]);setGeneration(n=>n+1);}}/>)}</div>
   </div>;
 }

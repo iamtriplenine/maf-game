@@ -1,0 +1,18 @@
+.maf-duels,.maf-duels__gifts{border:1px solid rgba(140,162,187,.3);border-radius:18px;padding:16px;margin:16px 0;background:linear-gradient(135deg,rgba(11,24,42,.92),rgba(12,47,65,.9));color:#f5f8fa}
+.maf-duels__title h3,.maf-duels__gifts h3{margin:0 0 5px}
+.maf-duels button,.maf-duels__gifts button{border:1px solid rgba(193,226,245,.5);border-radius:9px;padding:10px 14px;background:#164e6e;color:white;cursor:pointer}
+.maf-duels button:disabled,.maf-duels__gifts button:disabled{opacity:.48;cursor:not-allowed}
+.maf-duels label{display:block;margin:10px 0}
+.maf-duels input,.maf-duels select{display:block;width:100%;min-height:40px;border-radius:7px;padding:7px;background:#edf4f8;color:#111b25}
+.maf-duels__card{background:rgba(0,0,0,.22);padding:14px;margin:12px 0;border-radius:12px}
+.maf-duels__card header{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.maf-duels__hint{font-size:12px;opacity:.82}
+.maf-duel-error{color:#ffb1ac;background:#4b1010;padding:12px;border-radius:9px}
+.maf-duel-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.maf-duel-players{display:flex;gap:15px;flex-wrap:wrap}
+.maf-duel-match{margin:20px 0;border-top:1px solid #aac5cc;padding-top:16px}
+.maf-duel-match>header{display:flex;justify-content:space-between;align-items:center}
+.maf-duel-match .mono-board{max-width:640px;margin:auto}
+.maf-duels__reveal{padding:20px;text-align:center;animation:duel-reveal 0.7s ease-out}
+.maf-duels__reveal span{font-size:2em}
+@keyframes duel-reveal{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}

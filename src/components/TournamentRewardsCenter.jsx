@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import OfficialDuelGifts from './OfficialDuelGifts';
 import { myTournamentGifts, openTournamentGift, giftOwnerTournaments, scheduleTournamentGift } from '../api/tournamentGifts';
 import '../styles/tournament-rewards-center.css';
 
@@ -72,6 +73,7 @@ export default function TournamentRewardsCenter({session}) {
   return <div className="maf-gifts" aria-label="Récompenses et cadeaux du tournoi">
     <header className="maf-gifts__top"><div className="maf-gifts__emblem">🎁</div>
       <div><h2>Mes récompenses</h2><p>Retrouve ici tes cadeaux et leurs heures de remise.</p></div></header>
+    <OfficialDuelGifts session={session}/>
     {!session?.id?<p className="maf-gifts__empty">Connecte-toi pour voir les récompenses de tes tournois.</p>:<>
       <div className="maf-gifts__toolbar"><h3>Mes coffres</h3><button type="button" disabled={busy} onClick={()=>void refresh().catch(e=>setError(e.message))}>↻ Actualiser</button></div>
       {error&&<p className="maf-gifts__error" role="alert">{error}</p>}
