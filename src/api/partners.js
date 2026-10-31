@@ -6,4 +6,4 @@ export function partnerAccounts(q='',offset=0){
 export function changePartnerStatus({id,active,expected_role,request_key}){
   return walletRequest('/api/owner/partners/'+id,{method:'PATCH',body:{active,expected_role,request_key}});
 }
-export const partnerCommissions=()=>walletRequest('/api/partner/commissions');
+export const partnerCommissions=(offset=0)=>walletRequest('/api/partner/commissions?offset='+encodeURIComponent(offset));
