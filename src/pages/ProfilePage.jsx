@@ -2,6 +2,7 @@ import useReferralSignup from "../referrals/useReferralSignup";
 import "../styles/gift-menu-indicator.css";
 import usePendingGifts from "../components/usePendingGifts";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ProfileMenuSlider from "../components/ProfileMenuSlider";
 import ProfileStage from "../components/ProfileStage";
 import ProfileBackground from "../components/ProfileBackground";
 import { readGuestProfileBackground, validProfileBackground } from "../profileBackgroundCatalog";
@@ -60,7 +61,6 @@ const APP_NAME = ["VIVA", "CENTER"];
 
 export default function ProfilePage({ onOpenStudio }) {
   const { session, login, register, logout, updateUser } = useSession();
-  const [moreOpen, setMoreOpen] = useState(false);
   const [sheet, setSheet] = useState(null);
   const openReferralSignup = useCallback(() => setSheet('signup'), []);
   const {referral,refresh:refreshReferral,clear:clearReferral} = useReferralSignup(session,openReferralSignup);
@@ -176,7 +176,6 @@ export default function ProfilePage({ onOpenStudio }) {
   useEffect(() => {
     setDraftSkin(null);
     setSkinError("");
-    setMoreOpen(false);
   }, [session?.id]);
 
 
@@ -256,25 +255,17 @@ export default function ProfilePage({ onOpenStudio }) {
               Connecte-toi avec ton pseudo et ton code pour retrouver ton compte.
             </p>
           )}
-          {moreOpen ? (
+          <ProfileMenuSlider key={session?.id || "guest"}>
             <div key="more" className="menu-grid menu-grid--more" aria-label="Options supplémentaires">
-              <button type="button" className="menu-btn menu-btn--back" onClick={() => setMoreOpen(false)}>
-                <span className="menu-btn__symbol" aria-hidden="true">←</span>
-                <span>Retour</span>
-              </button>
               <button type="button" className="menu-btn menu-btn--guide" onClick={() => setSheet("guide")}>
                 <span className="menu-btn__symbol" aria-hidden="true">?</span>
                 <span>Guide</span>
-              </button>
-              <button type="button" className="menu-btn menu-btn--community" onClick={() => setSheet("community")}>
-                <span className="menu-btn__symbol" aria-hidden="true">♧</span>
-                <span>Communauté</span>
               </button>
               <button type="button" className="menu-btn" onClick={() => setSheet(session ? "history" : "login")}>
                 <IconHistory />
                 <span>Historique</span>
               </button>
-              <button type="button" className="menu-btn" onClick={() => { setMoreOpen(false); onOpenStudio?.(); }}>
+              <button type="button" className="menu-btn" onClick={() => { onOpenStudio?.(); }}>
                 <IconCube />
                 <span>Studio 3D</span>
               </button>
@@ -296,7 +287,6 @@ export default function ProfilePage({ onOpenStudio }) {
                 </button>
               )}
             </div>
-          ) : (
             <div key="main" className="menu-grid menu-grid--main" aria-label="Menu principal">
               <button
                 type="button"
@@ -330,12 +320,12 @@ export default function ProfilePage({ onOpenStudio }) {
                 <span>Cadeaux</span>
                 {pendingGiftCount > 0 && <span className="menu-gift-indicator" aria-label={`${pendingGiftCount} cadeau(s) à ouvrir`}>{pendingGiftCount > 9 ? '9+' : pendingGiftCount}</span>}
               </button>
-              <button type="button" className="menu-btn menu-btn--more" onClick={() => setMoreOpen(true)} aria-label="Plus d'options">
-                <span className="menu-btn__symbol" aria-hidden="true">•••</span>
-                <span>More</span>
+              <button type="button" className="menu-btn menu-btn--community" onClick={() => setSheet("community")}>
+                <span className="menu-btn__symbol" aria-hidden="true">♧</span>
+                <span>Communauté</span>
               </button>
             </div>
-          )}
+          </ProfileMenuSlider>
         </section>
       </main>
 
