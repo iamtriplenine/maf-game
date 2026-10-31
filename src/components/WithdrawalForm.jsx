@@ -53,7 +53,7 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
   const expired = account?.phone && !account.phone_verified_at && (!account.phone_verification_deadline || new Date(account.phone_verification_deadline).getTime() <= clock);
   const balance = Number(currency === 'V' ? user.bonus_balance : user.balance) || 0;
   const value = Number(amount);
-  const costs = Number.isSafeInteger(value) && value >= 100 && value <= 1000000 ? withdrawalFees(value) : null;
+  const costs = Number.isSafeInteger(value) && value >= 100 && value <= 1000000 ? withdrawalFees(value,currency) : null;
   const fee = costs?.fee_amount ?? null;
   const ownerFee = costs?.owner_fee_amount ?? 0;
   const total = costs ? costs.total_amount : 0;
@@ -80,7 +80,7 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
       setItems(old => [result.transaction,...old.filter(t => t.id !== result.transaction.id)].slice(0,10));
       forgetIntent();
       setMessage(result.transaction.status === 'pending'
-        ? `Demande envoyée : ${money(result.transaction.total_amount ?? request.amount)} ${unit(request)} débités (1 % de frais de service et 18 % de frais de retrait). Tu recevras ${money(request.amount)} F CFA au ${result.transaction.phone}.`
+        ? `Demande envoyée : ${money(result.transaction.total_amount ?? request.amount)} ${unit(request)} débités (frais : ${money(Number(result.transaction.fee_amount || 0) + Number(result.transaction.owner_fee_amount || 0))} ${unit(request)}). Tu recevras ${money(request.amount)} F CFA au ${result.transaction.phone}.`
         : `Demande déjà traitée : ${statuses[result.transaction.status]}.`);
     } catch(e) {
       // Les erreurs de validation sont definitives ; une panne reseau garde la meme cle.
@@ -106,9 +106,9 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
           <label className="wallet-check"><input type="radio" name="withdrawal-currency" checked={currency === 'V'} onChange={() => setCurrency('V')}/>Bonus · <AnimatedAmount value={user.bonus_balance} cacheKey={`wallet:${user.id}:V`} suffix=" V"/></label>
           <label className="wallet-label">Montant à recevoir en F CFA<input type="number" inputMode="numeric" min="100" max="1000000" step="1" required value={amount} onChange={e => setAmount(e.target.value)}/></label>
         </fieldset>
-        {costs && <div className="wallet-fees" role="status" aria-live="polite"><span>Montant à recevoir : <strong>{money(value)} F CFA</strong></span><span>Frais de service (1 %) : <strong>{money(fee)} {currency === 'V' ? 'V' : 'F CFA'}</strong></span><span>Frais de retrait (18 %) : <strong>{money(ownerFee)} {currency === 'V' ? 'V' : 'F CFA'}</strong></span><span className="wallet-fees__total">Total débité (19 % de frais) : <strong>{money(total)} {currency === 'V' ? 'V' : 'F CFA'}</strong></span></div>}
-        <p className="sheet__text">Minimum : 100 F CFA. Le total des frais est de 19 %, arrondi au franc supérieur, dont 1 % de frais de service et 18 % de frais de retrait. Pour les bonus : 1 V = 1 F CFA. En cas de refus, tout sera remboursé.</p>
-        {!intent && fee !== null && total > balance && <p className="sheet__error">Solde insuffisant pour le retrait et les frais de 19 %.</p>}
+        {costs && <div className="wallet-fees" role="status" aria-live="polite"><span>Montant à recevoir : <strong>{money(value)} F CFA</strong></span><span>Frais de service (1 %) : <strong>{money(fee)} {currency === 'V' ? 'V' : 'F CFA'}</strong></span>{currency === 'F' && <span>Frais de retrait (18 %) : <strong>{money(ownerFee)} F CFA</strong></span>}<span className="wallet-fees__total">Total débité ({currency === 'V' ? '1' : '19'} % de frais) : <strong>{money(total)} {currency === 'V' ? 'V' : 'F CFA'}</strong></span></div>}
+        <p className="sheet__text">Minimum : 100 F CFA. {currency === 'V' ? 'Retrait de bonus : seulement 1 % de frais de service, arrondi au franc supérieur. Aucune commission propriétaire.' : 'Retrait d’argent réel : 19 % de frais au total, arrondis au franc supérieur, dont 1 % de service et 18 % de retrait.'} Pour les bonus : 1 V = 1 F CFA. En cas de refus, tout sera remboursé.</p>
+        {!intent && fee !== null && total > balance && <p className="sheet__error">Solde insuffisant pour le retrait et les frais de {currency === 'V' ? '1' : '19'} %.</p>}
         {intent && <p className="wallet-notice">Une demande doit être vérifiée après une interruption. Réessaie avec la même demande pour éviter un double débit.</p>}
         <button className="btn btn--primary btn--block" disabled={busy || (!intent && (!valid || expired || !info?.has_deposit))}>
           {busy ? 'Envoi…' : intent ? 'Vérifier / renvoyer ma demande' : 'Valider le retrait'}
@@ -120,7 +120,7 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
     {message && <p className="wallet-notice" role="status">{message}</p>}
     {items.length > 0 && <section className="wallet-form" aria-label="Derniers retraits"><h3>Derniers retraits</h3>{items.map(t => <div className="wallet-notice" key={t.id}>
       <strong>{money(t.amount)} F CFA à recevoir · {t.currency === 'V' ? 'Bonus V' : 'Argent réel'}</strong><br/>{statuses[t.status] || t.status}<br/>
-      <small>Frais : {money(t.fee_amount || 0)} + frais de retrait : {money(t.owner_fee_amount || 0)} {t.currency === 'V' ? 'V' : 'F CFA'} · Débit total : {money(t.total_amount ?? t.amount)} {t.currency === 'V' ? 'V' : 'F CFA'}</small><br/>
+      <small>Frais de service : {money(t.fee_amount || 0)} {t.currency === 'V' ? 'V' : 'F CFA'}{Number(t.owner_fee_amount || 0) > 0 && <> + frais de retrait : {money(t.owner_fee_amount)} {t.currency === 'V' ? 'V' : 'F CFA'}</>} · Débit total : {money(t.total_amount ?? t.amount)} {t.currency === 'V' ? 'V' : 'F CFA'}</small><br/>
       <small>{new Date(t.created_at).toLocaleString('fr-FR')} · {t.phone} · #{t.id.slice(0,8)}</small>
       {t.admin_note && <p>{t.admin_note}</p>}
     </div>)}</section>}
