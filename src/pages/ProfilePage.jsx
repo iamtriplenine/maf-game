@@ -27,6 +27,8 @@ import { useSession } from "../auth/useSession";
 import AuthForm from "../components/AuthForm";
 import AdminPanel from "../components/AdminPanel";
 import OwnerCommissionSummary from "../components/OwnerCommissionSummary";
+import OwnerPartnerManager from "../components/OwnerPartnerManager";
+import PartnerCommissionSummary from "../components/PartnerCommissionSummary";
 import OwnerWinCodes from "../components/OwnerWinCodes";
 import { wakeServer, saveSkin, syncWallet } from "../api/accounts";
 import { DEFAULT_SKIN, SKINS, PUBLIC_SKINS, validSkin } from "../characters/skins";
@@ -269,9 +271,13 @@ export default function ProfilePage({ onOpenStudio }) {
                 <IconCube />
                 <span>Studio 3D</span>
               </button>
-              {session?.account_role === 'owner' && (
-                <button type="button" className={`menu-btn${commissionsButton.pressing ? ' is-pressing' : ''}`}
-                  title="Appui court : commissions · Appui long : codes Win" {...commissionsButton.handlers}>
+              {session?.account_role === 'owner' && <button type="button" className="menu-btn" onClick={() => setSheet('owner-partners')}>
+                <span aria-hidden="true" style={{fontSize:22}}>♧</span><span>Mes partenaires</span>
+              </button>}
+              {['owner','partner'].includes(session?.account_role) && (
+                <button type="button" className={`menu-btn${session?.account_role === 'owner' && commissionsButton.pressing ? ' is-pressing' : ''}`}
+                  title={session?.account_role === 'owner' ? 'Appui court : commissions · Appui long : codes Win' : 'Voir mes commissions'}
+                  {...(session?.account_role === 'owner' ? commissionsButton.handlers : {onClick: () => setSheet('owner-commissions')})}>
                   <span aria-hidden="true" style={{fontSize:22}}>◈</span>
                   <span>Mes commissions</span>
                 </button>
@@ -472,8 +478,12 @@ export default function ProfilePage({ onOpenStudio }) {
         {session && <CouponForm onUser={updateUser} onAdmin={() => setSheet("admin")} />}
       </Sheet>
       {sheet === "admin" && session && <AdminPanel key={session.id} onClose={close} />}
+      <Sheet open={sheet === "owner-partners"} title="Mes partenaires" onClose={close}>
+        {session?.account_role === 'owner' && <OwnerPartnerManager key={session.id} />}
+      </Sheet>
       <Sheet open={sheet === "owner-commissions"} title="Mes commissions" onClose={close}>
         {session?.account_role === 'owner' && <OwnerCommissionSummary key={session.id} />}
+        {session?.account_role === 'partner' && <PartnerCommissionSummary key={session.id} />}
       </Sheet>
       <Sheet open={sheet === "owner-win-codes"} title="Codes Mode Win" onClose={close}>
         {session?.account_role === 'owner' && <OwnerWinCodes key={session.id} />}
