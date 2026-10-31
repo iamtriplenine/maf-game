@@ -1,3 +1,4 @@
+import "../styles/referrals.css";
 import { useRef, useState } from "react";
 import HourglassLoader from "./HourglassLoader";
 import CodeDials from "./CodeDials";
@@ -10,17 +11,18 @@ import {
 
 // Formulaire Login / Sign Up : pseudo + code a 10 chiffres (molettes 3D).
 // Attente utilisateur : sablier aux couleurs du theme, sans message technique.
-export default function AuthForm({ mode, onSubmit }) {
+export default function AuthForm({ mode, onSubmit, referral, onRetryReferral, onClearReferral }) {
   const [pseudo, setPseudo] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const isSignup = mode === "signup";
   const inFlight = useRef(false);
+  const referralBlocked = isSignup && referral && !['none','valid'].includes(referral.status);
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (inFlight.current) return;
+    if (inFlight.current || referralBlocked) return;
     inFlight.current = true;
     setBusy(true);
     setError("");
@@ -59,6 +61,17 @@ export default function AuthForm({ mode, onSubmit }) {
         />
       </label>
 
+      {isSignup && referral?.status !== 'none' && referral && <div className="referral-notice">
+        {referral.code && <label className="wallet-label" htmlFor="signup-referral-code">Code de parrainage
+          <input id="signup-referral-code" className="referral-code" value={referral.code} readOnly autoComplete="off" aria-readonly="true" />
+        </label>}
+        {referral.status === 'loading' && <p role="status">Vérification du lien de parrainage…</p>}
+        {referral.status === 'valid' && <><p>Invité par <strong>{referral.partner_pseudo}</strong>.</p><small>Code renseigné automatiquement par le lien, non modifiable.</small></>}
+        {['error','expired'].includes(referral.status) && <p className="sheet__error" role="alert">{referral.message}</p>}
+        {referral.status !== 'loading' && <button type="button" className="btn btn--glass btn--block" disabled={busy} onClick={onRetryReferral}>Actualiser le lien</button>}
+        <button type="button" className="btn btn--glass btn--block" disabled={busy} onClick={onClearReferral}>Continuer sans parrainage</button>
+      </div>}
+
       <CodeDials onChange={setCode} disabled={busy} />
       <p className="dials-hint">Fais rouler chaque molette sur ton chiffre.</p>
 
@@ -71,7 +84,7 @@ export default function AuthForm({ mode, onSubmit }) {
       <button
         type="submit"
         className="btn btn--primary btn--block"
-        disabled={busy || !isValidPseudo(pseudo) || !isValidCode(code)}
+        disabled={busy || referralBlocked || !isValidPseudo(pseudo) || !isValidCode(code)}
       >
         {busy ? (
           <>

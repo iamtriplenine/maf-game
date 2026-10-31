@@ -1,3 +1,4 @@
+import useReferralSignup from "../referrals/useReferralSignup";
 import "../styles/gift-menu-indicator.css";
 import usePendingGifts from "../components/usePendingGifts";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -61,6 +62,8 @@ export default function ProfilePage({ onOpenStudio }) {
   const { session, login, register, logout, updateUser } = useSession();
   const [moreOpen, setMoreOpen] = useState(false);
   const [sheet, setSheet] = useState(null);
+  const openReferralSignup = useCallback(() => setSheet('signup'), []);
+  const {referral,refresh:refreshReferral,clear:clearReferral} = useReferralSignup(session,openReferralSignup);
   const pendingGiftCount = usePendingGifts(session?.id, sheet); // login | signup | account | recharge
   const [chatOn, setChatOn] = useState(readChatPref);
   const [chatFull, setChatFull] = useState(false); // chat global en plein ecran
@@ -201,6 +204,10 @@ export default function ProfilePage({ onOpenStudio }) {
           </>
         )}
 
+        {session && referral.status !== 'none' && <div className="referral-notice" role="status">
+          <p>Ce lien est réservé aux nouveaux comptes. Aucun parrainage ne sera ajouté à ton compte actuel.</p>
+          <button type="button" className="btn btn--glass btn--block" onClick={clearReferral}>Fermer le lien de parrainage</button>
+        </div>}
         <div className="profile__actions">
           {session ? (
             <>
@@ -427,8 +434,13 @@ export default function ProfilePage({ onOpenStudio }) {
       <Sheet open={sheet === "signup"} title="Sign Up" onClose={close}>
         <AuthForm
           mode="signup"
+          referral={referral}
+          onRetryReferral={() => void refreshReferral()}
+          onClearReferral={clearReferral}
           onSubmit={async (pseudo, code) => {
-            await register(pseudo, code);
+            if (!['none','valid'].includes(referral.status)) throw new Error('Vérifie le lien de parrainage avant de continuer.');
+            await register(pseudo, code, referral.status === 'valid' ? referral.proof : undefined);
+            clearReferral();
             close();
           }}
         />

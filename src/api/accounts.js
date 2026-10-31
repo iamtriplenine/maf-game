@@ -88,16 +88,16 @@ export function currentSession() {
   return readStored()?.user ?? null;
 }
 
-async function authenticate(path, pseudo, code) {
+async function authenticate(path, pseudo, code, referralProof) {
   if (!isValidPseudo(pseudo)) throw new Error("Le pseudo doit faire entre 3 et 20 caracteres.");
   if (!isValidCode(code)) throw new Error("Le code doit contenir exactement 10 chiffres.");
-  const { token, user } = await request(path, { method: "POST", body: { pseudo, code } });
+  const { token, user } = await request(path, { method: "POST", body: { pseudo, code, ...(referralProof !== undefined ? {referral_proof:referralProof} : {}) } });
   clearAdminAccess();
   writeStored({ token, user });
   return user;
 }
 
-export const register = (pseudo, code) => authenticate("/api/register", pseudo, code);
+export const register = (pseudo, code, referralProof) => authenticate(referralProof === undefined ? "/api/register" : "/api/register-referred", pseudo, code, referralProof);
 export const login = (pseudo, code) => authenticate("/api/login", pseudo, code);
 
 // Met a jour le solde ; deconnecte si la session a expire. Hors ligne : on garde la session.
@@ -202,3 +202,5 @@ export async function saveProfileBackground(backgroundId) {
   if (readStored()?.token !== stored.token) throw new Error('La session a change. Reessaie.');
   return user;
 }
+
+export const resolveReferral = code => request("/api/referrals/resolve?code="+encodeURIComponent(code));
