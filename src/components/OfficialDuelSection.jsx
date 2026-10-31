@@ -45,7 +45,7 @@ function DuelMatch({id,session,onClose}){
 
 // MAF_OWNER_DUEL_MOVED_V1 : le formulaire est dans la gestion commune.
 export default function OfficialDuelSection({session,hideAdmin=false}){
- const isOwner=session?.pseudo==='999';
+ const isOwner=session?.account_role === 'owner';
  const [duels,setDuels]=useState([]),[mine,setMine]=useState([]),[notices,setNotices]=useState([]),[ownerItems,setOwnerItems]=useState([]),[editing,setEditing]=useState(null);
  const [selected,setSelected]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[note,setNote]=useState('');
  const [title,setTitle]=useState('Duel Monopoly'),[startsAt,setStartsAt]=useState(''),[giftsAt,setGiftsAt]=useState(''),[status,setStatus]=useState('draft');

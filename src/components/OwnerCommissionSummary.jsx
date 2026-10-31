@@ -16,6 +16,7 @@ export default function OwnerCommissionSummary(){
     {!data && !error && <p>Chargement de tes commissions…</p>}
     {error && <p role="alert" className="sheet__error">{error}</p>}
     {data && <>
+      <p className="sheet__text">Compte propriétaire · Accès exclusif</p>
       <div className="owner-earnings__summary">
         <div><span>Aujourd’hui</span><strong>{fmt(data.today)} V</strong></div>
         <div><span>7 derniers jours</span><strong>{fmt(data.last_7_days)} V</strong></div>

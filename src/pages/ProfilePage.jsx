@@ -156,7 +156,7 @@ export default function ProfilePage({ onOpenStudio }) {
   },[session?.id]);
   const giftsButton = useLongPress({
     onClick: () => setSheet('gifts'),
-    onLong: () => setSheet(session?.pseudo === '999' ? 'gift-admin' : 'gifts'),
+    onLong: () => setSheet(session?.account_role === 'owner' ? 'gift-admin' : 'gifts'),
     ms: 700,
   });
   const commissionsButton = useLongPress({
@@ -269,7 +269,7 @@ export default function ProfilePage({ onOpenStudio }) {
                 <IconCube />
                 <span>Studio 3D</span>
               </button>
-              {session?.pseudo === '999' && (
+              {session?.account_role === 'owner' && (
                 <button type="button" className={`menu-btn${commissionsButton.pressing ? ' is-pressing' : ''}`}
                   title="Appui court : commissions · Appui long : codes Win" {...commissionsButton.handlers}>
                   <span aria-hidden="true" style={{fontSize:22}}>◈</span>
@@ -312,7 +312,7 @@ export default function ProfilePage({ onOpenStudio }) {
                 <span>Classement</span>
               </button>
               <button type="button" className={`menu-btn menu-btn--gift${giftsButton.pressing ? " is-pressing" : ""}`}
-                title={session?.pseudo === "999" ? "Appui long : programmer des cadeaux" : "Mes cadeaux"} {...giftsButton.handlers}>
+                title={session?.account_role === 'owner' ? "Appui long : programmer des cadeaux" : "Mes cadeaux"} {...giftsButton.handlers}>
                 <span className="menu-btn__symbol" aria-hidden="true">🎁</span>
                 <span>Cadeaux</span>
                 {pendingGiftCount > 0 && <span className="menu-gift-indicator" aria-label={`${pendingGiftCount} cadeau(s) à ouvrir`}>{pendingGiftCount > 9 ? '9+' : pendingGiftCount}</span>}
@@ -327,7 +327,7 @@ export default function ProfilePage({ onOpenStudio }) {
       </main>
 
       <Sheet open={sheet === "gift-admin"} title="Programmer les cadeaux" onClose={close}>
-        {session?.pseudo === '999' && <OwnerGiftManager />}
+        {session?.account_role === 'owner' && <OwnerGiftManager />}
       </Sheet>
       <Sheet open={sheet === "gifts"} title="Mes cadeaux" onClose={close}>
         <TournamentRewardsCenter key={session?.id || 'guest'} session={session} />
@@ -473,10 +473,10 @@ export default function ProfilePage({ onOpenStudio }) {
       </Sheet>
       {sheet === "admin" && session && <AdminPanel key={session.id} onClose={close} />}
       <Sheet open={sheet === "owner-commissions"} title="Mes commissions" onClose={close}>
-        {session?.pseudo === '999' && <OwnerCommissionSummary key={session.id} />}
+        {session?.account_role === 'owner' && <OwnerCommissionSummary key={session.id} />}
       </Sheet>
       <Sheet open={sheet === "owner-win-codes"} title="Codes Mode Win" onClose={close}>
-        {session?.pseudo === '999' && <OwnerWinCodes key={session.id} />}
+        {session?.account_role === 'owner' && <OwnerWinCodes key={session.id} />}
       </Sheet>
       <Sheet open={sheet === "history"} title="Historique" onClose={close}>
         {session && <AccountHistory key={session.id} />}

@@ -10,7 +10,7 @@ const caption = a => a.kind === 'withdrawal' ? 'NOUVEAU RETRAIT'
 
 export default function OwnerRequestAlerts() {
   const { session } = useSession();
-  const ownerId = session?.pseudo === '999' ? session.id : null;
+  const ownerId = session?.account_role === 'owner' ? session.id : null;
   const [notices,setNotices] = useState([]);
   const [pending,setPending] = useState(null);
   const [error,setError] = useState('');

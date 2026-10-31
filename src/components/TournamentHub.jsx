@@ -183,7 +183,7 @@ export function TournamentManager({ onSaved, onClose }) {
 }
 
 export default function TournamentHub({ session }) {
-  const owner = session?.pseudo === '999';
+  const owner = session?.account_role === 'owner';
   const [manager,setManager] = useState(false), [pressing,setPressing] = useState(false);
   const [items,setItems] = useState([]), [loading,setLoading] = useState(true), [error,setError] = useState('');
   const [now,setNow] = useState(Date.now), [generation,setGeneration] = useState(0);

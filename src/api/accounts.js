@@ -156,7 +156,7 @@ export async function adminRequest(path,options={}) {
   const stored=readStored();
   // MAF_OWNER_ADMIN_V1 : acces direct proprietaire conserve.
   // MAF_ADMIN_MESSAGES_COUPON_V1 : transmettre le jeton Coupons aux routes Messages.
-  if (stored?.user?.pseudo === '999') return request('/api/admin'+path,{
+  if (stored?.user?.account_role === 'owner') return request('/api/admin'+path,{
     ...options,
     token:stored.token,
     headers:{

@@ -21,7 +21,7 @@ function GiftBox({name,releaseAt,status,reward,onOpen,busy}) {
 }
 
 export default function TournamentRewardsCenter({session}) {
-  const owner = session?.pseudo === '999';
+  const owner = session?.account_role === 'owner';
   const [items,setItems]=useState([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const [revealGift,setRevealGift]=useState(null),[ownerTournaments,setOwnerTournaments]=useState([]);
   const [tourId,setTourId]=useState(''),[release,setRelease]=useState('');
