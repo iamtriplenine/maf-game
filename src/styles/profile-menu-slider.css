@@ -1,9 +1,9 @@
 .profile-menu-slider { min-width: 0; touch-action: pan-y; user-select: none; }
 .profile-menu-slider:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: var(--r-md); }
 .profile-menu-slider__viewport { overflow: hidden; padding: 3px 0; }
-.profile-menu-slider__track { display: flex; align-items: flex-start; transition: transform .23s ease-out; }
+.profile-menu-slider__track { display: flex; align-items: flex-start; transition: transform .22s cubic-bezier(.2, .7, .3, 1); will-change: transform; }
+.profile-menu-slider__track.is-dragging { transition: none; }
 .profile-menu-slider__page { flex: 0 0 100%; min-width: 0; }
-.profile-menu-slider__hint { margin: 6px 0 0; text-align: center; color: var(--text-dim); font-size: 11px; line-height: 1.4; }
 @media (prefers-reduced-motion: reduce) { .profile-menu-slider__track { transition: none; } }
 /* Le verrouillage global du zoom autorise pan-x ; ici le geste horizontal appartient au menu. */
 html.maf-zoom-locked #root .profile-menu-slider,
