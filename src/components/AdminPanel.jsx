@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { adminRequest } from '../api/accounts';
+import DeleteUserControl from './DeleteUserControl';
 import HourglassLoader from './HourglassLoader';
 import AdminChat from './AdminChat';
 import WithdrawalAdmin from './WithdrawalAdmin';
@@ -81,7 +82,7 @@ function DepositDetail({transaction:t,onBack,onDone,onBusy}) {
 export default function AdminPanel({onClose,initialTab='deposits',initialTransaction=null}) { // MAF_OWNER_PANEL_V1
   const [tab,setTab]=useState(initialTab), [filter,setFilter]=useState('pending');
   const [search,setSearch]=useState(''), [draft,setDraft]=useState(''), [offset,setOffset]=useState(0);
-  const [result,setResult]=useState({key:null,rows:[],total:0,summary:null,error:''});
+  const [result,setResult]=useState({key:null,rows:[],total:0,summary:null,error:'',canDelete:false});
   const [flash,setFlash]=useState('');
   const [revision,setRevision]=useState(0), [selected,setSelected]=useState(initialTransaction?.kind === 'deposit' ? initialTransaction : null), [acting,setActing]=useState(false);
   const requestKey=JSON.stringify([tab,filter,search,offset,revision]);
@@ -112,7 +113,7 @@ export default function AdminPanel({onClose,initialTab='deposits',initialTransac
     const query=tab==='deposits' ? `/transactions?kind=deposit&limit=${PAGE}&offset=${offset}${filter?'&status='+filter:''}` : `/users?limit=${PAGE}&offset=${offset}&q=${encodeURIComponent(search)}`;
     Promise.all([adminRequest(query),adminRequest('/summary')]).then(([data,stats])=>{
       if(!alive)return;
-      setResult({key:requestKey,rows:tab==='deposits'?data.transactions:data.users,total:data.total,summary:stats,error:''});
+      setResult({key:requestKey,rows:tab==='deposits'?data.transactions:data.users,total:data.total,summary:stats,error:'',canDelete:tab==='users' && data.can_delete===true});
     }).catch(e=>{if(alive)setResult(previous=>({...previous,key:requestKey,rows:[],error:e.message}));});
     return ()=>{alive=false;};
   },[tab,filter,search,offset,requestKey]);
@@ -138,6 +139,7 @@ export default function AdminPanel({onClose,initialTab='deposits',initialTransac
           </article> : <details className="admin-card admin-user-row" key={row.id}>
             <summary><span className="admin-user-name"><strong>{row.pseudo}</strong><span className="admin-muted">ID {row.client_id || '—'}</span></span><span className="admin-user-balances"><strong>{money(row.balance)} F</strong><span>{money(row.bonus_balance)} V</span></span><span className="admin-user-chevron" aria-hidden="true">⌄</span></summary>
             <dl className="admin-info-grid"><Info label="Téléphone">{row.phone}</Info><Info label="Inscription">{date(row.created_at)}</Info><Info label="Vérification">{row.phone_verified_at?'Numéro vérifié':row.phone?'À vérifier':'Sans numéro'}</Info><Info label="Numéro vérifié le">{date(row.phone_verified_at)}</Info>{row.phone && !row.phone_verified_at && <Info label="Vérification avant">{date(row.phone_verification_deadline)}</Info>}</dl>
+            {result.canDelete && <DeleteUserControl user={row} disabled={acting} onBusy={setActing} onDeleted={message=>{setFlash(message);setOffset(0);setRevision(n=>n+1);}}/>}
           </details>)}
         </section>
         {!loading && !error && total>0 && <div className="admin-pagination"><button type="button" className="admin-btn" disabled={offset===0} onClick={()=>setOffset(n=>Math.max(0,n-PAGE))}>Précédent</button><span>{Math.min(offset+1,total)}–{Math.min(offset+PAGE,total)} / {total}</span><button type="button" className="admin-btn" disabled={offset+PAGE>=total} onClick={()=>setOffset(n=>n+PAGE)}>Suivant</button></div>}
