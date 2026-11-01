@@ -56,6 +56,39 @@ function ReserveAction({ tournament: t, reached, session, reserved, onDone }) {
   </div>;
 }
 
+function PenaltyTournamentCard({t,now}) {
+  const remaining = countdown(t.startsAt,now);
+  const plan = t.bracket;
+  const names = ['Jours','Heures','Minutes','Secondes'];
+  return <article className="tourney-card tourney-card--penalty">
+    <div className="tourney-card__hero">
+      <div className="tourney-card__top"><span className="tourney-tag">⚽ TIR-AU-BUT</span><span className="tourney-tag tourney-tag--gold">{t.capacity} PLACES MAX</span></div>
+      <div className="tourney-card__art" aria-hidden="true"><span>⚽</span><i>✦</i><b>◆</b></div>
+      <p className="tourney-card__eyebrow">LE CHAMPIONNAT DES BUTEURS</p>
+      <h3>{t.title}</h3>
+      <p className="tourney-card__date">{abidjanDate(t.startsAt)} · Abidjan</p>
+      {t.description && <p className="tourney-card__intro">{t.description}</p>}
+      {t.reference && <p className="tourney-card__reference"><span>Référence tournoi</span> <strong>{t.reference}</strong></p>}
+      <div className="tourney-countdown" role="timer">{remaining.map((n,i)=><div key={names[i]}><strong>{String(n).padStart(2,'0')}</strong><span>{names[i]}</span></div>)}</div>
+      <div className="tourney-card__places"><span><strong>{t.registered}</strong> / {t.capacity} inscrits</span><span>Entrée <strong>{francs(t.entryFee)} CFA</strong></span></div>
+      <progress max={t.capacity} value={t.registered} aria-label="Places réservées"/>
+      <button type="button" className="tourney-cta" disabled>Inscriptions bientôt ouvertes</button>
+      <p className="tourney-card__note">Élimination directe · {t.penaltyShots} tirs par joueur et par match</p>
+    </div>
+    <div className="tourney-card__details">
+      <details><summary><span>01</span> Déroulement <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
+        <p>Affrontements deux à deux. Le gagnant progresse jusqu’à la finale, programmée le {abidjanDate(t.finalAt)}.</p>
+        <p>Si le nombre d'inscrits est impair au lancement, la dernière inscription est retirée et remboursée. En cas de nombre impair de qualifiés, un joueur est exempt du tour concerné.</p>
+        {plan && <p>Inscriptions actuelles : {t.registered} · {plan.initialMatches} match(s) prévus au premier tour · {plan.refunded} remboursement(s) nécessaire(s) · cagnotte retenue {francs(plan.pot)} F.</p>}
+      </div></details>
+      <details><summary><span>02</span> Participants <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
+        {(t.participants||[]).length ? <p>{t.participants.join(' · ')}</p>:<p>Aucun participant inscrit.</p>}
+      </div></details>
+      <TournamentSkinShowcase participantId={t.participantSkinId} winnerId={t.winnerSkinId} participantName={t.participantSkinName} winnerName={t.winnerSkinName}/>
+    </div>
+  </article>;
+}
+
 export function TournamentCard({ tournament: t, now, session = null, reserved = false, onDone = () => {} }) {
   const remaining = countdown(t.startsAt, now), reached = Date.parse(t.startsAt) <= now;
   const [requestedFormat, setRequestedFormat] = useState(null);
@@ -66,6 +99,7 @@ export function TournamentCard({ tournament: t, now, session = null, reserved = 
     ? francs(format.eliminatedMinFranc)
     : `${francs(format.eliminatedMinFranc)} à ${francs(format.eliminatedMaxFranc)}`);
   const names = ['Jours', 'Heures', 'Minutes', 'Secondes'];
+  if(t.game === 'penalty') return <PenaltyTournamentCard t={t} now={now}/>;
   return <article className="tourney-card">
     <div className="tourney-card__hero">
       <div className="tourney-card__top"><span className="tourney-tag">ÉVÉNEMENT MONOPOLY</span><span className="tourney-tag tourney-tag--gold">20 PLACES MAX</span></div>

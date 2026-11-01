@@ -45,3 +45,17 @@
 .maf-programming__time-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .maf-programming__time-grid label:last-child{grid-column:1/-1}
 @media(max-width:580px){.maf-programming__time-grid{grid-template-columns:1fr}}
+
+/* Tournoi Tir-au-but — reprend les surfaces et composants du centre propriétaire. */
+.maf-programming__formats{grid-template-columns:repeat(3,minmax(0,1fr))}
+.maf-programming__penalty-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.maf-programming__penalty-calculator{display:grid;gap:12px;border:1px solid var(--border);border-radius:14px;padding:14px;background:var(--surface)}
+.maf-programming__penalty-calculator>small{color:var(--text-dim);font-size:11px;line-height:1.6}
+.maf-programming__penalty-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.maf-programming__penalty-stats>span{display:grid;gap:6px;padding:11px;border:1px solid var(--border);background:var(--glass);border-radius:11px}
+.maf-programming__penalty-stats small{font-size:10px;color:var(--text-dim)}
+.maf-programming__penalty-stats strong{font-size:14px;font-variant-numeric:tabular-nums}
+.maf-programming__rounds{display:grid;gap:5px;border-top:1px solid var(--border);padding-top:11px;font-size:12px}
+.maf-programming__rounds p{margin:0;color:var(--text-dim);line-height:1.6}
+@media(max-width:720px){.maf-programming__formats{grid-template-columns:1fr 1fr}.maf-programming__penalty-fields,.maf-programming__penalty-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:440px){.maf-programming__formats{grid-template-columns:1fr}.maf-programming__penalty-fields,.maf-programming__penalty-stats{grid-template-columns:1fr 1fr}}
