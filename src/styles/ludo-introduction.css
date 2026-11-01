@@ -47,3 +47,15 @@
 .ludo-introduction__hint{margin:0;padding:10px 14px;font-size:12px;line-height:1.5;color:#b9c8df;background:#16253b}
 .ludo-introduction__error{color:#ff7777;font-size:13px}
 @media (max-width:640px){.ludo-introduction__board{min-height:560px;height:78vh}}
+
+/* MAF_LUDO_STEP_3 — Selection et affichage des parties d'entrainement. */
+.ludo-introduction__setup{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.ludo-introduction__color-label{font-size:13px;font-weight:700;color:var(--text)}
+.ludo-introduction__color-select{border:1px solid var(--border);background:var(--glass);color:var(--text);padding:10px 14px;border-radius:9px;min-width:150px}
+.ludo-introduction__color-select option{color:#121a27;background:#fff}
+.ludo-introduction__color-select:disabled{opacity:.65;cursor:not-allowed}
+.ludo-introduction__board-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;color:#e8f0ff;font-size:13px;font-weight:700;background:#152743}
+.ludo-introduction__restart{border:1px solid #9bbde7;color:#e8f0ff;background:transparent;border-radius:8px;padding:7px 12px;cursor:pointer;font:inherit}
+.ludo-introduction__restart:hover{background:#213f69}
+.ludo-introduction__ready{font-size:12px;font-weight:700;color:#62d39a}
+@media(max-width:560px){.ludo-introduction__actions button{max-width:100%;white-space:normal}.ludo-introduction__board-header{flex-wrap:wrap}}

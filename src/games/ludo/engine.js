@@ -2,8 +2,40 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-export function mountLudoGame(document, window) {
+export function mountLudoGame(document, window, options = {}) {
   if (!document || !window || !document.getElementById('gameContainer')) throw new Error('Document Ludo incomplet');
+
+  // MAF_LUDO_STEP_3 : gestion des temporisations et animations pour fermer/recommencer proprement.
+  let disposed = false;
+  const pendingTimers = new Set();
+  const pendingFrames = new Set();
+  function scheduleTimeout(callback, delay) {
+    if (disposed) return null;
+    const timer = window.setTimeout(() => {
+      pendingTimers.delete(timer);
+      if (!disposed) callback();
+    }, delay);
+    pendingTimers.add(timer);
+    return timer;
+  }
+  function cancelTimeout(timer) {
+    window.clearTimeout(timer);
+    pendingTimers.delete(timer);
+  }
+  function scheduleFrame(callback) {
+    if (disposed) return null;
+    const frame = window.requestAnimationFrame((...args) => {
+      pendingFrames.delete(frame);
+      if (!disposed) callback(...args);
+    });
+    pendingFrames.add(frame);
+    return frame;
+  }
+  function cancelFrame(frame) {
+    window.cancelAnimationFrame(frame);
+    pendingFrames.delete(frame);
+  }
+
 
 
 
@@ -209,7 +241,7 @@ export function mountLudoGame(document, window) {
             const clicks = [0, 60, 130, 200, 280, 370, 470, 580, 700];
 
             clicks.forEach((delay, i) => {
-                window.setTimeout(() => {
+                scheduleTimeout(() => {
                     const osc = audioContext.createOscillator();
                     const gain = audioContext.createGain();
 
@@ -265,7 +297,7 @@ export function mountLudoGame(document, window) {
             // Victory fanfare - ascending notes
             const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
             notes.forEach((freq, i) => {
-                window.setTimeout(() => {
+                scheduleTimeout(() => {
                     const osc = audioContext.createOscillator();
                     const gain = audioContext.createGain();
                     osc.connect(gain);
@@ -298,7 +330,7 @@ export function mountLudoGame(document, window) {
         function playHomeSound() {
             // Triumphant double chime for reaching home
             [0, 120].forEach((delay, i) => {
-                window.setTimeout(() => {
+                scheduleTimeout(() => {
                     const osc = audioContext.createOscillator();
                     const gain = audioContext.createGain();
                     osc.connect(gain);
@@ -350,7 +382,7 @@ export function mountLudoGame(document, window) {
 
                 noteIndex = (noteIndex + 1) % melody.length;
 
-                bgMusicInterval = window.setTimeout(playNextNote, dur * 1000);
+                bgMusicInterval = scheduleTimeout(playNextNote, dur * 1000);
             };
 
             playNextNote();
@@ -358,7 +390,7 @@ export function mountLudoGame(document, window) {
 
         function stopBackgroundMusic() {
             if (bgMusicInterval) {
-                window.clearTimeout(bgMusicInterval);
+                cancelTimeout(bgMusicInterval);
                 bgMusicInterval = null;
             }
         }
@@ -494,7 +526,7 @@ export function mountLudoGame(document, window) {
                 camera.position.copy(controls.target).add(direction.multiplyScalar(currentDistance));
 
                 if (t < 1) {
-                    window.requestAnimationFrame(animateZoom);
+                    scheduleFrame(animateZoom);
                 }
             }
             animateZoom();
@@ -576,7 +608,7 @@ export function mountLudoGame(document, window) {
                 controls.update();
 
                 if (t < 1) {
-                    window.requestAnimationFrame(animate);
+                    scheduleFrame(animate);
                 } else if (onComplete) {
                     onComplete();
                 }
@@ -698,7 +730,7 @@ export function mountLudoGame(document, window) {
                     }
                 });
 
-                baseGlowAnimationId = window.requestAnimationFrame(animateGlow);
+                baseGlowAnimationId = scheduleFrame(animateGlow);
             }
 
             animateGlow();
@@ -706,7 +738,7 @@ export function mountLudoGame(document, window) {
 
         function stopBaseGlow() {
             if (baseGlowAnimationId) {
-                window.cancelAnimationFrame(baseGlowAnimationId);
+                cancelFrame(baseGlowAnimationId);
                 baseGlowAnimationId = null;
             }
 
@@ -882,7 +914,7 @@ export function mountLudoGame(document, window) {
             if (musicEnabled) startBackgroundMusic();
 
             if (aiPlayers.includes(players[currentPlayerIndex])) {
-                window.setTimeout(aiTurn, 1000);
+                scheduleTimeout(aiTurn, 1000);
             }
         }
 
@@ -931,7 +963,7 @@ export function mountLudoGame(document, window) {
 
         function animate() {
             if (!gameActive) return;
-            window.requestAnimationFrame(animate);
+            scheduleFrame(animate);
             controls.update();
             renderer.render(scene, camera);
         }
@@ -1017,7 +1049,7 @@ export function mountLudoGame(document, window) {
         }
 
         function rollDice() {
-            if (isRolling) return;
+            if (isRolling || !gameActive || disposed) return;
             isRolling = true;
             rollBtn.disabled = true;
             playSound('roll');
@@ -1055,7 +1087,7 @@ export function mountLudoGame(document, window) {
                 result = 3;
             }
 
-            window.setTimeout(() => {
+            scheduleTimeout(() => {
                 lastRoll = result;
                 isRolling = false;
                 setMessage(`Rolled a ${result}!`);
@@ -1068,9 +1100,9 @@ export function mountLudoGame(document, window) {
             const validMoves = getValidMoves(player, value);
             if (validMoves.length === 0) {
                 setMessage(`Rolled ${value}. No valid moves!`);
-                window.setTimeout(nextTurn, 1500);
+                scheduleTimeout(nextTurn, 1500);
             } else if (validMoves.length === 1) {
-                window.setTimeout(() => moveToken(player, validMoves[0], value), 500);
+                scheduleTimeout(() => moveToken(player, validMoves[0], value), 500);
             } else {
                 setMessage(`Rolled ${value}. Select a token to move.`);
                 highlightTokens(player, validMoves);
@@ -1146,7 +1178,7 @@ export function mountLudoGame(document, window) {
                 });
 
                 if (highlightedMeshes.length > 0) {
-                    highlightAnimationId = window.requestAnimationFrame(blink);
+                    highlightAnimationId = scheduleFrame(blink);
                 }
             }
             blink();
@@ -1154,7 +1186,7 @@ export function mountLudoGame(document, window) {
 
         function clearHighlights() {
             if (highlightAnimationId) {
-                window.cancelAnimationFrame(highlightAnimationId);
+                cancelFrame(highlightAnimationId);
                 highlightAnimationId = null;
             }
 
@@ -1173,6 +1205,7 @@ export function mountLudoGame(document, window) {
         }
 
         function onBoardClick(event) {
+            if (!gameActive || aiPlayers.includes(players[currentPlayerIndex])) return;
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1218,7 +1251,7 @@ export function mountLudoGame(document, window) {
                 } else if (lastRoll === 6) {
                     setMessage('Rolled 6! Roll again.');
                     rollBtn.disabled = aiPlayers.includes(player);
-                    if (aiPlayers.includes(player)) window.setTimeout(aiTurn, 1000);
+                    if (aiPlayers.includes(player)) scheduleTimeout(aiTurn, 1000);
                 } else {
                     nextTurn();
                 }
@@ -1367,11 +1400,11 @@ export function mountLudoGame(document, window) {
                     mesh.position.y = (TOKEN_HEIGHT / 2 + 0.8) + hopProgress * hopHeight;
 
                     if (t < 1) {
-                        window.requestAnimationFrame(stepAnim);
+                        scheduleFrame(stepAnim);
                     } else {
                         // Pause briefly then move to next step
                         currentStep++;
-                        window.setTimeout(animateStep, pauseDuration);
+                        scheduleTimeout(animateStep, pauseDuration);
                     }
                 }
                 stepAnim();
@@ -1540,7 +1573,7 @@ export function mountLudoGame(document, window) {
             animateConfetti();
 
             // Stop confetti after 8 seconds
-            window.setTimeout(stopConfetti, 8000);
+            scheduleTimeout(stopConfetti, 8000);
         }
 
         function animateConfetti() {
@@ -1551,12 +1584,12 @@ export function mountLudoGame(document, window) {
                 particle.draw();
             });
 
-            confettiAnimationId = window.requestAnimationFrame(animateConfetti);
+            confettiAnimationId = scheduleFrame(animateConfetti);
         }
 
         function stopConfetti() {
             if (confettiAnimationId) {
-                window.cancelAnimationFrame(confettiAnimationId);
+                cancelFrame(confettiAnimationId);
                 confettiAnimationId = null;
             }
             confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
@@ -1571,16 +1604,16 @@ export function mountLudoGame(document, window) {
             updateScoreboard();
             setMessage('Roll the dice!');
             if (aiPlayers.includes(players[currentPlayerIndex])) {
-                window.setTimeout(aiTurn, 1000);
+                scheduleTimeout(aiTurn, 1000);
             }
         }
 
         // ============ AI ============
         function aiTurn() {
-            if (!gameActive) return;
-            setMessage('Computer is thinking...');
-            window.setTimeout(() => {
-                rollDice();
+            if (!gameActive || disposed || !aiPlayers.includes(players[currentPlayerIndex])) return;
+            setMessage('Le bot réfléchit...');
+            scheduleTimeout(() => {
+                if (gameActive && aiPlayers.includes(players[currentPlayerIndex])) rollDice();
             }, 500);
         }
 
@@ -1591,12 +1624,12 @@ export function mountLudoGame(document, window) {
             if (aiPlayers.includes(player)) {
                 const validMoves = getValidMoves(player, value);
                 if (validMoves.length === 0) {
-                    setMessage(`AI rolled ${value}. No valid moves!`);
-                    window.setTimeout(nextTurn, 1500);
+                    setMessage(`Le bot a obtenu ${value}. Aucun déplacement possible !`);
+                    scheduleTimeout(nextTurn, 1500);
                 } else {
                     // Simple AI: prefer captures, then furthest token, then leaving home
                     const bestMove = chooseBestMove(player, value, validMoves);
-                    window.setTimeout(() => moveToken(player, bestMove, value), 800);
+                    scheduleTimeout(() => { if (gameActive && aiPlayers.includes(players[currentPlayerIndex])) moveToken(player, bestMove, value); }, 800);
                 }
             } else {
                 originalHandleRoll(value);
@@ -1622,7 +1655,7 @@ export function mountLudoGame(document, window) {
                             const oPos = tokens[other][j];
                             if (oPos >= 0 && oPos < 51) {
                                 const ogp = PLAYER_PATHS[other][oPos];
-                                if (gp[0] === ogp[0] && gp[1] === ogp[1]) score += 50;
+                                if (!SAFE_CELLS.includes(newPos) && !Object.values(START_CELLS).includes(newPos) && gp[0] === ogp[0] && gp[1] === ogp[1]) score += 50;
                             }
                         }
                     });
@@ -1645,8 +1678,9 @@ export function mountLudoGame(document, window) {
         document.getElementById('rulesBtn').addEventListener('click', () => rulesModal.classList.add('active'));
         document.getElementById('closeRules').addEventListener('click', () => rulesModal.classList.remove('active'));
         rulesModal.addEventListener('click', e => { if (e.target === rulesModal) rulesModal.classList.remove('active'); });
-        document.getElementById('newGameBtn').addEventListener('click', () => window.location.reload());
-        document.getElementById('playAgainBtn').addEventListener('click', () => window.location.reload());
+        const restartFromMaf = () => { if (typeof options.onRestart === 'function') options.onRestart(); };
+        document.getElementById('newGameBtn').addEventListener('click', restartFromMaf);
+        document.getElementById('playAgainBtn').addEventListener('click', restartFromMaf);
 
         // ============ BOARD CONTROLS ============
         let boardLocked = false;
@@ -1706,22 +1740,45 @@ export function mountLudoGame(document, window) {
             }
         });
     
-        // MAF_LUDO_STEP_2: moteur local isolé dans une iframe. Les modes réseau/argent sont désactivés.
-        gameMode = 'passplay';
+        // MAF_LUDO_STEP_3 : partie solo avec un bot (ou deux joueurs locaux).
+        const colors = ['red', 'green', 'blue', 'yellow'];
+        const humanColor = colors.includes(options.humanColor) ? options.humanColor : 'red';
+        const opponentColor = { red: 'yellow', yellow: 'red', green: 'blue', blue: 'green' }[humanColor];
+        const isTraining = options.mode === 'training';
+        gameMode = isTraining ? 'vscomputer' : 'passplay';
         playerCount = 2;
-        selectedColors = ['red', 'yellow'];
+        selectedColors = [humanColor, opponentColor];
         players = [...selectedColors];
-        aiPlayers = [];
+        aiPlayers = isTraining ? [opponentColor] : [];
+        const localModeLabel = document.querySelector('.maf-ludo-local-mode');
+        if (localModeLabel) localModeLabel.textContent = isTraining
+          ? 'Entraînement · Toi contre le bot · sans mise'
+          : 'Partie locale · 2 joueurs · sans mise';
         menuOverlay.classList.add('hidden');
         colorSelection.classList.remove('active');
         initGame();
         return () => {
+            if (disposed) return;
+            disposed = true;
             gameActive = false;
             musicEnabled = false;
             stopBackgroundMusic();
+            pendingTimers.forEach(id => window.clearTimeout(id));
+            pendingTimers.clear();
+            pendingFrames.forEach(id => window.cancelAnimationFrame(id));
+            pendingFrames.clear();
             if (audioContext) audioContext.close().catch(() => {});
             if (controls) controls.dispose();
-            if (renderer) renderer.dispose();
+            if (scene) scene.traverse(object => {
+              if (object.geometry) object.geometry.dispose();
+              const materials = Array.isArray(object.material) ? object.material : [object.material];
+              materials.forEach(material => { if (material?.dispose) material.dispose(); });
+            });
+            if (renderer) {
+              renderer.domElement.removeEventListener('click', onBoardClick);
+              renderer.dispose();
+            }
+            window.removeEventListener('resize', onWindowResize);
         };
 
 }
