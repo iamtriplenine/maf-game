@@ -20,7 +20,6 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
   const [currency,setCurrency] = useState(() => readIntent(storageKey)?.currency || 'F');
   const [amount,setAmount] = useState(() => String(readIntent(storageKey)?.amount || 100));
   const [info,setInfo] = useState(null), [items,setItems] = useState([]);
-  const [clock,setClock] = useState(Date.now);
   const [loading,setLoading] = useState(true), [busy,setBusy] = useState(false);
   const [error,setError] = useState(''), [message,setMessage] = useState('');
   const inFlight = useRef(false), generation = useRef(0);
@@ -40,7 +39,7 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
       const current = generation.current;
       try {
         const result = await load();
-        if (alive && current === generation.current) { setClock(Date.now()); setInfo(result.data); setItems(result.items); onUser(result.data.user); }
+        if (alive && current === generation.current) { setInfo(result.data); setItems(result.items); onUser(result.data.user); }
       } catch(e) { if (alive) setError(e.message); throw e; }
       finally { running = false; if (alive) setLoading(false); }
     }
@@ -50,7 +49,6 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
     return () => { alive = false; unregister(); clearInterval(timer); };
   },[load,onUser,retry]);
   const account = info?.user;
-  const expired = account?.phone && !account.phone_verified_at && (!account.phone_verification_deadline || new Date(account.phone_verification_deadline).getTime() <= clock);
   const balance = Number(currency === 'V' ? user.bonus_balance : user.balance) || 0;
   const value = Number(amount);
   const costs = Number.isSafeInteger(value) && value >= 100 && value <= 1000000 ? withdrawalFees(value,currency) : null;
@@ -97,7 +95,6 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
       </div>}
       {info && account.phone && info.has_deposit && <>
         <div className="wallet-notice"><strong>Numéro de retrait : {account.phone}</strong><br/>Numéro définitif, non modifiable.</div>
-        {expired && <p className="sheet__error">Le délai de vérification du numéro est dépassé. Contacte l’administrateur pour le faire vérifier.</p>}
       </>}
       {((info?.has_deposit && account?.phone) || intent) && <form className="wallet-form" onSubmit={submit}>
         <fieldset className="withdrawal-fields" disabled={busy || Boolean(intent)}>
@@ -110,7 +107,7 @@ export default function WithdrawalForm({ user, onUser, onRecharge }) {
         <p className="sheet__text">Minimum : 100 F CFA. {currency === 'V' ? 'Retrait de bonus : seulement 1 % de frais de service, arrondi au franc supérieur. Aucune commission propriétaire.' : 'Retrait d’argent réel : 19 % de frais au total, arrondis au franc supérieur, dont 1 % de service et 18 % de retrait.'} Pour les bonus : 1 V = 1 F CFA. En cas de refus, tout sera remboursé.</p>
         {!intent && fee !== null && total > balance && <p className="sheet__error">Solde insuffisant pour le retrait et les frais de {currency === 'V' ? '1' : '19'} %.</p>}
         {intent && <p className="wallet-notice">Une demande doit être vérifiée après une interruption. Réessaie avec la même demande pour éviter un double débit.</p>}
-        <button className="btn btn--primary btn--block" disabled={busy || (!intent && (!valid || expired || !info?.has_deposit))}>
+        <button className="btn btn--primary btn--block" disabled={busy || (!intent && (!valid || !info?.has_deposit))}>
           {busy ? 'Envoi…' : intent ? 'Vérifier / renvoyer ma demande' : 'Valider le retrait'}
         </button>
       </form>}

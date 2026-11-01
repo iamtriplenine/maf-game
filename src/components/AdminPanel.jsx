@@ -138,7 +138,7 @@ export default function AdminPanel({onClose,initialTab='deposits',initialTransac
             <div className="admin-card__bottom"><div className="admin-amount">{money(row.amount)} <small>F CFA</small><time>{date(row.created_at)}</time></div><button type="button" className="admin-btn admin-btn--primary" onClick={()=>{setSelected(row);setFlash('');}}>Examiner</button></div>
           </article> : <details className="admin-card admin-user-row" key={row.id}>
             <summary><span className="admin-user-name"><strong>{row.pseudo}</strong><span className="admin-muted">ID {row.client_id || '—'}</span></span><span className="admin-user-balances"><strong>{money(row.balance)} F</strong><span>{money(row.bonus_balance)} V</span></span><span className="admin-user-chevron" aria-hidden="true">⌄</span></summary>
-            <dl className="admin-info-grid"><Info label="Téléphone">{row.phone}</Info><Info label="Inscription">{date(row.created_at)}</Info><Info label="Vérification">{row.phone_verified_at?'Numéro vérifié':row.phone?'À vérifier':'Sans numéro'}</Info><Info label="Numéro vérifié le">{date(row.phone_verified_at)}</Info>{row.phone && !row.phone_verified_at && <Info label="Vérification avant">{date(row.phone_verification_deadline)}</Info>}</dl>
+            <dl className="admin-info-grid"><Info label="Téléphone Wave définitif">{row.phone}</Info><Info label="Inscription">{date(row.created_at)}</Info></dl>
             {result.canDelete && <DeleteUserControl user={row} disabled={acting} onBusy={setActing} onDeleted={message=>{setFlash(message);setOffset(0);setRevision(n=>n+1);}}/>}
           </details>)}
         </section>

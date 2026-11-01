@@ -60,7 +60,6 @@ export function RechargeForm({ user, onUser }) {
   const [items,setItems] = useState([]), [selected,setSelected] = useState(null), [file,setFile] = useState(null), [preview,setPreview] = useState('');
   const [busy,setBusy] = useState(false), [loading,setLoading] = useState(true), [error,setError] = useState('');
   const requestKey = useRef(null), inFlight = useRef(false), resumed = useRef(false);
-  const [clock,setClock] = useState(Date.now);
   // Demandes retrouvees depuis PostgreSQL : reprise apres fermeture, redirection ou rechargement.
   useEffect(()=>{
     let alive = true, running = false;
@@ -69,7 +68,7 @@ export function RechargeForm({ user, onUser }) {
       try {
         const [wallet,history] = await Promise.all([walletRequest('/api/wallet'),walletRequest('/api/wallet/transactions')]);
         if (!alive) return;
-        onUser(wallet.user); setClock(Date.now()); const deposits = history.transactions.filter(t=>t.kind==='deposit'); setItems(deposits);
+        onUser(wallet.user); const deposits = history.transactions.filter(t=>t.kind==='deposit'); setItems(deposits);
         const resume = !resumed.current; resumed.current = true;
         setSelected(current=> current ? deposits.find(t=>t.id===current.id) || current : resume ? deposits.find(t=>['awaiting_payment','pending'].includes(t.status)) || null : null);
       } catch(e) { if (alive) setError(e.message); throw e; }
@@ -86,9 +85,7 @@ export function RechargeForm({ user, onUser }) {
   }
   const rechargeAmount = Number(amount);
   const rechargeFee = Number.isSafeInteger(rechargeAmount) && rechargeAmount >= 100 && rechargeAmount <= 1000000 ? feeFor(rechargeAmount) : null;
-  const deadline = user?.phone_verification_deadline;
-  const expired = user?.phone && !user.phone_verified_at && deadline && new Date(deadline).getTime() <= clock;
-  const phoneInfo = user?.phone && <div className="wallet-notice"><strong>{user.phone}</strong><br/>{user.phone_verified_at ? 'Numero verifie.' : `Verification en attente${deadline ? ' · avant le '+new Date(deadline).toLocaleDateString('fr-FR') : ''}.`}<br/>{expired ? 'Delai depasse : verification necessaire pour toute nouvelle transaction.' : 'Numero definitif pour tes depots et retraits.'}</div>;
+  const phoneInfo = user?.phone && <div className="wallet-notice"><strong>{user.phone}</strong><br/>Numero definitif pour tes depots et retraits, sans verification supplementaire.</div>;
   function select(t) {setSelected(t);setFile(null);setPreview('');setError('');}
   return <div className="wallet-form" aria-busy={loading || busy}>
     {busy && <HourglassLoader />}
@@ -97,7 +94,7 @@ export function RechargeForm({ user, onUser }) {
       {!user?.phone ? <form className="wallet-form" onSubmit={e=>{e.preventDefault();run(async()=>{
         const result=await walletRequest('/api/wallet/phone',{method:'POST',body:{phone,accepted}});onUser(result.user);
       });}}>
-        <p className="sheet__text">Enregistre ton numero Wave. Une fois enregistre, ce sera le seul numero autorise pour tes depots et retraits et tu ne pourras pas le changer. Tu peux l'utiliser immediatement pendant les 10 jours prevus pour sa verification.</p>
+        <p className="sheet__text">Enregistre ton numero Wave. Une fois enregistre, ce sera le seul numero autorise pour tes depots et retraits et tu ne pourras pas le changer. Tu peux l'utiliser immediatement, sans delai de verification.</p>
         <label className="wallet-label">Numero de telephone (+225)<input type="tel" autoComplete="tel" placeholder="07 00 00 00 00" value={phone} onChange={e=>setPhone(e.target.value)} disabled={busy} required/></label>
         <label className="wallet-check"><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)} disabled={busy}/>Je confirme que ce numero sera definitif.</label>
         <button className="btn btn--primary btn--block" disabled={busy || !accepted}>{busy?'Enregistrement…':'Enregistrer et continuer'}</button>
