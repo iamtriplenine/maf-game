@@ -29,9 +29,9 @@ export default function useReferralSignup(session,onOpenSignup){
  },[refresh]);
  useEffect(()=>{
   if(referral.status!=='valid')return undefined;
-  const timer=window.setTimeout(()=>setReferral(old=>old.status==='valid'?{...old,status:'expired',proof:undefined,message:'Le lien doit être actualisé avant de créer ton compte.'}:old),Math.max(0,Date.parse(referral.expires_at)-Date.now()));
+  const timer=window.setTimeout(()=>{void refresh();},Math.max(0,Date.parse(referral.expires_at)-Date.now()));
   return()=>window.clearTimeout(timer);
- },[referral.status,referral.expires_at]);
+ },[referral.status,referral.expires_at,refresh]);
  const clear=useCallback(()=>{
   generation.current+=1;try{sessionStorage.removeItem(REFERRAL_STORAGE);}catch{}
   window.history.replaceState(window.history.state,'',withoutReferral(window.location.href));setReferral({status:'none'});

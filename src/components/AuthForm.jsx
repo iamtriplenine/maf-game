@@ -11,7 +11,7 @@ import {
 
 // Formulaire Login / Sign Up : pseudo + code a 10 chiffres (molettes 3D).
 // Attente utilisateur : sablier aux couleurs du theme, sans message technique.
-export default function AuthForm({ mode, onSubmit, referral, onRetryReferral, onClearReferral }) {
+export default function AuthForm({ mode, onSubmit, referral }) {
   const [pseudo, setPseudo] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
@@ -61,15 +61,11 @@ export default function AuthForm({ mode, onSubmit, referral, onRetryReferral, on
         />
       </label>
 
-      {isSignup && referral?.status !== 'none' && referral && <div className="referral-notice">
-        {referral.code && <label className="wallet-label" htmlFor="signup-referral-code">Code de parrainage
-          <input id="signup-referral-code" className="referral-code" value={referral.code} readOnly autoComplete="off" aria-readonly="true" />
-        </label>}
+      {isSignup && referral?.status !== 'none' && referral && <div className="referral-notice referral-notice--signup">
+        {referral.status === 'valid' && <p>Invité par <strong>{referral.partner_pseudo}</strong></p>}
+        {referral.code && <input id="signup-referral-code" className="referral-code" aria-label="Code de parrainage" value={referral.code} readOnly autoComplete="off" />}
         {referral.status === 'loading' && <p role="status">Vérification du lien de parrainage…</p>}
-        {referral.status === 'valid' && <><p>Invité par <strong>{referral.partner_pseudo}</strong>.</p><small>Code renseigné automatiquement par le lien, non modifiable.</small></>}
         {['error','expired'].includes(referral.status) && <p className="sheet__error" role="alert">{referral.message}</p>}
-        {referral.status !== 'loading' && <button type="button" className="btn btn--glass btn--block" disabled={busy} onClick={onRetryReferral}>Actualiser le lien</button>}
-        <button type="button" className="btn btn--glass btn--block" disabled={busy} onClick={onClearReferral}>Continuer sans parrainage</button>
       </div>}
 
       <CodeDials onChange={setCode} disabled={busy} />
