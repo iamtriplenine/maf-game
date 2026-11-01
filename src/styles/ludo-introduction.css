@@ -39,3 +39,11 @@
 .ludo-introduction__mode p { margin: 0 0 12px; color: var(--text-dim); font-size: 13px; line-height: 1.55; }
 .ludo-introduction__soon { font-size: 12px; font-weight: 700; color: var(--accent-2); }
 @media (max-width: 560px) { .ludo-introduction__modes { grid-template-columns: 1fr; } }
+
+/* MAF_LUDO_STEP_2 — styles de la zone de jeu uniquement */
+.ludo-introduction__actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+.ludo-introduction__board-wrap{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#0a1628}
+.ludo-introduction__board{display:block;width:100%;height:min(750px,85vh);min-height:420px;border:0;background:#0a1628}
+.ludo-introduction__hint{margin:0;padding:10px 14px;font-size:12px;line-height:1.5;color:#b9c8df;background:#16253b}
+.ludo-introduction__error{color:#ff7777;font-size:13px}
+@media (max-width:640px){.ludo-introduction__board{min-height:560px;height:78vh}}
