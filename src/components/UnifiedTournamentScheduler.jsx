@@ -120,11 +120,10 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
   });};
   const toggleRegistration = t => {
     const open = !(t.registrationConfigured ?? t.registrationOpen);
-    if(t.game==='penalty')return;
-    if(open && !window.confirm('Ouvrir les inscriptions publiques ? Chaque réservation prélèvera réellement 500 F CFA. Le serveur refusera toute ouverture tant que qualifications, finale et paiements ne sont pas autorisés.'))return;
+    if(open && !window.confirm(`Ouvrir les inscriptions ? Chaque réservation débitera ${t.entryFee} F CFA du solde du joueur.`))return;
     void run(async()=>{
       await setTournamentRegistration(t.id,open,t.revision);
-      setNotice(open?'Inscriptions ouvertes. Vérifie la préparation des parties réelles.':'Inscriptions fermées.');
+      setNotice(open?'Inscriptions ouvertes.':'Inscriptions fermées.');
     });
   };
   const removeNormal = t => {
@@ -181,7 +180,7 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
         <button type="button" onClick={()=>newEntry(format)} disabled={busy}>＋ Nouveau</button>
         {tournaments.filter(t=>!t.deletedAt && (format==='penalty'?t.game==='penalty':t.game!=='penalty')).map(t=><div className="maf-programming__item" key={t.id}>
           <button type="button" onClick={()=>editTournament(t)} disabled={busy}>{t.title} · {statusName[t.status]||t.status} · {t.registered}/{t.capacity}</button>
-          {t.game!=='penalty' && t.status==='published' && <button type="button" disabled={busy} onClick={()=>toggleRegistration(t)}>{(t.registrationConfigured ?? t.registrationOpen)?'Fermer inscriptions':'Ouvrir inscriptions'}</button>}
+          {t.status==='published' && <button type="button" disabled={busy} onClick={()=>toggleRegistration(t)}>{(t.registrationConfigured ?? t.registrationOpen)?'Fermer inscriptions':`Ouvrir inscriptions · ${t.entryFee} F`}</button>}
           <button type="button" onClick={()=>removeNormal(t)} disabled={busy}>Supprimer</button>
         </div>)}
       </div>
@@ -238,7 +237,7 @@ export default function UnifiedTournamentScheduler({onClose, onSaved}) {
         <label>Visibilité <select value={normal.status} onChange={e=>setNormal(f=>({...f,status:e.target.value}))}>
           <option value="draft">Brouillon</option><option value="published">Publié</option><option value="archived">Archivé</option>
         </select></label>
-        {format==='penalty' ? <p>Si l’effectif est impair au départ, la dernière inscription est remboursée. Les participants retenus s’affrontent deux à deux ; un qualifié peut être exempt d'un tour ultérieur. Les inscriptions ouvrent à l’activation du parcours Tir-au-but.</p> : <p>Une annonce publiée n'ouvre pas automatiquement les réservations. Après enregistrement, tu peux les ouvrir dans la liste ci-dessus. Capacité maximale : 20 inscrits. Les formats jouables sont 10, 14, 15, 18, 19 ou 20 ; surplus remboursé. Les réservations payantes restent verrouillées tant que la validation de production n'est pas terminée.</p>}
+        {format==='penalty' ? <p>Si l’effectif est impair au départ, la dernière inscription est remboursée. Les participants retenus s’affrontent deux à deux ; un qualifié peut être exempt d'un tour ultérieur. La réservation est confirmée après prélèvement de la mise choisie.</p> : <p>Une annonce publiée n'ouvre pas automatiquement les réservations. Après enregistrement, tu peux les ouvrir dans la liste ci-dessus. Capacité maximale : 20 inscrits. Les formats jouables sont 10, 14, 15, 18, 19 ou 20 ; surplus remboursé. Les réservations payantes restent verrouillées tant que la validation de production n'est pas terminée.</p>}
         <button type="submit">{busy?'Enregistrement…':normalId?'Enregistrer le tournoi':'Créer le tournoi'}</button>
       </fieldset></form>
     </> : <>

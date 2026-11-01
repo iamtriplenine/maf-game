@@ -22,7 +22,7 @@ function ReserveAction({ tournament: t, reached, session, reserved, onDone }) {
   // Une place deja payee reste visible meme si les reservations ferment ensuite.
   if (reserved) return <div className="tourney-reserved" role="status"><strong>✓ Place réservée</strong>
     <span>{paid?`${francs(paid.fee)} F débités · nouveau solde ${francs(paid.balanceAfter)} F`:'Ta place est confirmée pour ce tournoi.'}</span></div>;
-  if (t.publicBookingsEnabled === false) return <button type="button" className="tourney-cta" disabled>Réservations suspendues pendant les vérifications</button>;
+  if (t.publicBookingsEnabled === false) return <button type="button" className="tourney-cta" disabled>Inscriptions momentanément indisponibles</button>;
   if (!t.registrationOpen) return <button type="button" className="tourney-cta" disabled>Inscriptions bientôt ouvertes</button>;
   if (!session) return <button type="button" className="tourney-cta" disabled>Connecte-toi pour réserver</button>;
   if (t.full) return <button type="button" className="tourney-cta" disabled>Complet · {t.capacity}/{t.capacity}</button>;
@@ -56,7 +56,7 @@ function ReserveAction({ tournament: t, reached, session, reserved, onDone }) {
   </div>;
 }
 
-function PenaltyTournamentCard({t,now}) {
+function PenaltyTournamentCard({t,now,session,reserved,onDone}) {
   const remaining = countdown(t.startsAt,now);
   const plan = t.bracket;
   const names = ['Jours','Heures','Minutes','Secondes'];
@@ -72,8 +72,8 @@ function PenaltyTournamentCard({t,now}) {
       <div className="tourney-countdown" role="timer">{remaining.map((n,i)=><div key={names[i]}><strong>{String(n).padStart(2,'0')}</strong><span>{names[i]}</span></div>)}</div>
       <div className="tourney-card__places"><span><strong>{t.registered}</strong> / {t.capacity} inscrits</span><span>Entrée <strong>{francs(t.entryFee)} CFA</strong></span></div>
       <progress max={t.capacity} value={t.registered} aria-label="Places réservées"/>
-      <button type="button" className="tourney-cta" disabled>Inscriptions bientôt ouvertes</button>
-      <p className="tourney-card__note">Élimination directe · {t.penaltyShots} tirs par joueur et par match</p>
+      <ReserveAction tournament={t} reached={Date.parse(t.startsAt)<=now} session={session} reserved={reserved} onDone={onDone}/>
+      <p className="tourney-card__note">Élimination directe · {t.penaltyShots} tirs par joueur et par match · Une seule inscription par joueur</p>
     </div>
     <div className="tourney-card__details">
       <details><summary><span>01</span> Déroulement <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
@@ -99,7 +99,7 @@ export function TournamentCard({ tournament: t, now, session = null, reserved = 
     ? francs(format.eliminatedMinFranc)
     : `${francs(format.eliminatedMinFranc)} à ${francs(format.eliminatedMaxFranc)}`);
   const names = ['Jours', 'Heures', 'Minutes', 'Secondes'];
-  if(t.game === 'penalty') return <PenaltyTournamentCard t={t} now={now}/>;
+  if(t.game === 'penalty') return <PenaltyTournamentCard t={t} now={now} session={session} reserved={reserved} onDone={onDone}/>;
   return <article className="tourney-card">
     <div className="tourney-card__hero">
       <div className="tourney-card__top"><span className="tourney-tag">ÉVÉNEMENT MONOPOLY</span><span className="tourney-tag tourney-tag--gold">20 PLACES MAX</span></div>
