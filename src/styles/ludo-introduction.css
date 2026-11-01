@@ -1,0 +1,41 @@
+/* MAF_LUDO_STEP_1_V1 — Styles propres à Ludo ; aucun style des autres jeux n'est modifié. */
+.game-card__illustration {
+  display: block;
+  width: clamp(68px, 20vw, 124px);
+  aspect-ratio: 1;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgba(0,0,0,.22));
+}
+.game-detail__illustration {
+  display: block;
+  width: min(100%, 110px);
+  aspect-ratio: 1;
+  object-fit: contain;
+  margin-inline: auto;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,.25));
+}
+.ludo-introduction { display: grid; gap: 16px; }
+.ludo-introduction__note {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--glass);
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+.ludo-introduction__modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.ludo-introduction__mode {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--glass);
+}
+.ludo-introduction__mode-icon { flex: none; font-size: 26px; line-height: 1.2; }
+.ludo-introduction__mode h3 { margin: 0 0 8px; font: 700 15px/1.35 var(--font-tech); }
+.ludo-introduction__mode p { margin: 0 0 12px; color: var(--text-dim); font-size: 13px; line-height: 1.55; }
+.ludo-introduction__soon { font-size: 12px; font-weight: 700; color: var(--accent-2); }
+@media (max-width: 560px) { .ludo-introduction__modes { grid-template-columns: 1fr; } }

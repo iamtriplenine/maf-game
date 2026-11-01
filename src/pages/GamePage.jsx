@@ -13,6 +13,7 @@ import SoloDice from '../components/SoloDice'; // MAF_DICE_PRACTICE_V1
 import SoloTank from '../components/SoloTank';
 import SoloMonopoly from '../components/SoloMonopoly'; // MAF_MONOPOLY_V1_GAMEPAGE : Monopoly (entrainement)
 import MonopolyOnline from '../components/MonopolyOnline'; // MAF_MONOPOLY_ONLINE_V1
+import LudoIntroduction from '../components/LudoIntroduction'; // MAF_LUDO_STEP_1_V1
 // MAF_TANK_ROTATION_LOCAL_V1 / module charge seulement au lancement proprietaire
 // MAF_TANK_GAMEPAGE_V1
 import { useSession } from '../auth/useSession';
@@ -62,6 +63,12 @@ const GAMES = [
     id: 'monopoly', emoji: '🎩', name: 'Monopoly',
     about: 'Achète des propriétés, construis des maisons et des hôtels, encaisse les loyers et ruine tes adversaires. Pour l\'instant : mode entraînement uniquement (pas de salon ni de mise).',
     tags: ['En ligne : 2 à 4 joueurs', 'Salons & mises', 'Entraînement', 'Maisons & hôtels'],
+  },
+  {
+    // MAF_LUDO_STEP_1_V1
+    id: 'ludo', emoji: '🎲', name: 'Ludo', illustration: '/games/ludo/ludo-card.svg',
+    about: 'Le Ludo arrive dans MAF GAME avec un plateau 3D, des pions animés et des dés. Bientôt : entraînement contre un bot et duel en ligne à deux joueurs.',
+    tags: ['Plateau 3D', '2 joueurs', 'Entraînement (à venir)', 'Duel (à venir)'],
   },
 ];
 const statusLabel = { open: 'Ouvert', pending: 'Demande en cours', ready: 'Pret a jouer', playing: 'Match en cours', finished: 'Termine' };
@@ -617,7 +624,7 @@ export default function GamePage() {
               <div className="game-grid">
                 {visibleGames.map((game) => (
                   <button key={game.id} type="button" className="game-card" onClick={() => openGame(game.id)}>
-                    <span className="game-card__emoji" aria-hidden="true">{game.emoji}</span>
+                    {game.illustration ? <img className="game-card__illustration" src={game.illustration} alt="" aria-hidden="true" /> : <span className="game-card__emoji" aria-hidden="true">{game.emoji}</span>}
                     <span className="game-card__name">{game.name}</span>
                   </button>
                 ))}
@@ -627,7 +634,7 @@ export default function GamePage() {
             <article className="game-detail" aria-label={currentGame.name}>
               <button type="button" className="game-detail__back" onClick={() => openGame(null)}>← Tous les jeux</button>
               <div className="game-detail__hero">
-                <span className="game-detail__emoji" aria-hidden="true">{currentGame.emoji}</span>
+                {currentGame.illustration ? <img className="game-detail__illustration" src={currentGame.illustration} alt="" aria-hidden="true" /> : <span className="game-detail__emoji" aria-hidden="true">{currentGame.emoji}</span>}
                 <div>
                   <span className="game-hub__eyebrow">JEU</span>
                   <h2>{currentGame.name}</h2>
@@ -636,7 +643,9 @@ export default function GamePage() {
                 </div>
               </div>
               {error && <p role="alert" className="game-hub__error">{error}</p>}
-              {currentGame.id === 'monopoly' ? (
+              {currentGame.id === 'ludo' ? (
+                <LudoIntroduction />
+              ) : currentGame.id === 'monopoly' ? (
                 <section className="game-detail__training" aria-label="Monopoly en ligne et entrainement">
                   <MonopolyOnline mode="create" onPlayingChange={setMonopolyOnlinePlaying}
                     onOpenRoom={openMonopolyRoom}
