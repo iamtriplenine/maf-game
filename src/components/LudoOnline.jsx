@@ -58,8 +58,10 @@ export default function LudoOnline({ room, match, busy, error, onStart, onRoll, 
   const playing = room.status === 'playing';
   const finished = room.status === 'finished' || match?.finished;
   const stale = playing && (clockRef.current.lastPacket === 0 || now - clockRef.current.lastPacket > STALE_MS);
-  const disconnected = !online || stale;
-  connectionRef.current.canPlay = playing && !finished && !disconnected && !busy;
+  // Un rafraichissement lent ne doit pas rendre le de inutilisable.
+  // Les erreurs de reseau et les tours invalides restent controles par le serveur.
+  const disconnected = !online;
+  connectionRef.current.canPlay = playing && !finished && online && !busy;
 
   const viewer = match?.viewer;
   const mine = viewer && match?.toMove === viewer;
@@ -76,6 +78,8 @@ export default function LudoOnline({ room, match, busy, error, onStart, onRoll, 
   }, []);
   useEffect(() => () => { disposer.current?.(); disposer.current = null; }, []);
   useEffect(() => { disposer.current?.sync?.(match); }, [match]);
+  // Synchroniser le statut des boutons meme si la version du plateau n'a pas change.
+  useEffect(() => { disposer.current?.refreshControls?.(); }, [busy, online, playing, finished, stale, match?.viewer, match?.toMove, match?.roll]);
 
   const load = useCallback((e) => {
     cleanup();
@@ -119,7 +123,8 @@ export default function LudoOnline({ room, match, busy, error, onStart, onRoll, 
       </div>
       {playing && <div role="status" className={`ludo-online__connection${disconnected ? ' ludo-online__connection--offline' : ''}`}>
         <span className="ludo-online__connection-dot" aria-hidden="true" />
-        {disconnected ? 'Connexion interrompue ou état du salon non actualisé. Les actions sont suspendues ; la synchronisation reprend automatiquement.'
+        {disconnected ? 'Hors ligne : vérifie ta connexion Internet.'
+          : stale ? 'Actualisation des données en attente : le serveur vérifie toujours les coups.'
           : 'Connecté au serveur · dés et coups synchronisés'}
       </div>}
       {error && <p role="alert" className="ludo-online__error">{error}</p>}
@@ -133,6 +138,9 @@ export default function LudoOnline({ room, match, busy, error, onStart, onRoll, 
       </div> : !boardReady && <p role="status">Chargement du plateau 3D…</p>}
     </>}
     <div className="ludo-online__actions">
+      {playing && !finished && mine && match?.roll == null && <button type="button" className="btn btn--primary" disabled={busy || !online} onClick={() => onRoll?.()} aria-label="Lancer le dé pour jouer ton tour">
+        🎲 Lancer le dé
+      </button>}
       <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => { cleanup(); onExit?.(); }}>Quitter l’écran</button>
       {playing && !finished && <button type="button" className="btn btn--outline" disabled={busy || disconnected} onClick={() => {
         if (window.confirm('Abandonner le duel et perdre ta mise ?')) onForfeit?.();

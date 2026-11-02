@@ -1001,7 +1001,7 @@ export function mountLudoGame(document, window, options = {}) {
             currentPlayerEl.innerHTML = `<i class="fas ${isAI ? 'fa-robot' : 'fa-user'}"></i> <span>${displayName}</span>`;
             currentPlayerEl.style.color = colorVar;
             document.documentElement.style.setProperty('--current-color', colorVar);
-            rollBtn.disabled = isOnline ? (!networkState || networkState.finished || networkState.viewer !== networkState.toMove || networkState.roll !== null || options.busy?.()) : (isRolling || isAI);
+            rollBtn.disabled = isOnline ? (isRolling || !networkState || networkState.finished || networkState.viewer !== networkState.toMove || networkState.roll != null || options.busy?.()) : (isRolling || isAI);
 
             // Activate base glow for current player
             startBaseGlow(player);
@@ -1824,7 +1824,13 @@ export function mountLudoGame(document, window, options = {}) {
         initGame();
         function syncOnline(next) {
           if (!isOnline || !next || next.type !== 'ludo' || disposed) return;
-          if (networkState?.version === next.version && networkState?.finished === next.finished) return;
+          if (networkState?.version === next.version && networkState?.finished === next.finished) {
+            // Une actualisation du serveur doit aussi rafraichir les controles,
+            // meme si aucune position de pion n'a change.
+            networkState = next;
+            updateUI();
+            return;
+          }
           const old = networkState;
           // Le serveur peut donner un de sans mouvement possible (roll devient null).
           // Lire lastAction permet aussi d'animer ce lancer chez les deux joueurs.
@@ -1911,6 +1917,7 @@ export function mountLudoGame(document, window, options = {}) {
             window.removeEventListener('resize', resizeConfettiCanvas);
         };
         cleanup.sync = syncOnline;
+        cleanup.refreshControls = () => { if (!disposed && isOnline && gameActive) updateUI(); };
         if (isOnline && options.initialState) syncOnline(options.initialState);
         return cleanup;
 
