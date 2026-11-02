@@ -224,7 +224,7 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
         <div><h3>Tir au but</h3><small>{isSolo ? 'Entraînement' : tournament ? `${room.tournamentTitle} · Duel ${room.reference}` : `#${room.code} · Mise ${fmt(room.stake)}`}</small>
           {isSolo && winEnabled && <small role="status">🟢 Mode Win actif</small>}</div>
         <span className="penalty__phase">{finished ? 'Terminé' : status === 'ready' ? 'Prêt' : `Tir ${Math.floor((match?.turn || 0) / 2) + 1}/${total}`}</span>
-        {immersive && onExit && <button type="button" className="penalty__exit" disabled={busy} onClick={onExit} title={tournament ? 'Retourner à mon salon de tournoi' : isSolo ? 'Quitter l’entraînement' : 'Sortir temporairement : 80 secondes pour revenir avant forfait'}>Sortir ×</button>}
+        {onExit && <button type="button" className="penalty__exit" disabled={busy} onClick={onExit} title={tournament ? 'Fermer le terrain et revenir au tournoi' : isSolo ? 'Quitter l’entraînement' : 'Sortir temporairement : 80 secondes pour revenir avant forfait'}>Sortir ×</button>}
       </header>
       <div className="penalty__scoreboard" aria-live="polite">
         <ScoreTrack mine name={ownName || 'Moi'} side={viewer} history={match?.history} total={total} score={ownScore} turnSide={match?.shooter} finished={finished}/>

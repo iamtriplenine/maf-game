@@ -84,10 +84,10 @@ function PenaltyTournamentCard({t,now,session,reserved,onDone}) {
         <p>Si le nombre d'inscrits est impair au lancement, la dernière inscription est retirée et remboursée. En cas de nombre impair de qualifiés, un joueur est exempt du tour concerné.</p>
         {plan && <p>Inscriptions actuelles : {t.registered} · {plan.initialMatches} match(s) prévus au premier tour · {plan.refunded} remboursement(s) nécessaire(s) · cagnotte retenue {francs(plan.pot)} F.</p>}
       </div></details>
-      <details><summary><span>02</span> Participants <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
+      <details open><summary><span>02</span> Participants inscrits · {t.registered} <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
         {(t.participants||[]).length ? <p>{t.participants.join(' · ')}</p>:<p>Aucun participant inscrit.</p>}
       </div></details>
-      <TournamentPenaltyBracket tournamentId={t.id} isOwner={session?.account_role==='owner'}/>
+      <TournamentPenaltyBracket tournamentId={t.id} startsAt={t.startsAt} isOwner={session?.account_role==='owner'}/>
       <TournamentPenaltyRewards tournament={t} session={session}/>
       <TournamentSkinShowcase participantId={t.participantSkinId} winnerId={t.winnerSkinId} participantName={t.participantSkinName} winnerName={t.winnerSkinName}/>
     </div>
@@ -269,11 +269,12 @@ export default function TournamentHub({ session }) {
     {loading&&<p role="status" className="tourney-empty">Chargement des tournois…</p>}
     {error&&<div className="tourney-error" role="alert">{error}<button type="button" onClick={()=>setGeneration(n=>n+1)}>Réessayer</button></div>}
     {!loading&&!error&&!items.length&&<div className="tourney-empty"><span aria-hidden="true">🏆</span><h3>Le prochain rendez-vous se prépare</h3><p>Les tournois programmés apparaîtront ici.</p></div>}
-    <TournamentPenaltyDuel session={session}/>
     {session&&<PenaltyAwardHistory/>}
     <TournamentQualificationMatch session={session}/>
     <TournamentFinalMatch session={session}/>
     <OfficialDuelSection session={session} hideAdmin/>
     <div className="tourney-grid">{items.map(t=><TournamentCard key={t.id} tournament={t} now={now} session={session} reserved={mine.includes(t.id)} onDone={(id,ok)=>{if(ok)setMine(m=>m.includes(id)?m:[...m,id]);setGeneration(n=>n+1);}}/>)}</div>
+    {/* Le salon du joueur apparait apres les annonces, jamais en bandeau flottant. */}
+    <TournamentPenaltyDuel session={session}/>
   </div>;
 }

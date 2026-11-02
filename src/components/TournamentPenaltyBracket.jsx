@@ -1,13 +1,16 @@
 import {useState} from 'react';
 import {penaltyTournamentBracket,reschedulePenaltyTournamentMatch} from '../api/tournaments';
 import '../styles/tournament-penalty-draw.css';
-export default function TournamentPenaltyBracket({tournamentId,isOwner=false}){
+export default function TournamentPenaltyBracket({tournamentId,startsAt,isOwner=false}){
   const [open,setOpen]=useState(false),[info,setInfo]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
   async function refresh(){setBusy(true);setError('');try{setInfo(await penaltyTournamentBracket(tournamentId));}catch(e){setError(e.message);}finally{setBusy(false);}}
   async function reschedule(id){setBusy(true);setError('');try{await reschedulePenaltyTournamentMatch(id);setInfo(await penaltyTournamentBracket(tournamentId));}catch(e){setError(e.message);}finally{setBusy(false);}}
   function toggle(){if(open){setOpen(false);return;}setOpen(true);void refresh();}
+  // Aucun bouton inutile avant la date du tirage.
+  const hasReachedStart = startsAt && Date.parse(startsAt) <= Date.now();
+  if (!hasReachedStart) return null;
   return <div className="penalty-bracket">
-    <button type="button" onClick={toggle} aria-expanded={open}>{open?'Masquer le tableau':'Voir les affrontements'}</button>
+    <button type="button" onClick={toggle} aria-expanded={open}>{open?'Masquer les résultats':'Tableau du tournoi · adversaires et résultats'}</button>
     {open&&<div className="penalty-bracket__body">
       <button type="button" disabled={busy} onClick={()=>void refresh()}>{busy?'Chargement…':'Actualiser'}</button>
       {error&&<p role="alert">{error}</p>}

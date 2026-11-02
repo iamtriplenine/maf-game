@@ -12,7 +12,7 @@ export default function TournamentPenaltyDuel({session}){
   const [open,setOpen]=useState(false),[room,setRoom]=useState(null),[match,setMatch]=useState(null);
   const [busy,setBusy]=useState(false),[arenaError,setArenaError]=useState('');
   const [clock,setClock]=useState(Date.now());
-  const clockOffset=useRef(0), notified=useRef(new Set());
+  const clockOffset=useRef(0);
   useEffect(()=>{
     const timer=setInterval(()=>setClock(Date.now()+clockOffset.current),1000);
     return()=>clearInterval(timer);
@@ -32,17 +32,6 @@ export default function TournamentPenaltyDuel({session}){
   const starts=duel?.scheduledAt ? new Date(duel.scheduledAt).toLocaleString('fr-FR',{
     timeZone:'Africa/Abidjan',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'
   }) : null;
-  useEffect(()=>{
-    if(!session||!duelId||open||!arrival||arrival.phase!=='waiting'||notified.current.has(duelId))return;
-    notified.current.add(duelId);
-    // Une notification navigateur uniquement si l'utilisateur l'avait deja autorisee.
-    // Le bandeau dans l'application reste visible sans aucune autorisation.
-    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-      try{new Notification('MAF GAME · Ton duel Tir-au-but commence',{
-        body:`${duel.host} contre ${duel.guest} : rejoins ton salon dans les cinq minutes.`,tag:`maf-penalty-${duelId}`
-      });}catch{/* Le bandeau de l'application reste la notification principale. */}
-    }
-  },[session,duelId,open,arrival?.phase,duel?.host,duel?.guest]);
   useEffect(()=>{
     if(!open||!duelId)return undefined;
     let active=true;
@@ -84,7 +73,7 @@ export default function TournamentPenaltyDuel({session}){
   };
   if(!session||(!duel&&!error&&!refunded&&!bye&&!champion))return null;
   return <section className="penalty-draw-my" aria-label="Mon salon Tir-au-but">
-    <header><span>⚽ MON SALON TIR-AU-BUT</span><button type="button" onClick={()=>void refresh()}>Actualiser</button></header>
+    <header><span>⚽ Ton prochain affrontement</span><button type="button" onClick={()=>void refresh()}>Actualiser</button></header>
     {refunded&&!duel&&<p role="status">{refunded.title} : ta mise de {refunded.amount} F a été remboursée, car tu étais le dernier inscrit et l'effectif était impair.</p>}
     {error&&<p role="alert">{error}</p>}
     {bye&&(!duel || duel.round<bye.round)&&<p role="status">Tour {bye.round} : tu es exempté de ce tour. Tu es qualifié pour le suivant.</p>}
@@ -106,6 +95,7 @@ export default function TournamentPenaltyDuel({session}){
       {arrival?.phase==='attention'&&<p className="penalty-presence__message" role="status">Le duel nécessite une décision du propriétaire. Aucun vainqueur n'a été désigné.</p>}
       {duel.winner&&<p>Vainqueur : <strong>{duel.winner}</strong></p>}
       <button type="button" disabled={busy||!arrival?.canEnter} onClick={()=>void enter()}>{busy?'Ouverture…':arrival?.phase==='finished'?'Voir le résultat':arrival?.phase==='closed'?'Salon pas encore ouvert':arrival?.phase==='decision'?'Vérification du forfait…':arrival?.phase==='attention'?'Décision en attente':'Rejoindre mon salon'}</button>
+      {open&&<button type="button" className="penalty-draw-my__close" onClick={()=>{setOpen(false);setRoom(null);setMatch(null);void refresh();}}>← Fermer le salon et revenir au tournoi</button>}
       {open&&room?.attentionReason&&<p role="status">Ce duel nécessite une nouvelle programmation. Aucun vainqueur n’a été attribué.</p>}
       {open&&room&&room.status!=='attention'&&<PenaltyArena tournament room={room} match={match} busy={busy}
         onStart={()=>void action(startPenaltyTournamentMatch)}
