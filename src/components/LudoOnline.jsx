@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { mountLudoGame } from '../games/ludo/engine';
 import frame from '../games/ludo/frame.html?raw';
 import '../styles/ludo-online.css';
+import '../styles/ludo-glass.css';
 
 // MAF_LUDO_STAGE5 — Informations de connexion et de reconnexion côté client.
 // Aucun lancer ni mouvement n'est validé par le navigateur : le backend reste souverain.

@@ -1464,6 +1464,26 @@ body.maf-ludo-online-mode .action-buttons{display:none!important}
  body.maf-ludo-online-mode .control-panel{max-height:36dvh!important}
  body.maf-ludo-online-mode .dice-section{width:100%;justify-content:center!important}
 }
+
+/* MAF_LUDO_GLASS_V1 : habillage verre depoli des panneaux et boutons (aucun changement de regles). */
+.control-panel{background:radial-gradient(120% 60% at 50% 0%,rgba(66,133,244,.16),transparent 60%),linear-gradient(180deg,#14223c 0%,#0a1628 100%)!important}
+.current-player-section,.message-box,.scoreboard{
+ background:linear-gradient(145deg,rgba(255,255,255,.13),rgba(255,255,255,.04))!important;
+ -webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%);
+ border:1px solid rgba(255,255,255,.2)!important;
+ box-shadow:0 8px 24px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.22)}
+.score-item{background:rgba(255,255,255,.07)!important;border:1px solid rgba(255,255,255,.08)}
+.roll-btn{background:linear-gradient(135deg,rgba(90,160,255,.95),rgba(30,100,235,.95))!important;
+ border:1px solid rgba(255,255,255,.35)!important;border-radius:14px!important;
+ box-shadow:0 8px 20px rgba(30,100,235,.4),inset 0 1px 0 rgba(255,255,255,.45)!important;letter-spacing:.2px}
+.roll-btn:hover:not(:disabled){transform:translateY(-1px) scale(1.03)}
+.action-btn{background:rgba(255,255,255,.07)!important;border:1px solid rgba(255,255,255,.22)!important;border-radius:12px!important;
+ -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#dbe7ff!important}
+.action-btn:hover{background:rgba(66,133,244,.22)!important}
+.board-control-btn{background:rgba(255,255,255,.14)!important;border:1px solid rgba(255,255,255,.28)!important;border-radius:12px!important;
+ -webkit-backdrop-filter:blur(12px) saturate(150%);backdrop-filter:blur(12px) saturate(150%);box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.board-control-btn.active{background:rgba(66,133,244,.75)!important}
+#board-container canvas{image-rendering:auto;touch-action:none}
 </style></head>
 <body>
 

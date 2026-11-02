@@ -1,0 +1,15 @@
+/* MAF_LUDO_GLASS_V1 — panneaux et boutons du duel en ligne : verre depoli. */
+.ludo-online__state,.ludo-online__connection{
+  background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
+  -webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%);
+  border:1px solid rgba(255,255,255,.2);border-radius:14px;
+  box-shadow:0 8px 22px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.2)}
+.ludo-online__connection--offline{border-color:rgba(255,190,101,.55)}
+.ludo-online__frame{border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 32px rgba(0,0,0,.4)}
+.ludo-online__actions .btn{border-radius:14px;border:1px solid rgba(255,255,255,.28);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  box-shadow:0 6px 16px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.25);transition:transform .15s,box-shadow .15s}
+.ludo-online__actions .btn--primary{background:linear-gradient(135deg,rgba(90,160,255,.95),rgba(30,100,235,.95));color:#fff}
+.ludo-online__actions .btn--ghost,.ludo-online__actions .btn--outline{background:rgba(255,255,255,.08);color:inherit}
+.ludo-online__actions .btn:hover:not(:disabled){transform:translateY(-1px)}
+.ludo-online__actions .btn:active:not(:disabled){transform:scale(.97)}

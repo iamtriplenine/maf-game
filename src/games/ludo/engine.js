@@ -428,10 +428,11 @@ export function mountLudoGame(document, window, options = {}) {
             camera.lookAt(0, 0, 0);
             // MAF_LUDO_STAGE5: réduire la charge GPU et la mémoire sur téléphone.
             const compactScreen = window.innerWidth <= 700;
-            renderer = new THREE.WebGLRenderer({ antialias: !compactScreen, logarithmicDepthBuffer: true });
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, compactScreen ? 1.5 : 2));
+            // MAF_LUDO_SHARP_V1: antialiasing toujours actif et resolution complete pour un plateau net.
+            renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true, powerPreference: 'high-performance' });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
             renderer.setSize(Math.max(1, w), Math.max(1, h));
-            renderer.shadowMap.enabled = !compactScreen;
+            renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             boardContainer.appendChild(renderer.domElement);
             controls = new OrbitControls(camera, renderer.domElement);
@@ -444,7 +445,7 @@ export function mountLudoGame(document, window, options = {}) {
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(200, 400, 200);
             dirLight.castShadow = true;
-            dirLight.shadow.mapSize.set(2048, 2048);
+            dirLight.shadow.mapSize.set(compactScreen ? 1024 : 2048, compactScreen ? 1024 : 2048);
             dirLight.shadow.camera.near = 100;
             dirLight.shadow.camera.far = 1000;
             dirLight.shadow.camera.left = dirLight.shadow.camera.bottom = -400;
