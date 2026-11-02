@@ -86,7 +86,7 @@ function PenaltyTournamentCard({t,now,session,reserved,onDone}) {
       <details><summary><span>02</span> Participants <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
         {(t.participants||[]).length ? <p>{t.participants.join(' · ')}</p>:<p>Aucun participant inscrit.</p>}
       </div></details>
-      <TournamentPenaltyBracket tournamentId={t.id}/>
+      <TournamentPenaltyBracket tournamentId={t.id} isOwner={session?.account_role==='owner'}/>
       <TournamentSkinShowcase participantId={t.participantSkinId} winnerId={t.winnerSkinId} participantName={t.participantSkinName} winnerName={t.winnerSkinName}/>
     </div>
   </article>;

@@ -29,3 +29,7 @@ export const penaltyTournamentMatch = id => walletRequest(`/api/tournaments/pena
 export const startPenaltyTournamentMatch = id => walletRequest(`/api/tournaments/penalty/matches/${encodeURIComponent(id)}/start`,{method:'POST',body:{}});
 export const choosePenaltyTournamentMatch = (id,direction) => walletRequest(`/api/tournaments/penalty/matches/${encodeURIComponent(id)}/choose`,{method:'POST',body:{direction}});
 export const forfeitPenaltyTournamentMatch = id => walletRequest(`/api/tournaments/penalty/matches/${encodeURIComponent(id)}/forfeit`,{method:'POST',body:{}});
+
+export const pingPenaltyTournamentMatch = id => walletRequest(`/api/tournaments/penalty/matches/${encodeURIComponent(id)}/presence`,{method:'POST',body:{}});
+
+export const reschedulePenaltyTournamentMatch = id => walletRequest(`/api/tournaments/penalty/matches/${encodeURIComponent(id)}/reschedule`,{method:'POST',body:{}});

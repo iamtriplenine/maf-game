@@ -9,3 +9,6 @@
 .penalty-bracket ol{list-style:none;padding:0;display:grid;gap:8px}
 .penalty-bracket li{border:1px solid #ffffff25;border-radius:8px;padding:10px;display:grid;gap:4px}
 .penalty-bracket li span{opacity:.7;font-size:.77rem;overflow-wrap:anywhere}
+
+.penalty-bracket__champion{font-weight:800;color:#f7cf73;border:1px solid #f7cf7344;padding:12px;border-radius:12px}
+.penalty-bracket__bye{padding:8px 10px;border:1px dashed #bfa36955;border-radius:8px}

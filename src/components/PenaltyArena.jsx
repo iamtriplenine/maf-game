@@ -239,7 +239,7 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
       <div className="penalty__interaction">
         {status === 'ready' && <>
           <p>{!tournament && room.escrow > 0 ? `Cagnotte : ${fmt(room.escrow)}. ` : ''}Le duel est prêt.</p>
-          {tournament || room.is_host ? <button type="button" className="penalty__primary" disabled={busy || (tournament && !room.canStart)} onClick={onStart}>{tournament && !room.canStart ? 'En attente de l’heure du match' : 'Lancer le match'}</button> : <p className="penalty__wait">En attente de {room.host.pseudo}…</p>}
+          {tournament || room.is_host ? <button type="button" className="penalty__primary" disabled={busy || (tournament && !room.canStart)} onClick={onStart}>{tournament && !room.canStart ? room.waitingForOpponent ? 'En attente des deux joueurs' : 'En attente de l’heure du match' : 'Lancer le match'}</button> : <p className="penalty__wait">En attente de {room.host.pseudo}…</p>}
         </>}
         {status === 'playing' && !finished && <>
           <p className="penalty__instruction">{!match ? 'Chargement du match…' : role === 'shooter' ? 'Tireur · Où tires-tu ?' : 'Gardien · Où plonges-tu ?'}</p>
