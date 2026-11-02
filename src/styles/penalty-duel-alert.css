@@ -1,0 +1,18 @@
+/* Alerte du duel de tournoi : en bas, au-dessus de la barre de navigation, non bloquante. */
+.penalty-duel-alert {
+  position:fixed; z-index:11900; left:50%; transform:translateX(-50%);
+  bottom:calc(env(safe-area-inset-bottom) + 86px); width:min(520px,calc(100vw - 24px));
+  display:grid; gap:7px; justify-items:center; padding:12px 16px 14px;
+  border:3px solid #4ade80; border-radius:16px; text-align:center; color:#fff;
+  background:linear-gradient(145deg,#0f2a1c 0%,#0b0b12 92%);
+  box-shadow:0 10px 34px #000b,0 0 22px #22c55e55; pointer-events:auto;
+}
+.penalty-duel-alert__heading { font-size:clamp(14px,4vw,18px); font-weight:900; color:#86efac; letter-spacing:.015em; }
+.penalty-duel-alert p { margin:0; font-size:clamp(12px,3.4vw,15px); line-height:1.35; font-weight:700; }
+.penalty-duel-alert__clock strong { font-size:clamp(34px,10vw,54px); line-height:1; color:#bbf7d0; font-variant-numeric:tabular-nums; text-shadow:0 0 12px #16a34aaa; }
+.penalty-duel-alert__go { width:min(100%,340px); min-height:44px; border:0; border-radius:12px; padding:10px 14px; background:#4ade80; color:#05210f; font:900 clamp(13px,3.8vw,16px)/1.2 var(--font-ui); box-shadow:0 4px 0 #15803d; }
+.penalty-duel-alert__go:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+.penalty-duel-alert--urgent { border-color:#ff5656; box-shadow:0 10px 34px #000b,0 0 28px #ff3b3b75; }
+.penalty-duel-alert--urgent .penalty-duel-alert__heading,
+.penalty-duel-alert--urgent .penalty-duel-alert__clock strong { color:#ff7373; }
+.penalty-duel-alert--urgent .penalty-duel-alert__go { background:#ff7373; color:#2b0707; box-shadow:0 4px 0 #9b1c1c; }

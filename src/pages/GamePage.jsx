@@ -78,7 +78,19 @@ export default function GamePage() {
   const { session } = useSession();
   const [clock, setClock] = useState(Date.now);
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(timer); }, []);
-  const [tab, setTab] = useState('jeux');
+  const [tab, setTab] = useState(() => {
+    try { if (sessionStorage.getItem('maf:open-tab') === 'tournoi') { sessionStorage.removeItem('maf:open-tab'); return 'tournoi'; } } catch { /* optionnel */ }
+    return 'jeux';
+  });
+  useEffect(() => {
+    const open = () => { try { sessionStorage.removeItem('maf:open-tab'); } catch { /* optionnel */ } setTab('tournoi'); };
+    window.addEventListener('maf:open-tab-tournoi', open);
+    return () => window.removeEventListener('maf:open-tab-tournoi', open);
+  }, []);
+  useEffect(() => {
+    document.body.dataset.mafTab = tab; // lu par l'alerte du duel pour ne pas doubler la carte du tournoi
+    return () => { delete document.body.dataset.mafTab; };
+  }, [tab]);
   const [gameId, setGameId] = useState(null);
   const [monopolyPlaying, setMonopolyPlaying] = useState(false);
   const [monopolyOnlinePlaying, setMonopolyOnlinePlaying] = useState(false);
