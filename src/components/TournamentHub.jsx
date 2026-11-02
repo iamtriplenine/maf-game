@@ -90,6 +90,9 @@ function PenaltyTournamentCard({t,now,session,reserved,onDone}) {
         </div>)}</div>
         {!(t.participants||[]).length&&<p className="tourney-participants-empty">Aucun participant pour le moment.</p>}
       </details>
+      <details><summary><span>04</span> Règles & réservation <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
+        <TournamentPolicy fee={t.entryFee} game="penalty"/>
+      </div></details>
       <TournamentPenaltyBracket tournamentId={t.id} startsAt={t.startsAt} isOwner={session?.account_role==='owner'}/>
       <TournamentPenaltyRewards tournament={t} session={session}/>
       <TournamentSkinShowcase participantId={t.participantSkinId} winnerId={t.winnerSkinId} participantName={t.participantSkinName} winnerName={t.winnerSkinName}/>
@@ -159,7 +162,7 @@ export function TournamentCard({ tournament: t, now, session = null, reserved = 
       <details><summary><span>04</span> Réservation & règles <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
         <p>Inscription individuelle : 500 F par joueur, 20 places au maximum. Si moins de 10 joueurs sont inscrits, le tournoi est annulé et les mises remboursées. Avec 11 à 13 inscrits, les 10 premiers jouent ; avec 16 à 17 inscrits, les 15 premiers jouent. Les derniers inscrits en surplus sont remboursés. Les groupes sont ensuite tirés au sort.</p>
         {t.registrationOpen?<p>Réservation : 500 F sont débités de ton solde réel à la confirmation, pour une place unique par compte.</p>:<p>Les conditions de paiement et de remboursement figurent ci-dessous ; les réservations ne sont pas actuellement ouvertes.</p>}
-        <TournamentPolicy/>
+        <TournamentPolicy fee={t.entryFee}/>
       </div></details>
     </div>
   </article>;

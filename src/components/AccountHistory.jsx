@@ -10,7 +10,7 @@ const date = value => value ? new Date(value).toLocaleString('fr-FR') : '—';
 const unit = currency => currency === 'V' ? 'V' : 'F CFA';
 const signed = value => `${value > 0 ? '+' : value < 0 ? '−' : ''}${money(Math.abs(value))}`;
 const tone = value => value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral';
-const titles = { deposit:'Dépôt',withdrawal:'Retrait',coupon:'Coupon utilisé',game_stake:'Mise de jeu',game_payout:'Gain de jeu',game_refund:'Mise remboursée' };
+const titles = { deposit:'Dépôt',withdrawal:'Retrait',coupon:'Coupon utilisé',game_stake:'Mise de jeu',game_payout:'Gain de jeu',game_refund:'Mise remboursée',tournament_stake:'Tournoi · mise débitée',tournament_refund:'Tournoi · remboursement',tournament_payout:'Tournoi · gain' };
 function status(t) {
   if (t.status === 'awaiting_payment') return 'Paiement et capture attendus';
   if (t.status === 'pending') return t.kind === 'withdrawal' ? 'Paiement en attente' : 'Vérification en cours';

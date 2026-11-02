@@ -85,6 +85,7 @@ export default function TournamentPenaltyDuel({session}){
       <p className="penalty-draw-my__state">{duel.status==='finished'?'Résultat enregistré':duel.status==='playing'?'Affrontement en cours':duel.status==='attention'?'Affrontement en attente de décision':'Affrontement programmé'}</p>
       {starts&&<p className="penalty-presence__time">Heure du duel : <strong>{starts} (Abidjan)</strong></p>}
       {arrival?.phase==='closed'&&<p className="penalty-presence__message">Ton salon ouvrira cinq minutes avant le début du duel.</p>}
+      {['closed','early'].includes(arrival?.phase)&&<p className="penalty-presence__message">Un duel ne démarre jamais avant son heure officielle, même si les deux joueurs sont déjà présents. Pour la finale, l'heure « Finale » annoncée sur la carte du tournoi fait foi.</p>}
       {arrival?.phase==='early'&&<p className="penalty-presence__message">Salle d'attente ouverte. Le match commence dans <strong>{penaltyClock(arrival.startSeconds)}</strong>.</p>}
       {arrival?.phase==='waiting'&&!open&&<div className="penalty-presence__notice" role="alert">
         <strong>🔔 C'est l'heure de ton duel !</strong>
