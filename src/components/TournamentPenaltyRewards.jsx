@@ -37,7 +37,7 @@ export default function TournamentPenaltyRewards({tournament,session}) {
       {award.winners.map((r,i)=><p key={i}>{label(r.role)} — {r.name} : <strong>{francs(r.amountFranc)} F</strong></p>)}
       {award.myAward&&<p><strong>Ton gain : {francs(award.myAward.amountFranc)} F</strong></p>}
     </div>}
-    {award?.status==='pending'&&<p>Les récompenses seront confirmées après la finale.</p>}
+    {award?.status==='pending'&&<p>{award.releaseAt?`Francs et skins seront versés à la remise des cadeaux : ${new Intl.DateTimeFormat('fr-FR',{timeZone:'Africa/Abidjan',dateStyle:'medium',timeStyle:'short'}).format(new Date(award.releaseAt))} (Abidjan), après certification de la finale.`:'Les récompenses seront confirmées après la finale.'}</p>}
     {!session&&<p>Connecte-toi pour consulter les récompenses distribuées.</p>}
    </div>
  </details>;
