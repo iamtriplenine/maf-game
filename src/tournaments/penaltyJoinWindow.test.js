@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {penaltyJoinWindow,penaltyClock} from './penaltyJoinWindow.js';
+const begin=Date.parse('2026-11-02T20:00:00Z');
+const duel={id:'1',scheduledAt:new Date(begin).toISOString(),status:'scheduled'};
+test('salon ferme avant la pre-ouverture',()=>assert.deepEqual(penaltyJoinWindow(duel,begin-300001).phase,'closed'));
+test('pre-ouverture a moins de cinq minutes',()=>assert.deepEqual(penaltyJoinWindow(duel,begin-300000).phase,'early'));
+test('a heure exacte cinq minutes restantes',()=>{const d=penaltyJoinWindow(duel,begin);assert.equal(d.phase,'waiting');assert.equal(d.deadlineSeconds,300);assert.equal(d.canEnter,true);});
+test('a 4m59 le salon est accessible',()=>assert.equal(penaltyJoinWindow(duel,begin+299000).canEnter,true));
+test('a 5min la decision serveur est attendue',()=>{const d=penaltyJoinWindow(duel,begin+300000);assert.equal(d.phase,'decision');assert.equal(d.canEnter,false);});
+test('salon deja en cours est accessible apres le lancement',()=>assert.equal(penaltyJoinWindow({...duel,status:'playing'},begin+900000).canEnter,true));
+test('resultat termine consultable',()=>assert.equal(penaltyJoinWindow({...duel,status:'finished'},begin+900000).canEnter,true));
+test('salon en attention inaccessible',()=>assert.equal(penaltyJoinWindow({...duel,status:'attention'},begin+900000).canEnter,false));
+test('horaires invalides bloques',()=>assert.equal(penaltyJoinWindow({...duel,scheduledAt:'non-date'},begin),null));
+test('compteur formate',()=>{assert.equal(penaltyClock(299),'4:59');assert.equal(penaltyClock(60),'1:00');assert.equal(penaltyClock(0),'0:00')});

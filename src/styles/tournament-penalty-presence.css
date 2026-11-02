@@ -1,0 +1,6 @@
+/* Informations du debut de match Tir-au-but - ne modifie pas le tournoi Monopoly. */
+.penalty-presence__time { margin: .35rem 0; font-size: .92rem; opacity: .9; }
+.penalty-presence__notice { margin: .85rem 0; padding: .8rem 1rem; border-radius: 12px; border: 1px solid #36c98c; background: rgba(30,110,76,.22); }
+.penalty-presence__notice strong { font-weight: 750; }
+.penalty-presence__notice p { margin: .45rem 0 0; }
+.penalty-presence__message { margin: .65rem 0; padding: .65rem .75rem; border-left: 3px solid #73cdb0; border-radius: 6px; background: rgba(85,120,123,.12); }

@@ -1,7 +1,9 @@
-import {useCallback,useEffect,useState} from 'react';
+import {useCallback,useEffect,useRef,useState} from 'react';
 import {myPenaltyTournamentDuel,penaltyTournamentMatch,startPenaltyTournamentMatch,
   choosePenaltyTournamentMatch,forfeitPenaltyTournamentMatch,pingPenaltyTournamentMatch} from '../api/tournaments';
 import {PenaltyArena} from './PenaltyArena';
+import {penaltyJoinWindow,penaltyClock} from '../tournaments/penaltyJoinWindow';
+import '../styles/tournament-penalty-presence.css';
 import '../styles/tournament-penalty-draw.css';
 
 // Une seule carte personnelle et un seul terrain : aucun autre duel n'est accessible.
@@ -9,8 +11,14 @@ export default function TournamentPenaltyDuel({session}){
   const [duel,setDuel]=useState(null),[refunded,setRefunded]=useState(null),[bye,setBye]=useState(null),[champion,setChampion]=useState(null),[error,setError]=useState('');
   const [open,setOpen]=useState(false),[room,setRoom]=useState(null),[match,setMatch]=useState(null);
   const [busy,setBusy]=useState(false),[arenaError,setArenaError]=useState('');
+  const [clock,setClock]=useState(Date.now());
+  const clockOffset=useRef(0), notified=useRef(new Set());
+  useEffect(()=>{
+    const timer=setInterval(()=>setClock(Date.now()+clockOffset.current),1000);
+    return()=>clearInterval(timer);
+  },[]);
   const refresh=useCallback(async()=>{
-    try{const data=await myPenaltyTournamentDuel();setDuel(data.match||null);setRefunded(data.refunded||null);setBye(data.bye||null);setChampion(data.champion||null);setError('');}
+    try{const data=await myPenaltyTournamentDuel();if(Number.isFinite(data.serverNow))clockOffset.current=data.serverNow-Date.now();setClock(Date.now()+clockOffset.current);setDuel(data.match||null);setRefunded(data.refunded||null);setBye(data.bye||null);setChampion(data.champion||null);setError('');}
     catch(e){setError(e.message||'Impossible de charger ton affrontement.');}
   },[]);
   useEffect(()=>{
@@ -20,6 +28,21 @@ export default function TournamentPenaltyDuel({session}){
     return()=>clearInterval(timer);
   },[session,refresh]);
   const duelId=duel?.id;
+  const arrival=penaltyJoinWindow(duel,clock);
+  const starts=duel?.scheduledAt ? new Date(duel.scheduledAt).toLocaleString('fr-FR',{
+    timeZone:'Africa/Abidjan',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'
+  }) : null;
+  useEffect(()=>{
+    if(!session||!duelId||open||!arrival||arrival.phase!=='waiting'||notified.current.has(duelId))return;
+    notified.current.add(duelId);
+    // Une notification navigateur uniquement si l'utilisateur l'avait deja autorisee.
+    // Le bandeau dans l'application reste visible sans aucune autorisation.
+    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+      try{new Notification('MAF GAME · Ton duel Tir-au-but commence',{
+        body:`${duel.host} contre ${duel.guest} : rejoins ton salon dans les cinq minutes.`,tag:`maf-penalty-${duelId}`
+      });}catch{/* Le bandeau de l'application reste la notification principale. */}
+    }
+  },[session,duelId,open,arrival?.phase,duel?.host,duel?.guest]);
   useEffect(()=>{
     if(!open||!duelId)return undefined;
     let active=true;
@@ -43,7 +66,7 @@ export default function TournamentPenaltyDuel({session}){
     return()=>{active=false;clearInterval(timer);clearInterval(presenceTimer);};
   },[open,duelId,busy]);
   const enter=async()=>{
-    if(!duelId)return;
+    if(!duelId||!arrival?.canEnter)return;
     setBusy(true);setArenaError('');
     try{const data=await pingPenaltyTournamentMatch(duelId);setRoom(data.room);setMatch(data.match);setOpen(true);}
     catch(e){setError(e.message||'Salon indisponible.');}
@@ -71,8 +94,18 @@ export default function TournamentPenaltyDuel({session}){
       <p><strong>{duel.host}</strong> <span>contre</span> <strong>{duel.guest}</strong></p>
       <p>Tour {duel.round} · Duel {duel.matchNo} · Référence {duel.reference}</p>
       <p className="penalty-draw-my__state">{duel.status==='finished'?'Résultat enregistré':duel.status==='playing'?'Affrontement en cours':duel.status==='attention'?'Affrontement en attente de décision':'Affrontement programmé'}</p>
+      {starts&&<p className="penalty-presence__time">Heure du duel : <strong>{starts} (Abidjan)</strong></p>}
+      {arrival?.phase==='closed'&&<p className="penalty-presence__message">Ton salon ouvrira cinq minutes avant le début du duel.</p>}
+      {arrival?.phase==='early'&&<p className="penalty-presence__message">Salle d'attente ouverte. Le match commence dans <strong>{penaltyClock(arrival.startSeconds)}</strong>.</p>}
+      {arrival?.phase==='waiting'&&!open&&<div className="penalty-presence__notice" role="alert">
+        <strong>🔔 C'est l'heure de ton duel !</strong>
+        <p>Rejoins ton salon maintenant. Il reste <strong>{penaltyClock(arrival.deadlineSeconds)}</strong> avant la décision de forfait.</p>
+      </div>}
+      {arrival?.phase==='waiting'&&open&&room?.status==='ready'&&<p className="penalty-presence__message" role="status">Tu es dans ton salon. {room.waitingForOpponent?'Nous attendons ton adversaire.':'Les deux joueurs sont présents.'} Temps restant : <strong>{penaltyClock(arrival.deadlineSeconds)}</strong>.</p>}
+      {arrival?.phase==='decision'&&<p className="penalty-presence__message" role="status">Le délai initial de cinq minutes est terminé. Le serveur vérifie la présence et confirme le résultat. Aucun joueur ne peut rejoindre tardivement.</p>}
+      {arrival?.phase==='attention'&&<p className="penalty-presence__message" role="status">Le duel nécessite une décision du propriétaire. Aucun vainqueur n'a été désigné.</p>}
       {duel.winner&&<p>Vainqueur : <strong>{duel.winner}</strong></p>}
-      <button type="button" disabled={busy||duel.status==='attention'} onClick={()=>void enter()}>{busy?'Ouverture…':duel.status==='finished'?'Voir le résultat':'Entrer sur le terrain'}</button>
+      <button type="button" disabled={busy||!arrival?.canEnter} onClick={()=>void enter()}>{busy?'Ouverture…':arrival?.phase==='finished'?'Voir le résultat':arrival?.phase==='closed'?'Salon pas encore ouvert':arrival?.phase==='decision'?'Vérification du forfait…':arrival?.phase==='attention'?'Décision en attente':'Rejoindre mon salon'}</button>
       {open&&room?.attentionReason&&<p role="status">Ce duel nécessite une nouvelle programmation. Aucun vainqueur n’a été attribué.</p>}
       {open&&room&&room.status!=='attention'&&<PenaltyArena tournament room={room} match={match} busy={busy}
         onStart={()=>void action(startPenaltyTournamentMatch)}
