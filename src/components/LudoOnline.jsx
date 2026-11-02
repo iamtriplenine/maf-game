@@ -1,52 +1,131 @@
-import { useCallback,useEffect,useRef,useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { mountLudoGame } from '../games/ludo/engine';
 import frame from '../games/ludo/frame.html?raw';
 import '../styles/ludo-online.css';
 
-// MAF_LUDO_STAGE4 : ne charge qu'un duel déjà accepté depuis les Salons MAF.
-export default function LudoOnline({room,match,busy,error,onStart,onRoll,onMove,onForfeit,onExit}) {
-  const [boardReady,setBoardReady]=useState(false);
-  const disposer=useRef(null);
-  const state=useRef(match);
-  const busyRef=useRef(busy);
-  const handlers=useRef({onRoll,onMove});
-  state.current=match;busyRef.current=busy;handlers.current={onRoll,onMove};
-  const cleanup=useCallback(()=>{disposer.current?.();disposer.current=null;setBoardReady(false);},[]);
-  useEffect(()=>()=>{disposer.current?.();disposer.current=null;},[]);
-  useEffect(()=>{disposer.current?.sync?.(match);},[match]);
-  const load=useCallback((e)=>{
+// MAF_LUDO_STAGE5 — Informations de connexion et de reconnexion côté client.
+// Aucun lancer ni mouvement n'est validé par le navigateur : le backend reste souverain.
+const STALE_MS = 12000;
+const showSeconds = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+
+export default function LudoOnline({ room, match, busy, error, onStart, onRoll, onMove, onForfeit, onExit }) {
+  const [boardReady, setBoardReady] = useState(false);
+  const [boardError, setBoardError] = useState('');
+  const [frameKey, setFrameKey] = useState(0);
+  const [now, setNow] = useState(Date.now);
+  const [online, setOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine !== false);
+  const disposer = useRef(null);
+  const state = useRef(match);
+  const busyRef = useRef(busy);
+  const handlers = useRef({ onRoll, onMove });
+  const connectionRef = useRef({ canPlay: false });
+  const clockRef = useRef({ lastPacket: 0, offset: 0 });
+  state.current = match;
+  busyRef.current = busy;
+  handlers.current = { onRoll, onMove };
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    const cameOnline = () => { setOnline(true); setNow(Date.now()); };
+    const wentOffline = () => { setOnline(false); setNow(Date.now()); };
+    window.addEventListener('online', cameOnline);
+    window.addEventListener('offline', wentOffline);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('online', cameOnline);
+      window.removeEventListener('offline', wentOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Number.isFinite(match?.serverNow)) {
+      const received = Date.now();
+      clockRef.current = { lastPacket: received, offset: match.serverNow - received };
+      setNow(received);
+    }
+  }, [match?.serverNow]);
+
+  const playing = room.status === 'playing';
+  const finished = room.status === 'finished' || match?.finished;
+  const stale = playing && (clockRef.current.lastPacket === 0 || now - clockRef.current.lastPacket > STALE_MS);
+  const disconnected = !online || stale;
+  connectionRef.current.canPlay = playing && !finished && !disconnected && !busy;
+
+  const viewer = match?.viewer;
+  const mine = viewer && match?.toMove === viewer;
+  const serverNow = now + clockRef.current.offset;
+  const secondsLeft = (deadline) => Number.isFinite(deadline)
+    ? Math.max(0, Math.ceil((deadline - serverNow) / 1000)) : null;
+  const turnSeconds = secondsLeft(match?.moveDeadline);
+  const myReturnSeconds = secondsLeft(match?.returnDeadline);
+  const rivalReturnSeconds = secondsLeft(match?.opponentReturnDeadline);
+
+  const cleanup = useCallback(() => {
     disposer.current?.();
-    try{
-      disposer.current=mountLudoGame(e.currentTarget.contentDocument,e.currentTarget.contentWindow,{
-        mode:'online',initialState:state.current,humanColor:'red',
-        busy:()=>busyRef.current,onRoll:()=>handlers.current.onRoll?.(),
-        onMove:index=>handlers.current.onMove?.(index),
+    disposer.current = null;
+  }, []);
+  useEffect(() => () => { disposer.current?.(); disposer.current = null; }, []);
+  useEffect(() => { disposer.current?.sync?.(match); }, [match]);
+
+  const load = useCallback((e) => {
+    cleanup();
+    setBoardError('');
+    try {
+      const doc = e.currentTarget.contentDocument;
+      const view = e.currentTarget.contentWindow;
+      if (!doc || !view) throw new Error('Le navigateur ne permet pas de charger le plateau.');
+      disposer.current = mountLudoGame(doc, view, {
+        mode: 'online', initialState: state.current,
+        busy: () => busyRef.current || !connectionRef.current.canPlay,
+        onRoll: () => { if (connectionRef.current.canPlay) handlers.current.onRoll?.(); },
+        onMove: index => { if (connectionRef.current.canPlay) handlers.current.onMove?.(index); },
       });
       setBoardReady(true);
-    }catch(err){setBoardReady(false);console.error('Ludo 3D:',err);}
-  },[]);
-  const viewer=match?.viewer;
-  const mine=viewer&&match?.toMove===viewer;
-  const finished=room.status==='finished'||match?.finished;
+    } catch (err) {
+      setBoardReady(false);
+      setBoardError('Impossible d’afficher le plateau 3D. Réessaie ou vérifie la compatibilité WebGL de ton téléphone.');
+      console.error('Ludo 3D:', err);
+    }
+  }, [cleanup]);
+
   return <div className="ludo-online" role="region" aria-label="Duel Ludo 3D en ligne">
-    <header className="ludo-online__header"><strong>🎲 Duel Ludo 3D · Salon {room.code}</strong><span>{room.host?.pseudo} contre {room.guest?.pseudo}</span></header>
-    {room.status==='ready'? <div className="ludo-online__actions">
+    <header className="ludo-online__header">
+      <strong>🎲 Duel Ludo 3D · Salon {room.code}</strong>
+      <span>{room.host?.pseudo} contre {room.guest?.pseudo}</span>
+    </header>
+    {room.status === 'ready' ? <div className="ludo-online__actions">
       <p>Les deux joueurs sont prêts. Le créateur peut lancer le duel.</p>
-      {room.is_host?<button className="btn btn--primary" disabled={busy} onClick={onStart}>Commencer le duel</button>:<p>Le créateur va lancer le match.</p>}
-    </div>: <>
+      {room.is_host ? <button type="button" className="btn btn--primary" disabled={busy} onClick={onStart}>Commencer le duel</button>
+        : <p>Le créateur va lancer le match.</p>}
+    </div> : <>
       <div className="ludo-online__state" role="status" aria-live="polite">
-        {finished?match?.winner===viewer?'🏆 Victoire !':'Partie terminée':mine?
-          match?.roll!=null?`À toi : dé ${match.roll}, choisis un pion.`:'À toi de lancer le dé.':'Tour de ton adversaire.'}
-        {match?.lastAction&&<small>{match.lastAction}</small>}
+        <div>{finished ? match?.winner === viewer ? '🏆 Victoire !' : 'Partie terminée'
+          : mine ? match?.roll != null ? `À toi : dé ${match.roll}, choisis un pion.` : 'À toi de lancer le dé.'
+          : 'Tour de ton adversaire.'}</div>
+        {match?.lastAction && <small>{match.lastAction}</small>}
+        {playing && turnSeconds != null && <small>Temps restant pour ce tour : {showSeconds(turnSeconds)}</small>}
+        {playing && myReturnSeconds != null && <small>Retour dans la partie : {showSeconds(myReturnSeconds)}</small>}
+        {playing && rivalReturnSeconds != null && <small>Retour de l’adversaire : {showSeconds(rivalReturnSeconds)}</small>}
       </div>
-      {error&&<p role="alert" className="ludo-online__error">{error}</p>}
-      <iframe title="Duel Ludo 3D" srcDoc={frame} className="ludo-online__frame" onLoad={load}/>
-      {!boardReady&&<p role="status">Chargement du plateau 3D…</p>}
+      {playing && <div role="status" className={`ludo-online__connection${disconnected ? ' ludo-online__connection--offline' : ''}`}>
+        <span className="ludo-online__connection-dot" aria-hidden="true" />
+        {disconnected ? 'Connexion interrompue ou état du salon non actualisé. Les actions sont suspendues ; la synchronisation reprend automatiquement.'
+          : 'Connecté au serveur · dés et coups synchronisés'}
+      </div>}
+      {error && <p role="alert" className="ludo-online__error">{error}</p>}
+      <iframe key={frameKey} title="Duel Ludo 3D" srcDoc={frame} className="ludo-online__frame"
+        onLoad={load} allow="fullscreen" />
+      {boardError ? <div role="alert" className="ludo-online__error">
+        <p>{boardError}</p>
+        <button type="button" className="btn btn--outline" onClick={() => { cleanup(); setBoardReady(false); setBoardError(''); setFrameKey(key => key + 1); }}>
+          Recharger le plateau
+        </button>
+      </div> : !boardReady && <p role="status">Chargement du plateau 3D…</p>}
     </>}
     <div className="ludo-online__actions">
-      <button type="button" className="btn btn--ghost" disabled={busy} onClick={()=>{cleanup();onExit?.();}}>Quitter l’écran</button>
-      {room.status==='playing'&&<button type="button" className="btn btn--outline" disabled={busy} onClick={()=>{
-        if(window.confirm('Abandonner le duel et perdre ta mise ?'))onForfeit?.();
+      <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => { cleanup(); onExit?.(); }}>Quitter l’écran</button>
+      {playing && !finished && <button type="button" className="btn btn--outline" disabled={busy || disconnected} onClick={() => {
+        if (window.confirm('Abandonner le duel et perdre ta mise ?')) onForfeit?.();
       }}>Abandonner</button>}
     </div>
   </div>;

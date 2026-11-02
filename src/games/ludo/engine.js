@@ -425,10 +425,12 @@ export function mountLudoGame(document, window, options = {}) {
             camera = new THREE.PerspectiveCamera(45, w / h, 1, 2000);
             camera.position.set(0, 650, 550);
             camera.lookAt(0, 0, 0);
-            renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
-            renderer.setSize(w, h);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.shadowMap.enabled = true;
+            // MAF_LUDO_STAGE5: réduire la charge GPU et la mémoire sur téléphone.
+            const compactScreen = window.innerWidth <= 700;
+            renderer = new THREE.WebGLRenderer({ antialias: !compactScreen, logarithmicDepthBuffer: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, compactScreen ? 1.5 : 2));
+            renderer.setSize(Math.max(1, w), Math.max(1, h));
+            renderer.shadowMap.enabled = !compactScreen;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             boardContainer.appendChild(renderer.domElement);
             controls = new OrbitControls(camera, renderer.domElement);
@@ -453,10 +455,14 @@ export function mountLudoGame(document, window, options = {}) {
             mouse = new THREE.Vector2();
             window.addEventListener('resize', onWindowResize);
             renderer.domElement.addEventListener('click', onBoardClick);
+            // Ne pas interpréter la fin d'une rotation du plateau comme un choix de pion.
+            renderer.domElement.addEventListener('pointerdown', trackPointerDown);
+            renderer.domElement.addEventListener('pointermove', trackPointerMove);
         }
 
         function onWindowResize() {
             const w = boardContainer.clientWidth, h = boardContainer.clientHeight;
+            if (!w || !h || !camera || !renderer) return;
             camera.aspect = w / h;
             camera.updateProjectionMatrix();
             renderer.setSize(w, h);
@@ -966,6 +972,7 @@ export function mountLudoGame(document, window, options = {}) {
         function animate() {
             if (!gameActive) return;
             scheduleFrame(animate);
+            if (document.hidden) return;
             controls.update();
             renderer.render(scene, camera);
         }
@@ -985,7 +992,9 @@ export function mountLudoGame(document, window, options = {}) {
                     displayName = 'You';
                 }
             } else {
-                displayName = `Player ${currentPlayerIndex + 1}`;
+                displayName = isOnline && networkState
+                  ? (networkState.toMove === networkState.viewer ? 'Vous' : 'Adversaire')
+                  : `Player ${currentPlayerIndex + 1}`;
             }
 
             currentPlayerEl.innerHTML = `<i class="fas ${isAI ? 'fa-robot' : 'fa-user'}"></i> <span>${displayName}</span>`;
@@ -1015,7 +1024,9 @@ export function mountLudoGame(document, window, options = {}) {
                         displayName = 'You';
                     }
                 } else {
-                    displayName = `Player ${idx + 1}`;
+                    displayName = isOnline && networkState
+                      ? ((idx === 0 ? 'host' : 'guest') === networkState.viewer ? 'Vous' : 'Adversaire')
+                      : `Player ${idx + 1}`;
                 }
 
                 scoreGrid.innerHTML += `
@@ -1208,7 +1219,19 @@ export function mountLudoGame(document, window, options = {}) {
             highlightedMeshes = [];
         }
 
+        let pointerOrigin = null;
+        let pointerDragged = false;
+        function trackPointerDown(event) {
+            pointerOrigin = { x: event.clientX, y: event.clientY };
+            pointerDragged = false;
+        }
+        function trackPointerMove(event) {
+            if (pointerOrigin && (Math.abs(event.clientX - pointerOrigin.x) > 9 || Math.abs(event.clientY - pointerOrigin.y) > 9)) {
+                pointerDragged = true;
+            }
+        }
         function onBoardClick(event) {
+            if (pointerDragged) { pointerDragged = false; return; }
             if (!gameActive || aiPlayers.includes(players[currentPlayerIndex])) return;
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1837,9 +1860,13 @@ export function mountLudoGame(document, window, options = {}) {
             });
             if (renderer) {
               renderer.domElement.removeEventListener('click', onBoardClick);
+              renderer.domElement.removeEventListener('pointerdown', trackPointerDown);
+              renderer.domElement.removeEventListener('pointermove', trackPointerMove);
               renderer.dispose();
+              renderer.forceContextLoss?.();
             }
             window.removeEventListener('resize', onWindowResize);
+            window.removeEventListener('resize', resizeConfettiCanvas);
         };
         cleanup.sync = syncOnline;
         if (isOnline && options.initialState) syncOnline(options.initialState);

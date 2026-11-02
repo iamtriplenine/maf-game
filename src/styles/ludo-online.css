@@ -1,1 +1,19 @@
-.ludo-online{display:grid;gap:12px;width:100%;margin-top:14px}.ludo-online__header{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;justify-content:space-between}.ludo-online__header span{font-size:13px;opacity:.8}.ludo-online__state{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--glass);font-weight:700}.ludo-online__state small{display:block;margin-top:5px;opacity:.75;font-weight:400}.ludo-online__error{color:#ff7c7c}.ludo-online__frame{width:100%;min-height:570px;height:72vh;max-height:800px;border:0;border-radius:12px;background:#0a1628}.ludo-online__actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}@media(max-width:600px){.ludo-online__frame{height:76vh;min-height:540px}.ludo-online__header{display:grid}}
+/* MAF_LUDO_STAGE5 — plateau adaptable et actions accessibles sur téléphone. */
+.ludo-online{display:grid;gap:12px;width:100%;min-width:0;margin-top:14px}
+.ludo-online__header{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;justify-content:space-between}
+.ludo-online__header span{font-size:13px;opacity:.8}
+.ludo-online__state{padding:12px 14px;border:1px solid var(--border, #516178);border-radius:10px;background:var(--glass, #17283f);font-weight:700}
+.ludo-online__state small{display:block;margin-top:5px;opacity:.8;font-weight:400}
+.ludo-online__error{color:#ff9292}
+.ludo-online__frame{display:block;width:100%;height:min(76vh,780px);height:min(76dvh,780px);min-height:450px;border:0;border-radius:12px;background:#0a1628}
+.ludo-online__actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.ludo-online__connection{display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border:1px solid #2e816c;border-radius:10px;font-size:13px;line-height:1.45;background:rgba(46,129,108,.12)}
+.ludo-online__connection--offline{border-color:#b78240;background:rgba(183,130,64,.13)}
+.ludo-online__connection-dot{flex:none;width:9px;height:9px;margin-top:4px;border-radius:50%;background:#4fd2a3}
+.ludo-online__connection--offline .ludo-online__connection-dot{background:#ffbe65}
+@media(max-width:600px){
+  .ludo-online__frame{height:72vh;height:72dvh;min-height:390px;max-height:680px}
+  .ludo-online__header{display:grid}
+  .ludo-online__actions{display:grid;grid-template-columns:minmax(0,1fr)}
+  .ludo-online__actions button{width:100%;min-height:44px}
+}
