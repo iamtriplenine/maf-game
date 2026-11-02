@@ -48,6 +48,8 @@ export const startMatch = async (id) =>
 export const rollDice = (id,dice) => walletRequest(`/api/rooms/${id}/match/dice/roll`, { method:'POST', ...(dice?{body:{dice}}:{}) });
 export const chooseDirection = async (id, direction) =>
   walletRequest(`/api/rooms/${id}/match/choose`, { method: 'POST', body: { direction } });
+export const rollLudo = id => walletRequest(`/api/rooms/${id}/match/ludo/roll`, {method:'POST'});
+export const moveLudo = (id,index) => walletRequest(`/api/rooms/${id}/match/ludo/move`, {method:'POST',body:{index}});
 export const forfeitMatch = async (id) =>
   walletRequest(`/api/rooms/${id}/match/forfeit`, { method: 'POST' });
 export const recentResults = async () => currentSession()

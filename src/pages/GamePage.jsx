@@ -13,6 +13,7 @@ import SoloDice from '../components/SoloDice'; // MAF_DICE_PRACTICE_V1
 import SoloTank from '../components/SoloTank';
 import SoloMonopoly from '../components/SoloMonopoly'; // MAF_MONOPOLY_V1_GAMEPAGE : Monopoly (entrainement)
 import MonopolyOnline from '../components/MonopolyOnline'; // MAF_MONOPOLY_ONLINE_V1
+import LudoOnline from '../components/LudoOnline'; // MAF_LUDO_STAGE4
 import LudoIntroduction from '../components/LudoIntroduction'; // MAF_LUDO_STEP_1_V1
 // MAF_TANK_ROTATION_LOCAL_V1 / module charge seulement au lancement proprietaire
 // MAF_TANK_GAMEPAGE_V1
@@ -35,8 +36,8 @@ const localRoomDeadline = room => room ? {
 } : null;
 
 const money = (value) => `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`;
-const gameName = (game) => game === 'monopoly' ? 'Monopoly' : game === 'tankrun' ? 'Tank Run' : game === 'dice' ? 'Lancer de dés' : game === 'tank' ? 'Tank Battle' : game === 'checkers' ? 'Dames' : 'Tir au but';
-const gameSymbol = (game) => game === 'monopoly' ? '🎩' : game === 'tankrun' ? '🏎️' : game === 'dice' ? '🎲' : game === 'tank' ? '🚀' : game === 'checkers' ? '♛' : '⚽';
+const gameName = (game) => game === 'monopoly' ? 'Monopoly' : game === 'tankrun' ? 'Tank Run' : game === 'dice' ? 'Lancer de dés' : game === 'tank' ? 'Tank Battle' : game === 'checkers' ? 'Dames' : game === 'ludo' ? 'Ludo' : 'Tir au but';
+const gameSymbol = (game) => game === 'monopoly' ? '🎩' : game === 'tankrun' ? '🏎️' : game === 'dice' ? '🎲' : game === 'tank' ? '🚀' : game === 'checkers' ? '♛' : game === 'ludo' ? '🎲' : '⚽';
 const GAMES = [
   {
     id: 'penalty', emoji: '⚽', name: 'Tir au but',
@@ -67,8 +68,8 @@ const GAMES = [
   {
     // MAF_LUDO_STEP_1_V1
     id: 'ludo', emoji: '🎲', name: 'Ludo', illustration: '/games/ludo/ludo-card.svg',
-    about: 'Le Ludo arrive dans MAF GAME avec un plateau 3D, des pions animés et des dés. Bientôt : entraînement contre un bot et duel en ligne à deux joueurs.',
-    tags: ['Plateau 3D', '2 joueurs', 'Entraînement (à venir)', 'Duel (à venir)'],
+    about: 'Joue au Ludo sur un plateau 3D animé : entraînement gratuit contre un bot ou duel en ligne à deux joueurs avec salons.',
+    tags: ['Plateau 3D','Entraînement bot','Duel en ligne','2 joueurs'],
   },
 ];
 const statusLabel = { open: 'Ouvert', pending: 'Demande en cours', ready: 'Pret a jouer', playing: 'Match en cours', finished: 'Termine' };
@@ -556,7 +557,13 @@ export default function GamePage() {
                   onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
                   onExit={() => void exitArena()}
                   onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))} /> :
-                selected.game === 'checkers' ? <CheckersArena
+                selected.game === 'ludo' ? <LudoOnline
+                  room={selected} match={match} busy={busy} error={error}
+                  onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
+                  onRoll={() => void matchAction(() => roomsApi.rollLudo(selected.id))}
+                  onMove={index => void matchAction(() => roomsApi.moveLudo(selected.id,index))}
+                  onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}
+                  onExit={() => void exitArena()} /> : selected.game === 'checkers' ? <CheckersArena
                   room={selected} match={match} busy={busy} error={error} onExit={() => void exitArena()}
                   onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
                   onMove={(move) => void matchAction(() => roomsApi.moveCheckers(selected.id, move))}
@@ -644,7 +651,24 @@ export default function GamePage() {
               </div>
               {error && <p role="alert" className="game-hub__error">{error}</p>}
               {currentGame.id === 'ludo' ? (
-                <LudoIntroduction />
+                <section className="ludo-duel-setup">
+                  <LudoIntroduction />
+                  <section className="game-hub__panel" aria-label="Créer un salon Ludo">
+                    <span className="game-hub__eyebrow">DUEL EN LIGNE</span>
+                    <h3>Créer un salon Ludo</h3>
+                    <form onSubmit={doCreate} className="game-hub__form">
+                      <p className="game-hub__muted">Deux joueurs, même plateau 3D, dés et déplacements contrôlés par le serveur.</p>
+                      <label>Mise par joueur (F CFA)
+                        <input type="text" inputMode="numeric" pattern="[0-9]+" required maxLength={7}
+                          value={stake} onChange={e=>setStake(e.target.value.replace(/\D/g,'').slice(0,7))}/>
+                      </label>
+                      <p className="game-hub__muted">Entre 100 et 1 000 000 F CFA. La mise est bloquée lors de l'acceptation du deuxième joueur.</p>
+                      <button className="btn btn--primary btn--block" type="submit" disabled={busy||!session||slotLimitReached||sameGameRoom}>Créer mon salon Ludo</button>
+                      {!session&&<p className="game-hub__muted">Connecte-toi depuis Profil.</p>}
+                    </form>
+                  </section>
+                  <button type="button" className="btn btn--sm btn--block" onClick={()=>setTab('salon')}>Voir les salons ouverts</button>
+                </section>
               ) : currentGame.id === 'monopoly' ? (
                 <section className="game-detail__training" aria-label="Monopoly en ligne et entrainement">
                   <MonopolyOnline mode="create" onPlayingChange={setMonopolyOnlinePlaying}

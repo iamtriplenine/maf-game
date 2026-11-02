@@ -105,6 +105,8 @@ export function mountLudoGame(document, window, options = {}) {
         let gameMode = null, playerCount = 0, players = [], currentPlayerIndex = 0;
         let tokens = {}, tokenMeshes = {}, lastRoll = 0, isRolling = false, gameActive = false;
         let selectedColors = [], colorSelectingPlayer = 0, aiPlayers = [];
+        const isOnline = options.mode === 'online';
+        let networkState = null;
         let scene, camera, renderer, controls, boardGroup, raycaster, mouse;
 
         // ============ MENU LOGIC ============
@@ -989,7 +991,7 @@ export function mountLudoGame(document, window, options = {}) {
             currentPlayerEl.innerHTML = `<i class="fas ${isAI ? 'fa-robot' : 'fa-user'}"></i> <span>${displayName}</span>`;
             currentPlayerEl.style.color = colorVar;
             document.documentElement.style.setProperty('--current-color', colorVar);
-            rollBtn.disabled = isRolling || isAI;
+            rollBtn.disabled = isOnline ? (!networkState || networkState.finished || networkState.viewer !== networkState.toMove || networkState.roll !== null || options.busy?.()) : (isRolling || isAI);
 
             // Activate base glow for current player
             startBaseGlow(player);
@@ -1036,11 +1038,13 @@ export function mountLudoGame(document, window, options = {}) {
 
         rollBtn.addEventListener('click', () => {
             if (isRolling || !gameActive || rollBtn.disabled) return;
+            if (isOnline) { if (networkState?.viewer === networkState?.toMove && networkState?.roll == null) options.onRoll?.(); return; }
             rollDice();
         });
 
         diceContainer.addEventListener('click', () => {
             if (isRolling || !gameActive || rollBtn.disabled || aiPlayers.includes(players[currentPlayerIndex])) return;
+            if (isOnline) { if (networkState?.viewer === networkState?.toMove && networkState?.roll == null) options.onRoll?.(); return; }
             rollDice();
         });
 
@@ -1218,7 +1222,8 @@ export function mountLudoGame(document, window, options = {}) {
                 while (obj.parent && !obj.userData.player) obj = obj.parent;
                 if (obj.userData.player === player) {
                     clearHighlights();
-                    moveToken(player, obj.userData.index, lastRoll);
+                    if (isOnline) { if (networkState?.viewer === networkState?.toMove) options.onMove?.(obj.userData.index); }
+                    else moveToken(player, obj.userData.index, lastRoll);
                 }
             }
         }
@@ -1753,11 +1758,67 @@ export function mountLudoGame(document, window, options = {}) {
         const localModeLabel = document.querySelector('.maf-ludo-local-mode');
         if (localModeLabel) localModeLabel.textContent = isTraining
           ? 'Entraînement · Toi contre le bot · sans mise'
-          : 'Partie locale · 2 joueurs · sans mise';
+          : isOnline ? 'Duel en ligne · tours validés par le serveur' : 'Partie locale · 2 joueurs · sans mise';
         menuOverlay.classList.add('hidden');
         colorSelection.classList.remove('active');
         initGame();
-        return () => {
+        function syncOnline(next) {
+          if (!isOnline || !next || next.type !== 'ludo' || disposed) return;
+          if (networkState?.version === next.version && networkState?.finished === next.finished) return;
+          const old = networkState;
+          networkState = next;
+          currentPlayerIndex = next.toMove === 'host' ? 0 : 1;
+          isRolling = false;
+          const host = next.colors?.host || 'red';const guest = next.colors?.guest || 'yellow';
+          // Les couleurs et positions sont exclusivement celles du serveur.
+          const moving = [];
+          for(const colorName of [host,guest]) {
+            for(let i=0;i<4;i++) {
+              const newPosition=next.tokens?.[colorName]?.[i];
+              if(!Number.isInteger(newPosition)) continue;
+              const previous=old?.tokens?.[colorName]?.[i];
+              tokens[colorName][i]=newPosition;
+              if(old && previous!==newPosition && newPosition>=0 && newPosition>previous) {
+                moving.push({colorName,index:i,previous,newPosition});
+              }
+            }
+          }
+          function layoutOnline(excluded = new Set()) {
+            const stacks = new Map();
+            for(const col of [host,guest]) for(let i=0;i<4;i++) {
+              const pos=tokens[col][i];
+              if(!Number.isInteger(pos)) continue;
+              const at=getPositionForStep(col,i,pos);
+              const key=pos>=0 && pos<56 ? `${Math.round(at.x)}:${Math.round(at.z)}` : `${col}:${i}`;
+              if(!stacks.has(key)) stacks.set(key, []);
+              stacks.get(key).push({col,i,at});
+            }
+            for(const stack of stacks.values()) stack.forEach(({col,i,at},slot)=>{
+              if(excluded.has(`${col}:${i}`)) return;
+              const mesh=tokenMeshes[col][i];
+              const offset=(slot-(stack.length-1)/2)*12;
+              mesh.position.set(at.x+offset,mesh.position.y,at.z);
+            });
+          }
+          const movingIds=new Set(moving.map(m=>`${m.colorName}:${m.index}`));
+          layoutOnline(movingIds);
+          moving.forEach(m=>animateTokenMove(m.colorName,m.index,m.previous,m.newPosition,()=>{
+            movingIds.delete(`${m.colorName}:${m.index}`);
+            layoutOnline(movingIds);
+          }));
+          clearHighlights();
+          lastRoll=next.roll||0;
+          updateUI();updateScoreboard();
+          const mine=next.viewer===next.toMove;
+          if(next.finished) {
+            rollBtn.disabled=true;
+            setMessage(next.winner===next.viewer?'Tu as gagné !':'Duel terminé.');
+          } else if(mine && next.roll != null) {
+            setMessage('Dé : '+next.roll+' · Choisis ton pion.');
+            if (Array.isArray(next.valid) && next.valid.length) highlightTokens(players[currentPlayerIndex], next.valid);
+          } else setMessage((next.lastAction||'')+' · '+(mine?'À toi de lancer le dé.':'Attends ton adversaire.'));
+        }
+        const cleanup = () => {
             if (disposed) return;
             disposed = true;
             gameActive = false;
@@ -1780,5 +1841,8 @@ export function mountLudoGame(document, window, options = {}) {
             }
             window.removeEventListener('resize', onWindowResize);
         };
+        cleanup.sync = syncOnline;
+        if (isOnline && options.initialState) syncOnline(options.initialState);
+        return cleanup;
 
 }

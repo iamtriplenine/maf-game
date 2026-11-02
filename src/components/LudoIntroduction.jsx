@@ -118,7 +118,7 @@ export default function LudoIntroduction() {
         </article>
         <article className="ludo-introduction__mode">
           <span className="ludo-introduction__mode-icon" aria-hidden="true">🎲</span>
-          <div><h3>Duel en ligne</h3><p>Deux joueurs connectés, salons et système de mises MAF GAME.</p><span className="ludo-introduction__soon">Prévu à l'étape 4</span></div>
+          <div><h3>Duel en ligne</h3><p>Deux joueurs connectés, salons et système de mises MAF GAME.</p><span className="ludo-introduction__ready">Disponible dans les salons</span></div>
         </article>
       </div>
     </section>
