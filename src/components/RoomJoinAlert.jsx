@@ -67,8 +67,7 @@ export default function RoomJoinAlert() {
 
   if (!invitation || invitation.key === dismissedNow) return null;
   const { room, key } = invitation;
-  const gameName = room.game === 'tank' ? 'Tank Battle'
-    : room.game === 'checkers' ? 'Dames' : 'Tir au but';
+  const gameName = {tank:'Tank Battle',checkers:'Dames',ludo:'Ludo',dice:'Lancer de dés',tankrun:'Tank Run',penalty:'Tir au but'}[room.game] || 'Jeu';
 
   const dismiss = () => {
     markDismissed(userId, key);

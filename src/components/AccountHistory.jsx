@@ -10,6 +10,7 @@ const date = value => value ? new Date(value).toLocaleString('fr-FR') : '—';
 const unit = currency => currency === 'V' ? 'V' : 'F CFA';
 const signed = value => `${value > 0 ? '+' : value < 0 ? '−' : ''}${money(Math.abs(value))}`;
 const tone = value => value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral';
+const GAME_NAMES = { monopoly:'Monopoly',penalty:'Tir au but',ludo:'Ludo',checkers:'Dames',tank:'Tank Battle',tankrun:'Tank Run',dice:'Lancer de dés' };
 const titles = { deposit:'Dépôt',withdrawal:'Retrait',coupon:'Coupon utilisé',game_stake:'Mise de jeu',game_payout:'Gain de jeu',game_refund:'Mise remboursée',tournament_stake:'Tournoi · mise débitée',tournament_refund:'Tournoi · remboursement',tournament_payout:'Tournoi · gain' };
 function status(t) {
   if (t.status === 'awaiting_payment') return 'Paiement et capture attendus';
@@ -38,12 +39,12 @@ function Game({ item:g }) {
   const score = g.scores && Number.isFinite(g.scores[mine]) && Number.isFinite(g.scores[theirs]);
   const labels = { won:'Victoire',lost:'Défaite',cancelled:'Partie annulée',ongoing:g.status === 'ready' ? 'En attente de lancement' : 'Partie en cours',unknown:'Résultat indisponible' };
   return <article className="history-card">
-    <div className="history-card__top"><h3>{g.game === 'monopoly' ? 'Monopoly' : 'Tir au but'}</h3><span className={'history-result history-result--'+g.outcome}>{labels[g.outcome]}</span></div>
+    <div className="history-card__top"><h3>{GAME_NAMES[g.game] || 'Jeu'}</h3><span className={'history-result history-result--'+g.outcome}>{labels[g.outcome]}</span></div>
     <p className="history-opponent">Toi contre <strong>{g.opponent || 'Adversaire'}</strong></p>
     {score && <p className="history-score" aria-label={`Ton score ${g.scores[mine]}, adversaire ${g.scores[theirs]}`}>{g.scores[mine]} <span>–</span> {g.scores[theirs]}</p>}
     {g.forfeit_side && <p className="history-muted">{g.forfeit_side === mine ? 'Tu as abandonné la partie.' : 'Ton adversaire a abandonné la partie.'}</p>}
     <dl className="history-game-money"><div><dt>Mise</dt><dd>{money(g.stake)} F CFA</dd></div><div><dt>{g.outcome === 'cancelled' ? 'Remboursé' : 'Reçu'}</dt><dd>{g.received === null ? 'En attente' : `${money(g.received)} F CFA`}</dd></div><div><dt>Bilan net</dt><dd className={'history-amount--'+tone(g.net)}>{g.net === null ? 'En attente' : `${signed(g.net)} F CFA`}</dd></div></dl>
-    <p className="history-muted">Salon {g.code}{g.game === 'monopoly' ? '' : ` · ${g.shots} tirs par joueur`}{g.net === null && g.status === 'finished' ? ' · Règlement non confirmé' : ''}</p>
+    <p className="history-muted">Salon {g.code}{g.game === 'penalty' ? ` · ${g.shots} tirs par joueur` : g.game === 'dice' && g.shots ? ` · ${g.shots} coup${g.shots > 1 ? 's' : ''} par joueur` : ''}{g.net === null && g.status === 'finished' ? ' · Règlement non confirmé' : ''}</p>
     <time className="history-date" dateTime={g.updated_at}>{date(g.updated_at)}</time>
   </article>;
 }
