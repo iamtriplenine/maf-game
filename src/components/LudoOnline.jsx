@@ -65,6 +65,12 @@ export default function LudoOnline({ room, match, busy, error, onStart, onRoll, 
 
   const viewer = match?.viewer;
   const mine = viewer && match?.toMove === viewer;
+  // Les pions jouables sont donnes par le serveur, jamais calcules par le navigateur.
+  // Le bouton de secours permet d'avancer meme si un toucher 3D est intercepte sur mobile.
+  const validPawns = playing && !finished && mine && match?.roll != null && Array.isArray(match?.valid)
+    ? [...new Set(match.valid)].filter(index => Number.isInteger(index) && index >= 0 && index < 4)
+    : [];
+  const myColor = match?.colors?.[viewer];
   const serverNow = now + clockRef.current.offset;
   const secondsLeft = (deadline) => Number.isFinite(deadline)
     ? Math.max(0, Math.ceil((deadline - serverNow) / 1000)) : null;
@@ -138,6 +144,16 @@ export default function LudoOnline({ room, match, busy, error, onStart, onRoll, 
       </div> : !boardReady && <p role="status">Chargement du plateau 3D…</p>}
     </>}
     <div className="ludo-online__actions">
+      {validPawns.length > 0 && <div role="group" aria-label="Choisir un pion Ludo" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%', alignItems: 'center' }}>
+        <span style={{ width: '100%', fontSize: '12px' }}>Dé {match.roll} : touche un pion sur le plateau ou utilise un bouton :</span>
+        {validPawns.map(index => <button key={index} type="button" className="btn btn--primary"
+          style={{ flex: '1 1 130px', minHeight: '44px' }}
+          disabled={busy || !online}
+          onClick={() => onMove?.(index)}
+          aria-label={`${match?.tokens?.[myColor]?.[index] === -1 ? 'Sortir' : 'Avancer'} le pion ${index + 1}`}>
+          {match?.tokens?.[myColor]?.[index] === -1 ? 'Sortir' : 'Avancer'} pion {index + 1}
+        </button>)}
+      </div>}
       {playing && !finished && mine && match?.roll == null && <button type="button" className="btn btn--primary" disabled={busy || !online} onClick={() => onRoll?.()} aria-label="Lancer le dé pour jouer ton tour">
         🎲 Lancer le dé
       </button>}

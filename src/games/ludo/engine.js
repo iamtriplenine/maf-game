@@ -1070,16 +1070,20 @@ export function mountLudoGame(document, window, options = {}) {
             diceEl.style.transform = `rotateX(${diceAngleX}deg) rotateY(${diceAngleY}deg)`;
             scheduleTimeout(() => {
                 isRolling = false;
-                if (networkState !== packet || disposed) return;
+                // Des polls actualisent serverNow sans changer la version : ne pas
+                // perdre la fin d'animation ni les pions selectionnables.
+                if (disposed || !networkState || networkState.version !== packet.version) return;
+                const live = networkState;
                 updateUI();
-                const mine = packet.viewer === packet.toMove;
-                if (packet.finished) {
+                const mine = live.viewer === live.toMove;
+                if (live.finished) {
                     setMessage('Duel terminé.');
-                } else if (mine && packet.roll != null) {
-                    setMessage(`Dé : ${packet.roll} · Choisis ton pion.`);
-                    if (Array.isArray(packet.valid) && packet.valid.length) highlightTokens(players[currentPlayerIndex], packet.valid);
+                } else if (mine && live.roll != null) {
+                    setMessage(`Dé : ${live.roll} · Choisis ton pion.`);
+                    if (!highlightedMeshes.length && Array.isArray(live.valid) && live.valid.length)
+                        highlightTokens(players[currentPlayerIndex], live.valid);
                 } else {
-                    setMessage((packet.lastAction || '') + ' · ' + (mine ? 'À toi de lancer le dé.' : 'Attends ton adversaire.'));
+                    setMessage((live.lastAction || '') + ' · ' + (mine ? 'À toi de lancer le dé.' : 'Attends ton adversaire.'));
                 }
             }, 1230);
         }
@@ -1181,6 +1185,9 @@ export function mountLudoGame(document, window, options = {}) {
         let highlightedMeshes = [];
 
         function highlightTokens(player, validMoves) {
+            // Eviter les anneaux en double si la synchronisation relance la selection.
+            clearHighlights();
+            if (!tokenMeshes[player]) return;
             highlightedMeshes = [];
 
             // Get player's light color for the ring
@@ -1275,14 +1282,18 @@ export function mountLudoGame(document, window, options = {}) {
             mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
             const player = players[currentPlayerIndex];
-            const meshes = tokenMeshes[player].filter(m => m.userData.highlighted);
+            const legal = isOnline
+                ? ((networkState?.viewer === networkState?.toMove && networkState?.roll != null && !networkState.finished)
+                    ? networkState.valid || [] : [])
+                : tokenMeshes[player].filter(m => m.userData.highlighted).map(m => m.userData.index);
+            const meshes = tokenMeshes[player].filter(m => legal.includes(m.userData.index));
             const intersects = raycaster.intersectObjects(meshes, true);
             if (intersects.length > 0) {
                 let obj = intersects[0].object;
                 while (obj.parent && !obj.userData.player) obj = obj.parent;
-                if (obj.userData.player === player) {
+                if (obj.userData.player === player && legal.includes(obj.userData.index)) {
                     clearHighlights();
-                    if (isOnline) { if (networkState?.viewer === networkState?.toMove) options.onMove?.(obj.userData.index); }
+                    if (isOnline) options.onMove?.(obj.userData.index);
                     else moveToken(player, obj.userData.index, lastRoll);
                 }
             }
@@ -1825,10 +1836,13 @@ export function mountLudoGame(document, window, options = {}) {
         function syncOnline(next) {
           if (!isOnline || !next || next.type !== 'ludo' || disposed) return;
           if (networkState?.version === next.version && networkState?.finished === next.finished) {
-            // Une actualisation du serveur doit aussi rafraichir les controles,
-            // meme si aucune position de pion n'a change.
+            // Ne pas desactiver la selection apres un poll serverNow identique.
             networkState = next;
             updateUI();
+            if (!isRolling && next.viewer === next.toMove && next.roll != null &&
+                Array.isArray(next.valid) && next.valid.length && !highlightedMeshes.length) {
+              highlightTokens(players[currentPlayerIndex], next.valid);
+            }
             return;
           }
           const old = networkState;
@@ -1879,6 +1893,12 @@ export function mountLudoGame(document, window, options = {}) {
           clearHighlights();
           lastRoll=next.roll||0;
           updateUI();updateScoreboard();
+          // La selection est etablie des la reception de l'etat autoritaire :
+          // l'animation du de ne doit JAMAIS etre une condition pour activer un pion.
+          if (next.viewer === next.toMove && next.roll != null &&
+              Array.isArray(next.valid) && next.valid.length) {
+            highlightTokens(players[currentPlayerIndex], next.valid);
+          }
           if (animateRoll) { animateServerDice(Number(serverRoll[1]), next); return; }
           const mine=next.viewer===next.toMove;
           if(next.finished) {
@@ -1886,7 +1906,6 @@ export function mountLudoGame(document, window, options = {}) {
             setMessage(next.winner===next.viewer?'Tu as gagné !':'Duel terminé.');
           } else if(mine && next.roll != null) {
             setMessage('Dé : '+next.roll+' · Choisis ton pion.');
-            if (Array.isArray(next.valid) && next.valid.length) highlightTokens(players[currentPlayerIndex], next.valid);
           } else setMessage((next.lastAction||'')+' · '+(mine?'À toi de lancer le dé.':'Attends ton adversaire.'));
         }
         const cleanup = () => {
