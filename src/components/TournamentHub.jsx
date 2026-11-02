@@ -5,6 +5,8 @@ import UnifiedTournamentScheduler from './UnifiedTournamentScheduler';
 import OfficialDuelSection from './OfficialDuelSection';
 import TournamentQualificationMatch from './TournamentQualificationMatch';
 import TournamentFinalMatch from './TournamentFinalMatch';
+import TournamentPenaltyDuel from './TournamentPenaltyDuel';
+import TournamentPenaltyBracket from './TournamentPenaltyBracket';
 import { publicTournaments, ownerTournaments, saveTournament, reserveTournament, myTournamentReservations, setTournamentRegistration } from '../api/tournaments';
 import { refreshSession } from '../api/accounts';
 import { abidjanDate, countdown, dateFromInput, dateInput, francs, newTournament } from '../tournaments/presentation';
@@ -84,6 +86,7 @@ function PenaltyTournamentCard({t,now,session,reserved,onDone}) {
       <details><summary><span>02</span> Participants <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
         {(t.participants||[]).length ? <p>{t.participants.join(' · ')}</p>:<p>Aucun participant inscrit.</p>}
       </div></details>
+      <TournamentPenaltyBracket tournamentId={t.id}/>
       <TournamentSkinShowcase participantId={t.participantSkinId} winnerId={t.winnerSkinId} participantName={t.participantSkinName} winnerName={t.winnerSkinName}/>
     </div>
   </article>;
@@ -264,6 +267,7 @@ export default function TournamentHub({ session }) {
     {loading&&<p role="status" className="tourney-empty">Chargement des tournois…</p>}
     {error&&<div className="tourney-error" role="alert">{error}<button type="button" onClick={()=>setGeneration(n=>n+1)}>Réessayer</button></div>}
     {!loading&&!error&&!items.length&&<div className="tourney-empty"><span aria-hidden="true">🏆</span><h3>Le prochain rendez-vous se prépare</h3><p>Les tournois programmés apparaîtront ici.</p></div>}
+    <TournamentPenaltyDuel session={session}/>
     <TournamentQualificationMatch session={session}/>
     <TournamentFinalMatch session={session}/>
     <OfficialDuelSection session={session} hideAdmin/>

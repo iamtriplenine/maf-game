@@ -15,3 +15,11 @@ export const setTournamentRegistration = (id, open, revision) => walletRequest(`
 
 export const tournamentSkinCatalog = () => walletRequest('/api/tournaments/skins/catalog');
 export const myUnlockedStudioSkins = () => walletRequest('/api/tournaments/skins/mine');
+
+export const myPenaltyTournamentDuel = () => walletRequest('/api/tournaments/penalty/mine');
+export async function penaltyTournamentBracket(id) {
+  const response=await fetch(`${API_URL}/api/tournaments/penalty/bracket/${encodeURIComponent(id)}`,{cache:'no-store'});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||'Tableau indisponible.');
+  return data;
+}

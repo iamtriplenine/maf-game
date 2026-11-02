@@ -1,0 +1,11 @@
+.penalty-draw-my{border:1px solid rgba(243,193,71,.5);border-radius:16px;background:linear-gradient(125deg,#102b28,#101a24);color:#fff;padding:18px;margin:14px 0;box-shadow:0 7px 28px #0002}
+.penalty-draw-my header{display:flex;gap:12px;align-items:center;justify-content:space-between;font-weight:800;color:#f8ce72}
+.penalty-draw-my button,.penalty-bracket button{border:1px solid #bfa369;color:inherit;background:transparent;border-radius:9px;padding:8px 12px;cursor:pointer}
+.penalty-draw-my h3{margin:12px 0;font-size:1.2rem}
+.penalty-draw-my p{margin:9px 0}.penalty-draw-my p span{opacity:.65;padding:0 6px}
+.penalty-draw-my__state{color:#f8ce72;font-weight:700}.penalty-draw-my small{opacity:.7;display:block}
+.penalty-bracket{margin-top:12px}.penalty-bracket>button{width:100%;font-weight:700}
+.penalty-bracket__body{padding:10px 0}.penalty-bracket__body>button{font-size:.85em}
+.penalty-bracket ol{list-style:none;padding:0;display:grid;gap:8px}
+.penalty-bracket li{border:1px solid #ffffff25;border-radius:8px;padding:10px;display:grid;gap:4px}
+.penalty-bracket li span{opacity:.7;font-size:.77rem;overflow-wrap:anywhere}
