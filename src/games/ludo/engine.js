@@ -106,6 +106,7 @@ export function mountLudoGame(document, window, options = {}) {
         let tokens = {}, tokenMeshes = {}, lastRoll = 0, isRolling = false, gameActive = false;
         let selectedColors = [], colorSelectingPlayer = 0, aiPlayers = [];
         const isOnline = options.mode === 'online';
+        if (isOnline) document.body.classList.add('maf-ludo-online-mode'); // MAF_LUDO_UI_FIX_V2
         let networkState = null;
         let scene, camera, renderer, controls, boardGroup, raycaster, mouse;
 
@@ -1046,6 +1047,42 @@ export function mountLudoGame(document, window, options = {}) {
         let diceAngleX = 0, diceAngleY = 0;
         const diceContainer = document.getElementById('diceContainer');
         const ROLL_MAX = 8;
+        // MAF_LUDO_UI_FIX_V2 — Anime le resultat DEJA valide par le serveur.
+        // Aucune valeur aleatoire locale ne determine le score d'un duel.
+        function animateServerDice(result, packet) {
+            if (!isOnline || !Number.isInteger(result) || result < 1 || result > 6) return;
+            const orientations = {
+                1: [0, 0], 2: [0, 270], 3: [270, 0],
+                4: [90, 0], 5: [0, 90], 6: [0, 180],
+            };
+            const [endX, endY] = orientations[result];
+            const positiveMod = value => ((value % 360) + 360) % 360;
+            diceAngleX += 720 + positiveMod(endX - positiveMod(diceAngleX));
+            diceAngleY += 720 + positiveMod(endY - positiveMod(diceAngleY));
+            isRolling = true;
+            rollBtn.disabled = true;
+            playSound('roll');
+            setMessage('Le dé roule…');
+            diceEl.style.transitionDuration = '1150ms';
+            diceEl.style.transitionTimingFunction = 'cubic-bezier(.18,.66,.28,1)';
+            // Force le navigateur à prendre la position initiale avant l'animation.
+            void diceEl.offsetWidth;
+            diceEl.style.transform = `rotateX(${diceAngleX}deg) rotateY(${diceAngleY}deg)`;
+            scheduleTimeout(() => {
+                isRolling = false;
+                if (networkState !== packet || disposed) return;
+                updateUI();
+                const mine = packet.viewer === packet.toMove;
+                if (packet.finished) {
+                    setMessage('Duel terminé.');
+                } else if (mine && packet.roll != null) {
+                    setMessage(`Dé : ${packet.roll} · Choisis ton pion.`);
+                    if (Array.isArray(packet.valid) && packet.valid.length) highlightTokens(players[currentPlayerIndex], packet.valid);
+                } else {
+                    setMessage((packet.lastAction || '') + ' · ' + (mine ? 'À toi de lancer le dé.' : 'Attends ton adversaire.'));
+                }
+            }, 1230);
+        }
 
         rollBtn.addEventListener('click', () => {
             if (isRolling || !gameActive || rollBtn.disabled) return;
@@ -1789,6 +1826,10 @@ export function mountLudoGame(document, window, options = {}) {
           if (!isOnline || !next || next.type !== 'ludo' || disposed) return;
           if (networkState?.version === next.version && networkState?.finished === next.finished) return;
           const old = networkState;
+          // Le serveur peut donner un de sans mouvement possible (roll devient null).
+          // Lire lastAction permet aussi d'animer ce lancer chez les deux joueurs.
+          const serverRoll = /(?:host|guest) a obtenu ([1-6])(?:\b|\s)/.exec(next.lastAction || '');
+          const animateRoll = old && Number(next.version) > Number(old.version) && !!serverRoll;
           networkState = next;
           currentPlayerIndex = next.toMove === 'host' ? 0 : 1;
           isRolling = false;
@@ -1832,6 +1873,7 @@ export function mountLudoGame(document, window, options = {}) {
           clearHighlights();
           lastRoll=next.roll||0;
           updateUI();updateScoreboard();
+          if (animateRoll) { animateServerDice(Number(serverRoll[1]), next); return; }
           const mine=next.viewer===next.toMove;
           if(next.finished) {
             rollBtn.disabled=true;

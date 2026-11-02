@@ -13,7 +13,6 @@ const COLOR_OPTIONS = [
 
 export default function LudoIntroduction() {
   const [opened, setOpened] = useState(false);
-  const [mode, setMode] = useState('training');
   const [color, setColor] = useState('red');
   const [sessionId, setSessionId] = useState(0);
   const [error, setError] = useState('');
@@ -33,10 +32,9 @@ export default function LudoIntroduction() {
 
   useEffect(() => () => cleanEngine(), [cleanEngine]);
 
-  const start = useCallback((nextMode) => {
+  const start = useCallback(() => {
     cleanEngine();
-    configurationRef.current = { mode: nextMode, humanColor: color };
-    setMode(nextMode);
+    configurationRef.current = { mode: 'training', humanColor: color };
     setError('');
     setOpened(true);
     setSessionId((previous) => previous + 1);
@@ -85,11 +83,8 @@ export default function LudoIntroduction() {
         </select>
       </div>
       <div className="ludo-introduction__actions">
-        <button type="button" className="btn btn--primary" onClick={() => start('training')}>
-          {opened && mode === 'training' ? 'Nouvel entraînement' : "S'entraîner contre le bot"}
-        </button>
-        <button type="button" className="btn btn--ghost" onClick={() => start('local')}>
-          {opened && mode === 'local' ? 'Nouvelle partie locale' : 'Partie locale à deux'}
+        <button type="button" className="btn btn--primary" onClick={start}>
+          S'entraîner contre le bot
         </button>
         {opened && <button type="button" className="btn btn--ghost" onClick={close}>Fermer le plateau</button>}
       </div>
@@ -97,12 +92,11 @@ export default function LudoIntroduction() {
       {opened && (
         <div className="ludo-introduction__board-wrap">
           <div className="ludo-introduction__board-header" aria-live="polite">
-            <span>{mode === 'training' ? 'Entraînement · Toi contre le bot' : 'Partie locale · 2 joueurs'}</span>
-            <button className="ludo-introduction__restart" type="button" onClick={restart}>Recommencer</button>
+            <span>Entraînement · Toi contre le bot</span>
           </div>
           <iframe
             key={sessionId}
-            title={mode === 'training' ? 'Ludo 3D contre le bot' : 'Ludo 3D à deux joueurs'}
+            title="Ludo 3D contre le bot"
             className="ludo-introduction__board"
             srcDoc={ludoFrameDocument}
             onLoad={handleLoad}
@@ -111,16 +105,6 @@ export default function LudoIntroduction() {
           <p className="ludo-introduction__hint">Lance le dé puis sélectionne un pion éclairé. Le bot joue automatiquement à son tour. Tourne le plateau avec le doigt et utilise les boutons pour zoomer.</p>
         </div>
       )}
-      <div className="ludo-introduction__modes">
-        <article className="ludo-introduction__mode">
-          <span className="ludo-introduction__mode-icon" aria-hidden="true">🤖</span>
-          <div><h3>Entraînement</h3><p>Un joueur contre le bot, avec les règles complètes du Ludo. Gratuit et sans mise.</p><span className="ludo-introduction__ready">Disponible</span></div>
-        </article>
-        <article className="ludo-introduction__mode">
-          <span className="ludo-introduction__mode-icon" aria-hidden="true">🎲</span>
-          <div><h3>Duel en ligne</h3><p>Deux joueurs connectés, salons et système de mises MAF GAME.</p><span className="ludo-introduction__ready">Disponible dans les salons</span></div>
-        </article>
-      </div>
     </section>
   );
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { mountLudoGame } from '../games/ludo/engine';
 import frame from '../games/ludo/frame.html?raw';
 import '../styles/ludo-online.css';
@@ -45,6 +46,15 @@ export default function LudoOnline({ room, match, busy, error, onStart, onRoll, 
     }
   }, [match?.serverNow]);
 
+  // Le match dispose de son propre ecran, comme le Monopoly.
+  const fullscreen = room.status === 'playing' || room.status === 'finished';
+  useEffect(() => {
+    if (!fullscreen) return undefined;
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = oldOverflow; };
+  }, [fullscreen]);
+
   const playing = room.status === 'playing';
   const finished = room.status === 'finished' || match?.finished;
   const stale = playing && (clockRef.current.lastPacket === 0 || now - clockRef.current.lastPacket > STALE_MS);
@@ -88,7 +98,7 @@ export default function LudoOnline({ room, match, busy, error, onStart, onRoll, 
     }
   }, [cleanup]);
 
-  return <div className="ludo-online" role="region" aria-label="Duel Ludo 3D en ligne">
+  const screen = <div className={`ludo-online${fullscreen ? ' ludo-online--fullscreen' : ''}`} role="region" aria-label="Duel Ludo 3D en ligne">
     <header className="ludo-online__header">
       <strong>🎲 Duel Ludo 3D · Salon {room.code}</strong>
       <span>{room.host?.pseudo} contre {room.guest?.pseudo}</span>
@@ -129,4 +139,5 @@ export default function LudoOnline({ room, match, busy, error, onStart, onRoll, 
       }}>Abandonner</button>}
     </div>
   </div>;
+  return fullscreen ? createPortal(screen, document.body) : screen;
 }

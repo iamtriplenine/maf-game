@@ -1436,6 +1436,34 @@
 #gameContainer {display:flex!important}
 
 .maf-ludo-local-mode{font-size:12px;color:#90c7ff;margin:-.6em 0 .8em}
+/* MAF_LUDO_UI_FIX_V2 : le plateau occupe l'espace haut, commandes en bas en duel. */
+#newGameBtn{display:none!important}
+body.maf-ludo-online-mode,html:has(body.maf-ludo-online-mode){overflow:hidden!important}
+body.maf-ludo-online-mode #gameContainer{
+ display:flex!important;flex-direction:column!important;height:100vh!important;height:100dvh!important;
+ min-height:0!important;overflow:hidden!important;
+}
+body.maf-ludo-online-mode #board-container{
+ flex:1 1 auto!important;width:100%!important;height:auto!important;min-height:160px!important;
+ max-height:none!important;overflow:hidden!important;
+}
+body.maf-ludo-online-mode .control-panel{
+ flex:0 0 auto!important;width:100%!important;min-height:0!important;max-height:31dvh!important;
+ display:flex!important;flex-direction:row!important;flex-wrap:wrap!important;align-content:center!important;
+ gap:6px!important;padding:7px 9px!important;overflow-y:auto!important;
+ border-left:0!important;border-top:1px solid #30435f!important;
+}
+body.maf-ludo-online-mode .game-title,body.maf-ludo-online-mode .maf-ludo-local-mode,body.maf-ludo-online-mode .scoreboard{display:none!important}
+body.maf-ludo-online-mode .current-player-section{flex:0 1 120px!important;min-width:100px!important;padding:6px!important}
+body.maf-ludo-online-mode .message-box{flex:1 1 140px!important;min-width:125px!important;min-height:32px!important;padding:6px!important;font-size:12px!important}
+body.maf-ludo-online-mode .dice-section{flex:0 1 auto!important;display:flex!important;flex-direction:row!important;align-items:center!important;gap:10px!important;order:3!important}
+body.maf-ludo-online-mode .dice-container{flex:none!important}
+body.maf-ludo-online-mode .roll-btn{min-height:40px!important}
+body.maf-ludo-online-mode .action-buttons{display:none!important}
+@media(max-width:560px){
+ body.maf-ludo-online-mode .control-panel{max-height:36dvh!important}
+ body.maf-ludo-online-mode .dice-section{width:100%;justify-content:center!important}
+}
 </style></head>
 <body>
 
@@ -1565,7 +1593,7 @@
             </div>
             <div class="action-buttons">
                 <button class="action-btn" id="rulesBtn"><i class="fas fa-question-circle"></i> Rules</button>
-                <button class="action-btn" id="newGameBtn"><i class="fas fa-redo"></i> New Game</button>
+                <button class="action-btn" id="newGameBtn" hidden aria-hidden="true" tabindex="-1"><i class="fas fa-redo"></i> New Game</button>
             </div>
         </div>
     </div>

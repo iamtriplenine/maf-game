@@ -17,3 +17,30 @@
   .ludo-online__actions{display:grid;grid-template-columns:minmax(0,1fr)}
   .ludo-online__actions button{width:100%;min-height:44px}
 }
+
+/* MAF_LUDO_UI_FIX_V2 — duel dans un ecran autonome, plateau au-dessus des commandes. */
+body:has(.ludo-online--fullscreen) .dock {display:none!important}
+.ludo-online--fullscreen {
+  position:fixed;inset:0;z-index:1250;display:flex;flex-direction:column;
+  width:100%;height:100vh;height:100dvh;margin:0;padding:env(safe-area-inset-top) 8px env(safe-area-inset-bottom);
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;
+  background:var(--bg,#0a1628);color:var(--text,#fff);gap:6px;
+}
+.ludo-online--fullscreen .ludo-online__header{order:0;flex:none;font-size:13px;padding:2px 4px}
+.ludo-online--fullscreen .ludo-online__header span{font-size:11px}
+.ludo-online--fullscreen .ludo-online__frame {
+  order:1;flex:1 1 auto;width:100%;height:64vh;height:64dvh;min-height:220px;max-height:none;
+  border-radius:8px;background:#0a1628;
+}
+.ludo-online--fullscreen .ludo-online__state{order:2;flex:none;padding:6px 10px;font-size:13px}
+.ludo-online--fullscreen .ludo-online__state small{margin-top:2px;font-size:11px}
+.ludo-online--fullscreen .ludo-online__connection{order:3;flex:none;padding:4px 8px;font-size:11px}
+.ludo-online--fullscreen .ludo-online__error{order:4;flex:none}
+.ludo-online--fullscreen .ludo-online__actions{order:5;flex:none;display:flex;gap:8px;padding-bottom:4px}
+.ludo-online--fullscreen .ludo-online__actions button{flex:1 1 0;min-height:40px}
+@media(max-width:600px){
+ .ludo-online--fullscreen .ludo-online__header{display:flex;gap:6px;align-items:center}
+ .ludo-online--fullscreen .ludo-online__frame{height:65dvh;min-height:205px;max-height:none}
+ .ludo-online--fullscreen .ludo-online__actions{display:flex;grid-template-columns:none}
+ .ludo-online--fullscreen .ludo-online__actions button{width:auto;font-size:12px}
+}

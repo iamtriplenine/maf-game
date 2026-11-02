@@ -656,7 +656,6 @@ export default function GamePage() {
               {error && <p role="alert" className="game-hub__error">{error}</p>}
               {currentGame.id === 'ludo' ? (
                 <section className="ludo-duel-setup">
-                  <LudoIntroduction />
                   <section className="game-hub__panel" aria-label="Créer un salon Ludo">
                     <span className="game-hub__eyebrow">DUEL EN LIGNE</span>
                     <h3>Créer un salon Ludo</h3>
@@ -671,6 +670,7 @@ export default function GamePage() {
                       {!session&&<p className="game-hub__muted">Connecte-toi depuis Profil.</p>}
                     </form>
                   </section>
+                  <LudoIntroduction />
                   <button type="button" className="btn btn--sm btn--block" onClick={()=>setTab('salon')}>Voir les salons ouverts</button>
                 </section>
               ) : currentGame.id === 'monopoly' ? (
