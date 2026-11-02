@@ -36,8 +36,8 @@ const localRoomDeadline = room => room ? {
 } : null;
 
 const money = (value) => `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`;
-const gameName = (game) => game === 'monopoly' ? 'Monopoly' : game === 'tankrun' ? 'Tank Run' : game === 'dice' ? 'Lancer de dés' : game === 'tank' ? 'Tank Battle' : game === 'checkers' ? 'Dames' : game === 'ludo' ? 'Ludo' : 'Tir au but';
-const gameSymbol = (game) => game === 'monopoly' ? '🎩' : game === 'tankrun' ? '🏎️' : game === 'dice' ? '🎲' : game === 'tank' ? '🚀' : game === 'checkers' ? '♛' : game === 'ludo' ? '🎲' : '⚽';
+const gameName = (game) => game === 'monopoly' ? 'Monopoly' : game === 'tankrun' ? 'Tank Run' : game === 'dice' ? 'Lancer de dés' : game === 'tank' ? 'Tank Battle' : game === 'checkers' ? 'Dames' : game === 'ludo' ? 'Ludo' : game === 'penalty' ? 'Tir au but' : 'Jeu non reconnu'; // MAF_LUDO_GUEST_FIX_V1
+const gameSymbol = (game) => game === 'monopoly' ? '🎩' : game === 'tankrun' ? '🏎️' : game === 'dice' ? '🎲' : game === 'tank' ? '🚀' : game === 'checkers' ? '♛' : game === 'ludo' ? '🎲' : game === 'penalty' ? '⚽' : '🎮'; // MAF_LUDO_GUEST_FIX_V1
 const GAMES = [
   {
     id: 'penalty', emoji: '⚽', name: 'Tir au but',
@@ -505,7 +505,7 @@ export default function GamePage() {
                 <button type="button" className="game-hub__close" onClick={() => chooseRoom(null)} aria-label="Masquer ce salon">×</button>
               </div>
               <div className={`game-hub__facts${selected.game === 'tankrun' ? ' game-hub__facts--tankrun' : ''}`}>
-                <span>{gameSymbol(selected.game)} {gameName(selected.game)}</span>{selected.game === 'penalty' ? <span>{selected.shots} tirs / joueur</span> : selected.game === 'dice' ? <span>{selected.dice_count} dé(s) · {selected.shots} coup(s) · {selected.dice_mode === 'cumulative' ? 'Cumul' : 'Manches'}</span> : selected.game === 'tankrun' ? <span>2 chars · duel en course · configuration compacte</span> : selected.game === 'tank' ? <span>2 chars · armes tactiques</span> : <span>10 × 10 · 20 pions / joueur</span>}
+                <span>{gameSymbol(selected.game)} {gameName(selected.game)}</span>{selected.game === 'penalty' ? <span>{selected.shots} tirs / joueur</span> : selected.game === 'dice' ? <span>{selected.dice_count} dé(s) · {selected.shots} coup(s) · {selected.dice_mode === 'cumulative' ? 'Cumul' : 'Manches'}</span> : selected.game === 'tankrun' ? <span>2 chars · duel en course · configuration compacte</span> : selected.game === 'tank' ? <span>2 chars · armes tactiques</span> : selected.game === 'ludo' ? <span>Plateau Ludo 3D · 4 pions par joueur</span> : selected.game === 'checkers' ? <span>10 × 10 · 20 pions / joueur</span> : null}
                 <span>Mise : {money(selected.stake)} par joueur</span><span>Gain : {money(selected.stake * 2)}</span>
                 {selected.escrow > 0 && selected.status !== 'finished' && <span>Cagnotte retenue : {money(selected.escrow)}</span>}
                 <RoomCountdown room={selected} />
@@ -584,12 +584,16 @@ export default function GamePage() {
                     onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
                     onRoll={(dice) => void matchAction(() => roomsApi.rollDice(selected.id,dice))}
                     onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}
-                    onBack={() => chooseRoom(null)} /> : <PenaltyArena
+                    onBack={() => chooseRoom(null)} /> : selected.game === 'penalty' ? <PenaltyArena
                     room={selected} match={match} busy={busy} error={error} onExit={() => void exitArena()}
                     onStart={() => void matchAction(() => roomsApi.startMatch(selected.id))}
                     onChoose={(direction) => void matchAction(() => roomsApi.chooseDirection(selected.id, direction))}
                     onForfeit={() => void matchAction(() => roomsApi.forfeitMatch(selected.id))}
-                    onBack={() => chooseRoom(null)} />)}
+                    onBack={() => chooseRoom(null)} /> :
+                  <div className="game-hub__error" role="alert">
+                    <p>Ce jeu ({String(selected.game || 'inconnu')}) n'est pas reconnu par cette version de MAF GAME. Actualise la page pour charger la dernière version.</p>
+                    <button className="btn btn--sm" type="button" onClick={() => window.location.reload()}>Actualiser le jeu</button>
+                  </div>)}
             </article>
           )}
 
