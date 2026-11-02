@@ -5,3 +5,23 @@
 .penalty-awards__paid p {margin:.35rem 0;}
 .penalty-awards__history {margin:1rem 0;padding:1rem;border:1px solid rgba(150,155,170,.2);border-radius:.8rem;}
 .penalty-awards__history p {margin:.5rem 0;}
+
+/* Dans les fiches Tir-au-but, ce volet est un accordéon comme ceux de Monopoly.
+   La carte mère possède déjà ses séparateurs et ses espacements.
+   Supprimer ici les marges, le padding et la seconde bordure du bloc autonome. */
+.tourney-card--penalty .tourney-card__details > details.penalty-awards {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid #afc7e21c;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0;
+}
+.tourney-card--penalty .tourney-card__details > details.penalty-awards > summary {
+  margin: 0;
+  padding: 16px 0;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: normal;
+}

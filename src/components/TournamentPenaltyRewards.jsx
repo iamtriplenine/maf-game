@@ -19,7 +19,7 @@ export default function TournamentPenaltyRewards({tournament,session}) {
   return ()=>{live=false;};
  },[open,players,t.id,t.entryFee,session?.id]);
  return <details className="penalty-awards" open={open} onToggle={e=>setOpen(e.currentTarget.open)}>
-   <summary><span>04</span> Récompenses et historique <b aria-hidden="true">＋</b></summary>
+   <summary><span>02</span> Récompenses et historique <b aria-hidden="true">＋</b></summary>
    <div className="tourney-detail-body">
     <label>Effectif retenu <select value={players} onChange={e=>setPlayers(Number(e.target.value))}>
       {Array.from({length:t.capacity/2},(_,i)=>2*(i+1)).map(n=><option key={n} value={n}>{n} joueurs</option>)}
