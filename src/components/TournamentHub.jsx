@@ -7,7 +7,7 @@ import TournamentQualificationMatch from './TournamentQualificationMatch';
 import TournamentFinalMatch from './TournamentFinalMatch';
 import TournamentPenaltyDuel from './TournamentPenaltyDuel';
 import TournamentPenaltyBracket from './TournamentPenaltyBracket';
-import TournamentPenaltyRewards, {PenaltyAwardHistory} from './TournamentPenaltyRewards';
+import TournamentPenaltyRewards from './TournamentPenaltyRewards';
 import { publicTournaments, ownerTournaments, saveTournament, reserveTournament, myTournamentReservations, setTournamentRegistration } from '../api/tournaments';
 import { refreshSession } from '../api/accounts';
 import { abidjanDate, countdown, dateFromInput, dateInput, francs, newTournament } from '../tournaments/presentation';
@@ -84,9 +84,12 @@ function PenaltyTournamentCard({t,now,session,reserved,onDone}) {
         <p>Si le nombre d'inscrits est impair au lancement, la dernière inscription est retirée et remboursée. En cas de nombre impair de qualifiés, un joueur est exempt du tour concerné.</p>
         {plan && <p>Inscriptions actuelles : {t.registered} · {plan.initialMatches} match(s) prévus au premier tour · {plan.refunded} remboursement(s) nécessaire(s) · cagnotte retenue {francs(plan.pot)} F.</p>}
       </div></details>
-      <details open><summary><span>02</span> Participants inscrits · {t.registered} <b aria-hidden="true">＋</b></summary><div className="tourney-detail-body">
-        {(t.participants||[]).length ? <p>{t.participants.join(' · ')}</p>:<p>Aucun participant inscrit.</p>}
-      </div></details>
+      <details className="tourney-card__participants"><summary><span>◉</span> Participants inscrits · {t.participants?.length ?? t.registered}/{t.capacity} <b aria-hidden="true">＋</b></summary>
+        <div className="tourney-participants-grid">{(t.participants||[]).map((pseudo,i)=><div className="tourney-participant" key={`${pseudo}-${i}`} title={pseudo}>
+          <span className="tourney-participant__avatar" aria-hidden="true">◌</span><strong>{pseudo.length>8?`${pseudo.slice(0,7)}…`:pseudo}</strong>
+        </div>)}</div>
+        {!(t.participants||[]).length&&<p className="tourney-participants-empty">Aucun participant pour le moment.</p>}
+      </details>
       <TournamentPenaltyBracket tournamentId={t.id} startsAt={t.startsAt} isOwner={session?.account_role==='owner'}/>
       <TournamentPenaltyRewards tournament={t} session={session}/>
       <TournamentSkinShowcase participantId={t.participantSkinId} winnerId={t.winnerSkinId} participantName={t.participantSkinName} winnerName={t.winnerSkinName}/>
@@ -269,7 +272,6 @@ export default function TournamentHub({ session }) {
     {loading&&<p role="status" className="tourney-empty">Chargement des tournois…</p>}
     {error&&<div className="tourney-error" role="alert">{error}<button type="button" onClick={()=>setGeneration(n=>n+1)}>Réessayer</button></div>}
     {!loading&&!error&&!items.length&&<div className="tourney-empty"><span aria-hidden="true">🏆</span><h3>Le prochain rendez-vous se prépare</h3><p>Les tournois programmés apparaîtront ici.</p></div>}
-    {session&&<PenaltyAwardHistory/>}
     <TournamentQualificationMatch session={session}/>
     <TournamentFinalMatch session={session}/>
     <OfficialDuelSection session={session} hideAdmin/>

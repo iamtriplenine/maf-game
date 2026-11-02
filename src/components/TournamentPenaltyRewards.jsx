@@ -46,7 +46,7 @@ export function PenaltyAwardHistory(){
  const [open,setOpen]=useState(false),[rows,setRows]=useState([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
  useEffect(()=>{
   if(!open)return undefined;
-  let live=true;setBusy(true);setError('');setPreview(null);setAward(null);
+  let live=true;setBusy(true);setError('');
   penaltyTournamentAwardHistory().then(x=>{if(live)setRows(x.awards||[]);})
    .catch(e=>{if(live)setError(e.message);})
    .finally(()=>{if(live)setBusy(false);});
