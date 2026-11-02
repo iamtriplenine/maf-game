@@ -33,3 +33,13 @@ export const forfeitPenaltyTournamentMatch = id => walletRequest(`/api/tournamen
 export const pingPenaltyTournamentMatch = id => walletRequest(`/api/tournaments/penalty/matches/${encodeURIComponent(id)}/presence`,{method:'POST',body:{}});
 
 export const reschedulePenaltyTournamentMatch = id => walletRequest(`/api/tournaments/penalty/matches/${encodeURIComponent(id)}/reschedule`,{method:'POST',body:{}});
+
+// Repartition de la cagnotte, resultat certifie et historique personnel.
+export async function penaltyTournamentRewardPreview(players, fee) {
+  const response = await fetch(`${API_URL}/api/tournaments/penalty/awards/preview?players=${players}&fee=${fee}`,{cache:'no-store'});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||'Prévision des récompenses indisponible.');
+  return data;
+}
+export const penaltyTournamentAwards = id => walletRequest(`/api/tournaments/penalty/awards/${encodeURIComponent(id)}`);
+export const penaltyTournamentAwardHistory = () => walletRequest('/api/tournaments/penalty/awards/history');

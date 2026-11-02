@@ -7,6 +7,7 @@ import TournamentQualificationMatch from './TournamentQualificationMatch';
 import TournamentFinalMatch from './TournamentFinalMatch';
 import TournamentPenaltyDuel from './TournamentPenaltyDuel';
 import TournamentPenaltyBracket from './TournamentPenaltyBracket';
+import TournamentPenaltyRewards, {PenaltyAwardHistory} from './TournamentPenaltyRewards';
 import { publicTournaments, ownerTournaments, saveTournament, reserveTournament, myTournamentReservations, setTournamentRegistration } from '../api/tournaments';
 import { refreshSession } from '../api/accounts';
 import { abidjanDate, countdown, dateFromInput, dateInput, francs, newTournament } from '../tournaments/presentation';
@@ -87,6 +88,7 @@ function PenaltyTournamentCard({t,now,session,reserved,onDone}) {
         {(t.participants||[]).length ? <p>{t.participants.join(' · ')}</p>:<p>Aucun participant inscrit.</p>}
       </div></details>
       <TournamentPenaltyBracket tournamentId={t.id} isOwner={session?.account_role==='owner'}/>
+      <TournamentPenaltyRewards tournament={t} session={session}/>
       <TournamentSkinShowcase participantId={t.participantSkinId} winnerId={t.winnerSkinId} participantName={t.participantSkinName} winnerName={t.winnerSkinName}/>
     </div>
   </article>;
@@ -268,6 +270,7 @@ export default function TournamentHub({ session }) {
     {error&&<div className="tourney-error" role="alert">{error}<button type="button" onClick={()=>setGeneration(n=>n+1)}>Réessayer</button></div>}
     {!loading&&!error&&!items.length&&<div className="tourney-empty"><span aria-hidden="true">🏆</span><h3>Le prochain rendez-vous se prépare</h3><p>Les tournois programmés apparaîtront ici.</p></div>}
     <TournamentPenaltyDuel session={session}/>
+    {session&&<PenaltyAwardHistory/>}
     <TournamentQualificationMatch session={session}/>
     <TournamentFinalMatch session={session}/>
     <OfficialDuelSection session={session} hideAdmin/>
