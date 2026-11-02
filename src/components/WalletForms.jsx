@@ -127,10 +127,10 @@ export function RechargeForm({ user, onUser }) {
         // Navigation dans le meme onglet : fonctionne aussi si les popups sont bloques.
         window.location.assign(result.transaction.payment_url);
       });}}>
-        <label className="wallet-label">Montant a recharger · F CFA<input type="number" inputMode="numeric" min="100" max="1000000" step="1" value={amount} onChange={e=>setAmount(e.target.value)} disabled={busy || expired} required/></label>
+        <label className="wallet-label">Montant a recharger · F CFA<input type="number" inputMode="numeric" min="100" max="1000000" step="1" value={amount} onChange={e=>setAmount(e.target.value)} disabled={busy} required/></label>
         {rechargeFee !== null && <div className="wallet-fees" role="status" aria-live="polite"><span>Recharge créditée : <strong>{format(rechargeAmount)} F CFA</strong></span><span>Frais de service (1 %) : <strong>{format(rechargeFee)} F CFA</strong></span><span className="wallet-fees__total">Total à payer sur Wave : <strong>{format(rechargeAmount + rechargeFee)} F CFA</strong></span></div>}
         <p className="sheet__text">Minimum 100 F CFA. Les frais sont arrondis au franc supérieur. Au retour du paiement Wave, ouvre Recharger pour envoyer la capture.</p>
-        <button className="btn btn--primary btn--block" disabled={busy || expired}>{busy?'Preparation…':'Acceder au paiement'}</button>
+        <button className="btn btn--primary btn--block" disabled={busy}>{busy?'Preparation…':'Acceder au paiement'}</button>
       </form>}
       {user?.phone && items.length>0 && <div className="wallet-history"><h3>Mes recharges recentes</h3>{items.map(t=><button type="button" key={t.id} disabled={busy} onClick={()=>select(t)}><strong>{format(t.amount)} F CFA crédités</strong><span>{labels[t.status]}</span><small>Total payé : {format(t.total_amount ?? t.amount)} F CFA · {new Date(t.created_at).toLocaleString('fr-FR')}</small></button>)}</div>}
     </>}
