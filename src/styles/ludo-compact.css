@@ -1,0 +1,24 @@
+/* MAF_LUDO_COMPACT_V1 — ecran Ludo (presentation + creation de salon) plus compact, sans cadres colles ni chevauchement. */
+.ludo-duel-setup{display:grid;gap:12px;min-width:0;width:100%}
+.ludo-duel-setup>*{min-width:0;margin:0}
+.game-hub:has(.ludo-duel-setup) .game-detail{gap:12px}
+.game-hub:has(.ludo-duel-setup) .game-detail__hero{grid-template-columns:60px minmax(0,1fr);gap:12px;padding:12px 14px;align-items:center}
+.game-hub:has(.ludo-duel-setup) .game-detail__illustration{width:56px;margin:0}
+.game-hub:has(.ludo-duel-setup) .game-detail__hero h2{margin:2px 0 4px;font-size:18px}
+.game-hub:has(.ludo-duel-setup) .game-detail__hero p{font-size:12.5px;line-height:1.45}
+.game-hub:has(.ludo-duel-setup) .game-hub__tags{margin:8px 0 0;gap:6px}
+.game-hub:has(.ludo-duel-setup) .game-hub__tags span{padding:3px 9px;font-size:11px}
+.ludo-duel-setup .game-hub__panel{padding:14px}
+.ludo-duel-setup .game-hub__panel h3{margin:4px 0 10px;font-size:17px}
+.ludo-duel-setup .game-hub__form{gap:10px}
+.ludo-duel-setup .game-hub__form input:not([type=radio]){height:42px}
+.ludo-duel-setup .game-hub__muted{font-size:12px;line-height:1.45}
+.ludo-duel-setup .btn{min-height:42px;white-space:normal}
+.ludo-duel-setup .ludo-introduction{gap:10px;padding:14px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--glass)}
+.ludo-duel-setup .ludo-introduction__note{padding:0;border:0;background:none;font-size:12.5px;line-height:1.45}
+.ludo-duel-setup .ludo-introduction__setup{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px}
+.ludo-duel-setup .ludo-introduction__color-select{width:100%;min-width:0;padding:9px 12px}
+.ludo-duel-setup .ludo-introduction__actions{display:flex;flex-wrap:wrap;gap:8px}
+.ludo-duel-setup .ludo-introduction__actions .btn{flex:1 1 150px}
+.ludo-duel-setup .ludo-introduction__board-wrap{margin-top:2px}
+@media(max-width:420px){.ludo-duel-setup .ludo-introduction__setup{grid-template-columns:1fr}}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { mountLudoGame } from '../games/ludo/engine';
 import ludoFrameDocument from '../games/ludo/frame.html?raw';
 import '../styles/ludo-introduction.css';
+import '../styles/ludo-compact.css';
 
 // MAF_LUDO_STEP_3 : entrainement humain contre bot, sans compte ni mise.
 const COLOR_OPTIONS = [
