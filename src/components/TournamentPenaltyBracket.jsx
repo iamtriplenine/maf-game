@@ -12,7 +12,7 @@ export default function TournamentPenaltyBracket({tournamentId}){
       {error&&<p role="alert">{error}</p>}
       {info&&!info.started&&<p>Le tirage au sort sera effectué à l’heure du tournoi.</p>}
       {info?.started&&<><p>{info.participants} joueurs qualifiés · {info.matches.length} duels programmés</p>
-        <ol>{info.matches.map(m=><li key={m.reference}><strong>{m.host} — {m.guest}</strong><span>Tour {m.round} · duel {m.matchNo} · {m.reference}</span></li>)}</ol></>}
+        <ol>{info.matches.map(m=><li key={m.reference}><strong>{m.host} — {m.guest}</strong><span>Tour {m.round} · duel {m.matchNo} · {m.reference}</span><span>{m.status==='finished' ? `✅ Vainqueur : ${m.winner || 'en cours de validation'}` : m.status==='playing' ? '⚽ Match en cours' : 'À jouer'}</span></li>)}</ol></>}
     </div>}
   </div>;
 }

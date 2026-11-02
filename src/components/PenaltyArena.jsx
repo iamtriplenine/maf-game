@@ -121,7 +121,7 @@ function ScoreTrack({ name, side, history, total, score, turnSide, finished, min
 }
 
 // Vue partagee par les matchs en ligne et l'entrainement solo.
-export function PenaltyArena({ room = null, match, busy = false, onChoose, onStart, onForfeit, onBack, onExit, error = '' }) {
+export function PenaltyArena({ room = null, match, busy = false, onChoose, onStart, onForfeit, onBack, onExit, error = '', tournament = false }) {
   const [winEnabled, setWinEnabled] = useState(() => winModeIsEnabled('penalty', !room));
   useEffect(() => onWinModeChange(() => setWinEnabled(winModeIsEnabled('penalty', !room))), [room]);
   const preAim = winEnabled && match?.winModeAvailable && !match?.finished && room?.status === 'playing'
@@ -141,8 +141,8 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
   const finished = !!match?.finished || status === 'finished';
   // Pour les coupons valables une seule partie, revenir a la boule normale apres le duel.
   useEffect(() => {
-    if (!isSolo && room?.id && finished) finishWinRoomMatch('penalty');
-  }, [isSolo, room?.id, finished]);
+    if (!isSolo && !tournament && room?.id && finished) finishWinRoomMatch('penalty');
+  }, [isSolo, tournament, room?.id, finished]);
   const total = match?.totalPerPlayer || room?.shots || 3;
   // Apres chaque tir : on voit le resultat, compte a rebours 5 -> 0, puis le ballon revient au point de penalty.
   const lastNumber = last?.number ?? 0;
@@ -218,13 +218,13 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
   const content = (
     <section ref={arenaRef} tabIndex={immersive ? -1 : undefined} className={`penalty${immersive ? ' penalty--immersive' : ''}`}
       role={immersive ? 'dialog' : undefined} aria-modal={immersive ? true : undefined}
-      aria-label={isSolo ? 'Entraînement tir au but' : 'Match tir au but'} onKeyDown={keys}
+      aria-label={isSolo ? 'Entraînement tir au but' : tournament ? 'Tournoi tir au but' : 'Match tir au but'} onKeyDown={keys}
       onTouchStart={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()}>
       <header className="penalty__top">
-        <div><h3>Tir au but</h3><small>{isSolo ? 'Entraînement' : `#${room.code} · Mise ${fmt(room.stake)}`}</small>
+        <div><h3>Tir au but</h3><small>{isSolo ? 'Entraînement' : tournament ? `${room.tournamentTitle} · Duel ${room.reference}` : `#${room.code} · Mise ${fmt(room.stake)}`}</small>
           {isSolo && winEnabled && <small role="status">🟢 Mode Win actif</small>}</div>
         <span className="penalty__phase">{finished ? 'Terminé' : status === 'ready' ? 'Prêt' : `Tir ${Math.floor((match?.turn || 0) / 2) + 1}/${total}`}</span>
-        {immersive && onExit && <button type="button" className="penalty__exit" disabled={busy} onClick={onExit} title={isSolo ? 'Quitter l’entraînement' : 'Sortir temporairement : 80 secondes pour revenir avant forfait'}>Sortir ×</button>}
+        {immersive && onExit && <button type="button" className="penalty__exit" disabled={busy} onClick={onExit} title={tournament ? 'Retourner à mon salon de tournoi' : isSolo ? 'Quitter l’entraînement' : 'Sortir temporairement : 80 secondes pour revenir avant forfait'}>Sortir ×</button>}
       </header>
       <div className="penalty__scoreboard" aria-live="polite">
         <ScoreTrack mine name={ownName || 'Moi'} side={viewer} history={match?.history} total={total} score={ownScore} turnSide={match?.shooter} finished={finished}/>
@@ -238,8 +238,8 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
       </div>
       <div className="penalty__interaction">
         {status === 'ready' && <>
-          <p>{room.escrow > 0 ? `Cagnotte : ${fmt(room.escrow)}. ` : ''}Les deux joueurs sont prêts.</p>
-          {room.is_host ? <button type="button" className="penalty__primary" disabled={busy} onClick={onStart}>Lancer le match</button> : <p className="penalty__wait">En attente de {room.host.pseudo}…</p>}
+          <p>{!tournament && room.escrow > 0 ? `Cagnotte : ${fmt(room.escrow)}. ` : ''}Le duel est prêt.</p>
+          {tournament || room.is_host ? <button type="button" className="penalty__primary" disabled={busy || (tournament && !room.canStart)} onClick={onStart}>{tournament && !room.canStart ? 'En attente de l’heure du match' : 'Lancer le match'}</button> : <p className="penalty__wait">En attente de {room.host.pseudo}…</p>}
         </>}
         {status === 'playing' && !finished && <>
           <p className="penalty__instruction">{!match ? 'Chargement du match…' : role === 'shooter' ? 'Tireur · Où tires-tu ?' : 'Gardien · Où plonges-tu ?'}</p>
@@ -253,7 +253,7 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
         </>}
         {finished && <div className="penalty__finish" role="status">
           <strong>{isWinner ? '🏆 Victoire !' : 'Match terminé · Défaite'}</strong>
-          <p>{isSolo ? 'Entraînement · aucune mise' : isWinner ? room.payout > 0 ? `Cagnotte créditée : ${fmt(room.payout)}` : 'Versement en attente de confirmation' : `Mise perdue : ${fmt(room.stake)}`}</p>
+          <p>{isSolo ? 'Entraînement · aucune mise' : tournament ? isWinner ? 'Victoire enregistrée. Le prochain tour sera annoncé dans ton espace Tournoi.' : 'Résultat enregistré pour ce tournoi.' : isWinner ? room.payout > 0 ? `Cagnotte créditée : ${fmt(room.payout)}` : 'Versement en attente de confirmation' : `Mise perdue : ${fmt(room.stake)}`}</p>
           {onBack && <button type="button" className="penalty__primary" onClick={onBack}>{isSolo ? 'Rejouer' : 'Retour aux salons'}</button>}
         </div>}
         {error && <p className="penalty__error" role="alert">{error}</p>}
@@ -261,7 +261,7 @@ export function PenaltyArena({ room = null, match, busy = false, onChoose, onSta
       <footer className="penalty__footer">
         <span className="penalty__legend"><i className="penalty__round penalty__round--goal"/> But <i className="penalty__round penalty__round--miss"/> Raté</span>
         {room && !finished && status === 'playing' && onForfeit && <button type="button" className="penalty__forfeit" disabled={busy}
-          onClick={() => { if (window.confirm('Abandonner le match ? Ton adversaire recevra la cagnotte.')) onForfeit(); }}>Abandonner</button>}
+          onClick={() => { if (window.confirm(tournament ? 'Abandonner ce duel ? Ton adversaire sera déclaré vainqueur.' : 'Abandonner le match ? Ton adversaire recevra la cagnotte.')) onForfeit(); }}>Abandonner</button>}
       </footer>
     </section>
   );

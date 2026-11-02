@@ -23,3 +23,9 @@ export async function penaltyTournamentBracket(id) {
   if(!response.ok)throw new Error(data.error||'Tableau indisponible.');
   return data;
 }
+
+// Salons de tournoi : lecture reservee aux deux participants, choix secrets cote serveur.
+export const penaltyTournamentMatch = id => walletRequest(`/api/tournaments/penalty/matches/${encodeURIComponent(id)}`);
+export const startPenaltyTournamentMatch = id => walletRequest(`/api/tournaments/penalty/matches/${encodeURIComponent(id)}/start`,{method:'POST',body:{}});
+export const choosePenaltyTournamentMatch = (id,direction) => walletRequest(`/api/tournaments/penalty/matches/${encodeURIComponent(id)}/choose`,{method:'POST',body:{direction}});
+export const forfeitPenaltyTournamentMatch = id => walletRequest(`/api/tournaments/penalty/matches/${encodeURIComponent(id)}/forfeit`,{method:'POST',body:{}});
