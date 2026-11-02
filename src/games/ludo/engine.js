@@ -1104,6 +1104,21 @@ export function mountLudoGame(document, window, options = {}) {
         function getRandomInt(max) {
             return Math.floor(Math.random() * max);
         }
+        // MAF_LUDO_FAIR_DICE_V1 : tirage uniforme (1 a 6) sans biais ; l'animation s'oriente ensuite vers la face tiree.
+        function secureInt(max) {
+            const cryptoApi = window.crypto || globalThis.crypto;
+            if (!cryptoApi?.getRandomValues) return Math.floor(Math.random() * max);
+            const limit = Math.floor(0x100000000 / max) * max;
+            const buffer = new Uint32Array(1);
+            do { cryptoApi.getRandomValues(buffer); } while (buffer[0] >= limit);
+            return buffer[0] % max;
+        }
+        const spinTo = (current, target, minimum) => {
+            let delta = (((target - current) % 360) + 360) % 360;
+            while (delta < minimum) delta += 360;
+            return current + delta;
+        };
+        let homeTries = 0;
 
         function rollDice() {
             if (isRolling || !gameActive || disposed) return;
@@ -1111,38 +1126,23 @@ export function mountLudoGame(document, window, options = {}) {
             rollBtn.disabled = true;
             playSound('roll');
 
-            const xTurn = 4 + getRandomInt(ROLL_MAX);
-            const yTurn = 4 + getRandomInt(ROLL_MAX);
-            const delay = Math.max(xTurn, yTurn) * 200;
-
-            diceAngleX += 90 * xTurn;
-            diceAngleY += 90 * yTurn;
-
-            // Balance the results
-            if (diceAngleX % 180) {
-                if (getRandomInt(3) > 1) diceAngleX += 90;
+            const result = secureInt(6) + 1;
+            // Orientation finale de chaque face (voir le calcul de lecture historique : x/y en degres).
+            const CODE = { 1: 0, 5: 90, 6: 180, 2: 270 };
+            let targetX, targetY;
+            if (result === 4) { targetX = 90; targetY = 90 * secureInt(4); }
+            else if (result === 3) { targetX = 270; targetY = 90 * secureInt(4); }
+            else {
+                targetX = secureInt(2) === 0 ? 0 : 180;
+                targetY = (((CODE[result] - targetX) % 360) + 360) % 360;
             }
+            const previousX = diceAngleX, previousY = diceAngleY;
+            diceAngleX = spinTo(diceAngleX, targetX, 360 + 90 * secureInt(4));
+            diceAngleY = spinTo(diceAngleY, targetY, 360 + 90 * secureInt(4));
+            const delay = Math.max((diceAngleX - previousX) / 90, (diceAngleY - previousY) / 90) * 200;
 
             diceEl.style.transform = `rotateX(${diceAngleX}deg) rotateY(${diceAngleY}deg)`;
             diceEl.style.transitionDuration = delay + 'ms';
-
-            // Calculate result based on final orientation
-            let result = 1;
-            const x = diceAngleX % 360;
-            const y = diceAngleY % 360;
-
-            if (x === 0 || x === 180) {
-                switch ((x + y) % 360) {
-                    case 0: result = 1; break;
-                    case 90: result = 5; break;
-                    case 180: result = 6; break;
-                    case 270: result = 2; break;
-                }
-            } else if (x === 90) {
-                result = 4;
-            } else if (x === 270) {
-                result = 3;
-            }
 
             scheduleTimeout(() => {
                 lastRoll = result;
@@ -1156,6 +1156,14 @@ export function mountLudoGame(document, window, options = {}) {
             const player = players[currentPlayerIndex];
             const validMoves = getValidMoves(player, value);
             if (validMoves.length === 0) {
+                const allHome = tokens[player].every(pos => pos === -1);
+                if (allHome && homeTries < 2) {
+                    homeTries++;
+                    setMessage(`Rolled ${value}. Essai ${homeTries}/3 : relance pour sortir un pion avec un 6.`);
+                    scheduleTimeout(() => { if (!disposed) { rollBtn.disabled = false; if (aiPlayers.includes(player)) aiTurn(); } }, 900);
+                    return;
+                }
+                homeTries = 0;
                 setMessage(`Rolled ${value}. No valid moves!`);
                 scheduleTimeout(nextTurn, 1500);
             } else if (validMoves.length === 1) {
@@ -1674,6 +1682,7 @@ export function mountLudoGame(document, window, options = {}) {
         }
 
         function nextTurn() {
+            homeTries = 0;
             clearHighlights();
             currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
             lastRoll = 0;
@@ -1701,6 +1710,13 @@ export function mountLudoGame(document, window, options = {}) {
             if (aiPlayers.includes(player)) {
                 const validMoves = getValidMoves(player, value);
                 if (validMoves.length === 0) {
+                    if (tokens[player].every(pos => pos === -1) && homeTries < 2) {
+                        homeTries++;
+                        setMessage(`Le bot a obtenu ${value}. Essai ${homeTries}/3.`);
+                        scheduleTimeout(aiTurn, 900);
+                        return;
+                    }
+                    homeTries = 0;
                     setMessage(`Le bot a obtenu ${value}. Aucun déplacement possible !`);
                     scheduleTimeout(nextTurn, 1500);
                 } else {
