@@ -1,6 +1,7 @@
 // Horaires officiels du salon : 5 min de pre-ouverture et 5 min d attente initiale.
 export const PENALTY_EARLY_ACCESS_MS = 5 * 60 * 1000;
 export const PENALTY_ARRIVAL_GRACE_MS = 5 * 60 * 1000;
+export const PENALTY_LATE_LIMIT_MS = 10 * 60 * 1000;
 export function penaltyJoinWindow(duel, now = Date.now()) {
   if (!duel) return null;
   const scheduledAt = Date.parse(duel.scheduledAt);
@@ -14,6 +15,9 @@ export function penaltyJoinWindow(duel, now = Date.now()) {
   if (now < scheduledAt - PENALTY_EARLY_ACCESS_MS) return {phase:'closed',canEnter:false,startSeconds,deadlineSeconds};
   if (now < scheduledAt) return {phase:'early',canEnter:true,startSeconds,deadlineSeconds};
   if (deadlineSeconds > 0) return {phase:'waiting',canEnter:true,startSeconds,deadlineSeconds};
+  // De 5 a 10 minutes : le serveur accepte encore le joueur tant que son adversaire n'est pas present.
+  const lateSeconds = Math.max(0, Math.ceil((scheduledAt + PENALTY_LATE_LIMIT_MS - now) / 1000));
+  if (lateSeconds > 0) return {phase:'late',canEnter:true,startSeconds,deadlineSeconds,lateSeconds};
   return {phase:'decision',canEnter:false,startSeconds,deadlineSeconds};
 }
 export function penaltyClock(seconds) {

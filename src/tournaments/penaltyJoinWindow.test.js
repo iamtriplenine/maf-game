@@ -7,7 +7,9 @@ test('salon ferme avant la pre-ouverture',()=>assert.deepEqual(penaltyJoinWindow
 test('pre-ouverture a moins de cinq minutes',()=>assert.deepEqual(penaltyJoinWindow(duel,begin-300000).phase,'early'));
 test('a heure exacte cinq minutes restantes',()=>{const d=penaltyJoinWindow(duel,begin);assert.equal(d.phase,'waiting');assert.equal(d.deadlineSeconds,300);assert.equal(d.canEnter,true);});
 test('a 4m59 le salon est accessible',()=>assert.equal(penaltyJoinWindow(duel,begin+299000).canEnter,true));
-test('a 5min la decision serveur est attendue',()=>{const d=penaltyJoinWindow(duel,begin+300000);assert.equal(d.phase,'decision');assert.equal(d.canEnter,false);});
+test('a 5min le joueur peut encore entrer (le serveur tranche)',()=>{const d=penaltyJoinWindow(duel,begin+300000);assert.equal(d.phase,'late');assert.equal(d.canEnter,true);assert.equal(d.lateSeconds,300);});
+test('a 9m59 entree encore possible',()=>assert.equal(penaltyJoinWindow(duel,begin+599000).canEnter,true));
+test('a 10min la decision serveur est attendue',()=>{const d=penaltyJoinWindow(duel,begin+600000);assert.equal(d.phase,'decision');assert.equal(d.canEnter,false);});
 test('salon deja en cours est accessible apres le lancement',()=>assert.equal(penaltyJoinWindow({...duel,status:'playing'},begin+900000).canEnter,true));
 test('resultat termine consultable',()=>assert.equal(penaltyJoinWindow({...duel,status:'finished'},begin+900000).canEnter,true));
 test('salon en attention inaccessible',()=>assert.equal(penaltyJoinWindow({...duel,status:'attention'},begin+900000).canEnter,false));

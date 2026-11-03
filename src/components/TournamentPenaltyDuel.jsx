@@ -92,7 +92,8 @@ export default function TournamentPenaltyDuel({session}){
         <p>Rejoins ton salon maintenant. Il reste <strong>{penaltyClock(arrival.deadlineSeconds)}</strong> avant la décision de forfait.</p>
       </div>}
       {arrival?.phase==='waiting'&&open&&room?.status==='ready'&&<p className="penalty-presence__message" role="status">Tu es dans ton salon. {room.waitingForOpponent?'Nous attendons ton adversaire.':'Les deux joueurs sont présents.'} Temps restant : <strong>{penaltyClock(arrival.deadlineSeconds)}</strong>.</p>}
-      {arrival?.phase==='decision'&&<p className="penalty-presence__message" role="status">Le délai initial de cinq minutes est terminé. Le serveur vérifie la présence et confirme le résultat. Aucun joueur ne peut rejoindre tardivement.</p>}
+      {arrival?.phase==='late'&&<p className="penalty-presence__message" role="status">Le délai de cinq minutes est dépassé. Tu peux encore entrer pendant <strong>{penaltyClock(arrival.lateSeconds)}</strong> : si ton adversaire n'est pas dans le salon, tu gagnes par forfait. S'il est déjà là, le serveur confirme le résultat.</p>}
+      {arrival?.phase==='decision'&&<p className="penalty-presence__message" role="status">Le délai d'arrivée de dix minutes est terminé. Le serveur vérifie la présence et confirme le résultat. Aucun joueur ne peut rejoindre tardivement.</p>}
       {arrival?.phase==='attention'&&<p className="penalty-presence__message" role="status">Le duel nécessite une décision du propriétaire. Aucun vainqueur n'a été désigné.</p>}
       {duel.winner&&<p>Vainqueur : <strong>{duel.winner}</strong></p>}
       <button type="button" disabled={busy||!arrival?.canEnter} onClick={()=>void enter()}>{busy?'Ouverture…':arrival?.phase==='finished'?'Voir le résultat':arrival?.phase==='closed'?'Salon pas encore ouvert':arrival?.phase==='decision'?'Vérification du forfait…':arrival?.phase==='attention'?'Décision en attente':'Rejoindre mon salon'}</button>
