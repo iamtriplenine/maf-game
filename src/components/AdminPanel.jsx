@@ -15,7 +15,7 @@ function Status({value}) { return <span className={'admin-status admin-status--'
 function Info({label,children}) { return <div className="admin-info"><dt>{label}</dt><dd>{children || '—'}</dd></div>; }
 
 function DepositDetail({transaction:t,onBack,onDone,onBusy}) {
-  const [proof,setProof]=useState(''), [loading,setLoading]=useState(Boolean(t.has_proof));
+  const [proof,setProof]=useState(''), [loading,setLoading]=useState(Boolean(t.has_proof && !t.validated_without_proof));
   const [error,setError]=useState(''), [proofError,setProofError]=useState('');
   const [reference,setReference]=useState(''), [note,setNote]=useState(''), [checked,setChecked]=useState(false);
   const [decision,setDecision]=useState(null), [busy,setBusy]=useState(false);
@@ -23,21 +23,23 @@ function DepositDetail({transaction:t,onBack,onDone,onBusy}) {
   const inFlight=useRef(false);
   const open=['awaiting_payment','pending'].includes(t.status);
   useEffect(()=>{
-    if (!t.has_proof) return undefined;
+    if (!t.has_proof || t.validated_without_proof) return undefined;
     let alive=true, objectUrl;
     adminRequest(`/transactions/${t.id}/proof`,{responseType:'blob'}).then(blob=>{
       if (!alive) return;
       objectUrl=URL.createObjectURL(blob);setProof(objectUrl);
     }).catch(e=>{if(alive) setProofError(e.message);}).finally(()=>{if(alive)setLoading(false);});
     return ()=>{alive=false;if(objectUrl)URL.revokeObjectURL(objectUrl);};
-  },[t.id,t.has_proof]);
+  },[t.id,t.has_proof,t.validated_without_proof]);
   async function confirm() {
     if(inFlight.current || !decision) return;
+    const noProof=decision==='approve_noproof';
     if(decision==='approve' && (!checked || reference.trim().length<4 || !imageReady)) return;
+    if(noProof && (!checked || reference.trim().length<4)) return;
     if(decision==='reject' && !note.trim()) return;
     inFlight.current=true;setBusy(true);onBusy(true);setError('');
     try {
-      const result=await adminRequest(`/deposits/${t.id}/${decision}`,{method:'POST',body:{payment_reference:reference.trim(),note:note.trim()}});
+      const result=await adminRequest(`/deposits/${t.id}/${noProof?'approve':decision}`,{method:'POST',body:{payment_reference:reference.trim(),note:note.trim(),...(noProof?{without_proof:true}:{})}});
       onDone(result.transaction.status==='approved' ? `Dépôt confirmé : ${money(t.amount)} F CFA crédités à ${t.pseudo}.` : `Dépôt de ${t.pseudo} refusé.`);
     } catch(e) {setError(e.message);}
     finally {inFlight.current=false;setBusy(false);onBusy(false);}
@@ -52,7 +54,8 @@ function DepositDetail({transaction:t,onBack,onDone,onBusy}) {
     </div>
     <div className="admin-card"><h3>Capture du paiement</h3>
       {loading && <HourglassLoader/>}
-      {!t.has_proof && <p className="admin-muted">Le joueur n’a pas encore envoyé de capture. Le crédit reste indisponible.</p>}
+      {t.validated_without_proof && <p className="admin-muted">Dépôt validé par le propriétaire après vérification du paiement Wave, sans capture du client.</p>}
+      {!t.has_proof && <p className="admin-muted">Le joueur n’a pas encore envoyé de capture. Tu peux valider le dépôt sans capture après avoir vérifié le paiement sur Wave.</p>}
       {proof && <a className="admin-proof-link" href={proof} target="_blank" rel="noopener noreferrer" title="Ouvrir la capture en grand"><img className="admin-proof" src={proof} alt="Capture du paiement envoyée par le joueur" onLoad={()=>setImageReady(true)} onError={()=>{setImageReady(false);setProofError('Cette capture ne peut pas être affichée.');}}/></a>}
       {proof && !proofError && <p className="admin-muted">Appuie sur la capture pour l’ouvrir en grand.</p>}
       {proofError && <p role="alert" className="admin-error">{proofError}</p>}
@@ -67,12 +70,13 @@ function DepositDetail({transaction:t,onBack,onDone,onBusy}) {
       </fieldset>
       {!decision ? <div className="admin-actions">
         <button type="button" className="admin-btn admin-btn--primary" disabled={busy || t.status!=='pending' || !imageReady || !checked || reference.trim().length<4} onClick={()=>setDecision('approve')}>Confirmer le dépôt</button>
+        {t.status==='awaiting_payment' && <button type="button" className="admin-btn admin-btn--primary" disabled={busy || !checked || reference.trim().length<4} onClick={()=>setDecision('approve_noproof')}>Valider sans capture</button>}
         <button type="button" className="admin-btn admin-btn--danger" disabled={busy || !note.trim()} onClick={()=>setDecision('reject')}>Refuser</button>
       </div> : <div className="admin-confirm">
-        <strong>{decision==='approve' ? `Créditer ${money(t.amount)} F CFA au compte ${t.pseudo} après avoir vérifié un paiement Wave de ${money(t.total_amount ?? t.amount)} F CFA (dont ${money(t.fee_amount || 0)} F de frais) ?` : `Refuser ce dépôt de ${money(t.amount)} F CFA ?`}</strong>
-        <p>{decision==='approve' ? 'Le solde sera crédité une seule fois.' : 'Le motif sera visible par le joueur. Aucun crédit ne sera ajouté.'}</p>
+        <strong>{decision==='approve'||decision==='approve_noproof' ? `Créditer ${money(t.amount)} F CFA au compte ${t.pseudo} après avoir vérifié un paiement Wave de ${money(t.total_amount ?? t.amount)} F CFA (dont ${money(t.fee_amount || 0)} F de frais) ?` : `Refuser ce dépôt de ${money(t.amount)} F CFA ?`}</strong>
+        <p>{decision==='approve'||decision==='approve_noproof' ? 'Le solde sera crédité une seule fois.' : 'Le motif sera visible par le joueur. Aucun crédit ne sera ajouté.'}</p>
         {busy && <HourglassLoader/>}
-        <div className="admin-actions"><button type="button" className="admin-btn" disabled={busy} onClick={()=>setDecision(null)}>Annuler</button><button type="button" className={'admin-btn '+(decision==='approve'?'admin-btn--primary':'admin-btn--danger')} disabled={busy} onClick={confirm}>{busy?'Traitement…':decision==='approve'?'Oui, créditer le solde':'Oui, refuser'}</button></div>
+        <div className="admin-actions"><button type="button" className="admin-btn" disabled={busy} onClick={()=>setDecision(null)}>Annuler</button><button type="button" className={'admin-btn '+(decision!=='reject'?'admin-btn--primary':'admin-btn--danger')} disabled={busy} onClick={confirm}>{busy?'Traitement…':decision!=='reject'?'Oui, créditer le solde':'Oui, refuser'}</button></div>
       </div>}
       {error && <p role="alert" className="admin-error">{error}</p>}
     </div>}
