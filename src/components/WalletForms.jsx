@@ -59,7 +59,7 @@ export function RechargeForm({ user, onUser }) {
   const [phone,setPhone] = useState(''), [accepted,setAccepted] = useState(false), [amount,setAmount] = useState('100');
   const [items,setItems] = useState([]), [selected,setSelected] = useState(null), [file,setFile] = useState(null), [preview,setPreview] = useState('');
   const [busy,setBusy] = useState(false), [loading,setLoading] = useState(true), [error,setError] = useState('');
-  const requestKey = useRef(null), inFlight = useRef(false), resumed = useRef(false);
+  const requestKey = useRef(null), inFlight = useRef(false), resumed = useRef(false), watching = useRef(false);
   // Demandes retrouvees depuis PostgreSQL : reprise apres fermeture, redirection ou rechargement.
   useEffect(()=>{
     let alive = true, running = false;
@@ -69,6 +69,7 @@ export function RechargeForm({ user, onUser }) {
         const [wallet,history] = await Promise.all([walletRequest('/api/wallet'),walletRequest('/api/wallet/transactions')]);
         if (!alive) return;
         onUser(wallet.user); const deposits = history.transactions.filter(t=>t.kind==='deposit'); setItems(deposits);
+        watching.current = deposits.some(t=>['awaiting_payment','pending'].includes(t.status));
         const resume = !resumed.current; resumed.current = true;
         setSelected(current=> current ? deposits.find(t=>t.id===current.id) || current : resume ? deposits.find(t=>['awaiting_payment','pending'].includes(t.status)) || null : null);
       } catch(e) { if (alive) setError(e.message); throw e; }
@@ -76,7 +77,9 @@ export function RechargeForm({ user, onUser }) {
     }
     const unregister = registerRefresh(load);
     load().catch(()=>{});
-    return ()=>{alive=false;unregister();};
+    // Tant qu'un depot attend sa capture ou sa verification, l'ecran se met a jour seul (validation admin comprise).
+    const timer = setInterval(()=>{ if (watching.current && !document.hidden) load().catch(()=>{}); },15000);
+    return ()=>{alive=false;unregister();clearInterval(timer);};
   },[onUser]);
   useEffect(()=>()=>{ if (preview) URL.revokeObjectURL(preview); },[preview]);
   async function run(fn) {
