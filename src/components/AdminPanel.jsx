@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { adminRequest } from '../api/accounts';
 import DeleteUserControl from './DeleteUserControl';
+import UserActivity from './UserActivity';
 import HourglassLoader from './HourglassLoader';
 import AdminChat from './AdminChat';
 import WithdrawalAdmin from './WithdrawalAdmin';
@@ -143,6 +144,7 @@ export default function AdminPanel({onClose,initialTab='deposits',initialTransac
           </article> : <details className="admin-card admin-user-row" key={row.id}>
             <summary><span className="admin-user-name"><strong>{row.pseudo}</strong><span className="admin-muted">ID {row.client_id || '—'}</span></span><span className="admin-user-balances"><strong>{money(row.balance)} F</strong><span>{money(row.bonus_balance)} V</span></span><span className="admin-user-chevron" aria-hidden="true">⌄</span></summary>
             <dl className="admin-info-grid"><Info label="Téléphone Wave définitif">{row.phone}</Info><Info label="Inscription">{date(row.created_at)}</Info></dl>
+            <UserActivity userId={row.id}/>
             {result.canDelete && <DeleteUserControl user={row} disabled={acting} onBusy={setActing} onDeleted={message=>{setFlash(message);setOffset(0);setRevision(n=>n+1);}}/>}
           </details>)}
         </section>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { adminRequest } from '../api/accounts';
 import HourglassLoader from './HourglassLoader';
+import UserActivity from './UserActivity';
 const money = n => new Intl.NumberFormat('fr-CI').format(n || 0);
 const date = n => n ? new Date(n).toLocaleString('fr-FR') : '—';
 const labels = { pending:'À payer', approved:'Payé', rejected:'Refusé et remboursé' };
@@ -35,6 +36,7 @@ function Detail({ transaction:t,onBack,onDone,onBusy }) {
       </dl>
       {t.payment_reference && <p>Référence Wave : {t.payment_reference}</p>}
       {t.admin_note && <p>Note : {t.admin_note}</p>}
+      <UserActivity userId={t.user_id}/>
     </article>
     {t.status === 'pending' && <div className="admin-card">
       <h3>Traiter le retrait</h3>
