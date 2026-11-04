@@ -507,3 +507,28 @@
     min-height: 44px;
   }
 }
+
+/* MAF_TANKRUN_COMPACT_V1 : ecran de preparation compact (une ligne par choix, sans cartes imbriquees). */
+.tr-setup.tr-c{gap:8px;padding:10px;border-radius:18px}
+.tr-c__head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tr-c__head h3{margin:0;font-size:16px;line-height:1.2}
+.tr-c__state{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07)}
+.tr-c__state.is-ready{background:rgba(46,204,113,.18);border-color:rgba(46,204,113,.5);color:#bff3d2}
+.tr-c__state.is-waiting{background:rgba(255,180,60,.14);border-color:rgba(255,180,60,.45);color:#ffe0a8}
+.tr-c__row{display:grid;grid-template-columns:84px minmax(0,1fr);gap:10px;align-items:center;padding:8px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.tr-c__row.is-waiting{opacity:.75}
+.tr-c .tr-terrain-preview{min-height:56px;height:56px;width:84px;padding:0;border-radius:10px}
+.tr-c .tr-terrain-preview::after{display:none}
+.tr-c .tr-tank-preview{min-height:56px;height:56px;width:84px;border-radius:10px}
+.tr-c .tr-tank-preview::before{left:12px;right:16px;bottom:10px;height:22px}
+.tr-c .tr-tank-preview::after{width:28px;height:10px;right:8px;top:18px}
+.tr-c__field{display:grid;gap:3px;min-width:0}
+.tr-c__field>span{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;opacity:.75}
+.tr-c__field select{width:100%;min-width:0;min-height:38px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.18);
+  background:rgba(8,12,25,.7);color:#fff;font-size:14px}
+.tr-c__field small{font-size:11px;line-height:1.3;opacity:.7}
+.tr-c__field strong{font-size:14px;line-height:1.3}
+.tr-c__help{margin:0;text-align:center;font-size:12px;opacity:.8}
+.tr-c .tr-action-row{grid-template-columns:72px 96px minmax(0,1fr);gap:8px}
+.tr-c .tr-action{min-height:42px;border-radius:12px}

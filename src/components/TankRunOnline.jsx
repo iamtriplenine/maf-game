@@ -182,108 +182,42 @@ export default function TankRunOnline({room,match,onStart,onExit,onForfeit,busy}
   };
 
   if(room.status==='ready')return (
-    <section className="tr-setup" aria-label="Préparation du duel Tank Run">
-      <div className="tr-setup__hero">
-        <div>
-          <p className="tr-setup__eyebrow">Tank Run · salon privé</p>
-          <h3>Configure ton duel</h3>
-          <p className="tr-setup__lede">Choisis ton char, confirme le terrain et garde toutes les commandes visibles sans faire défiler l'écran.</p>
-        </div>
-        <div className={`tr-setup__state ${own && opponent ? 'is-ready' : 'is-waiting'}`}>
-          {own && opponent ? 'Prêt à lancer' : 'Préparation'}
+    <section className="tr-setup tr-c" aria-label="Préparation du duel Tank Run">
+      <header className="tr-c__head">
+        <h3>Tank Run · duel</h3>
+        <span className={`tr-c__state ${own && opponent ? 'is-ready' : 'is-waiting'}`}>{own && opponent ? 'Prêt' : 'En préparation'}</span>
+      </header>
+
+      <div className="tr-c__row">
+        <div className={`tr-terrain-preview tr-terrain-preview--${terrain}`} aria-hidden="true" />
+        <label className="tr-c__field">
+          <span>Terrain</span>
+          <select value={terrain} onChange={e=>setTerrain(e.target.value)}>
+            {LAND.map(k=><option key={k} value={k}>{LABELS[k]}</option>)}
+          </select>
+          <small>{terrainInfo.caption}</small>
+        </label>
+      </div>
+
+      <div className="tr-c__row">
+        <div className={`tr-tank-preview tr-tank-preview--${skin}`} aria-hidden="true" />
+        <label className="tr-c__field">
+          <span>Ton char · {ownPseudo || 'Toi'}</span>
+          <select value={skin} onChange={e=>setSkin(e.target.value)}>
+            {SKINS.map(k=><option key={k} value={k}>{SKIN_META[k].title} · {SKIN_META[k].subtitle}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <div className={`tr-c__row tr-c__row--opponent${opponent ? '' : ' is-waiting'}`}>
+        <div className={`tr-tank-preview tr-tank-preview--${opponentSkinKey}`} aria-hidden="true" />
+        <div className="tr-c__field">
+          <span>Adversaire · {opponentPseudo || 'en attente'}</span>
+          <strong>{opponent ? `${getSkinData(opponent.skin).title} · ${getSkinData(opponent.skin).subtitle}` : 'Il n’a pas encore choisi son char'}</strong>
         </div>
       </div>
 
-      <div className="tr-setup__topbar">
-        <article className="tr-stat-card">
-          <span className="tr-stat-card__label">Joueurs</span>
-          <div className="tr-stat-card__choices">
-            <span className="is-active">2</span>
-            <span>3</span>
-            <span>4</span>
-          </div>
-        </article>
-        <article className="tr-stat-card">
-          <span className="tr-stat-card__label">Humains</span>
-          <div className="tr-stat-card__choices">
-            <span>1</span>
-            <span className="is-active">2</span>
-          </div>
-          <small>Salon à deux joueurs humains.</small>
-        </article>
-      </div>
-
-      <article className="tr-surface-card tr-surface-card--terrain">
-        <div className="tr-surface-card__header">
-          <div>
-            <strong>Terrain</strong>
-            <p>{terrainInfo.caption}</p>
-          </div>
-          <span className="tr-surface-card__badge">{terrainInfo.title}</span>
-        </div>
-        <div className="tr-terrain-row">
-          <label className="tr-field tr-field--compact">
-            <span>Terrain choisi</span>
-            <select value={terrain} onChange={e=>setTerrain(e.target.value)}>
-              {LAND.map(k=><option key={k} value={k}>{LABELS[k]}</option>)}
-            </select>
-          </label>
-          <div className={`tr-terrain-preview tr-terrain-preview--${terrain}`} aria-hidden="true">
-            <span>{terrainInfo.title}</span>
-          </div>
-        </div>
-      </article>
-
-      <article className="tr-surface-card">
-        <div className="tr-surface-card__header">
-          <div>
-            <strong>Chars et effets des tirs</strong>
-            <p>Réglages visibles pour les deux joueurs.</p>
-          </div>
-        </div>
-        <div className="tr-player-grid">
-          <article className={`tr-player-card tr-player-card--self tr-player-card--${skin}`}>
-            <div className="tr-player-card__head">
-              <span>{viewerRole} · {ownPseudo || 'Toi'}</span>
-              <strong>Humain</strong>
-            </div>
-            <div className={`tr-tank-preview tr-tank-preview--${skin}`} aria-hidden="true" />
-            <label className="tr-field tr-field--compact">
-              <span>Char</span>
-              <select value={skin} onChange={e=>setSkin(e.target.value)}>
-                {SKINS.map(k=><option key={k} value={k}>{SKIN_META[k].title} · {SKIN_META[k].subtitle}</option>)}
-              </select>
-            </label>
-          </article>
-
-          <article className={`tr-player-card tr-player-card--opponent tr-player-card--${opponentSkinKey}${opponent ? '' : ' is-waiting'}`}>
-            <div className="tr-player-card__head">
-              <span>{room.is_host ? 'Joueur 2' : 'Joueur 1'} · {opponentPseudo || 'Adversaire'}</span>
-              <strong>{opponent ? 'Humain' : 'En attente'}</strong>
-            </div>
-            <div className={`tr-tank-preview tr-tank-preview--${opponentSkinKey}`} aria-hidden="true" />
-            <div className="tr-player-card__summary">
-              <span>Char</span>
-              <strong>{opponent ? `${getSkinData(opponent.skin).title} · ${getSkinData(opponent.skin).subtitle}` : 'Choix en attente'}</strong>
-            </div>
-          </article>
-        </div>
-      </article>
-
-      <div className="tr-help-row">
-        <article className="tr-help-card">
-          <strong>Ton char tourne</strong>
-          <span>Déplace-toi sans recharger la page.</span>
-        </article>
-        <article className="tr-help-card">
-          <strong>Appui court : tirer</strong>
-          <span>Le tir part vers la même direction.</span>
-        </article>
-        <article className="tr-help-card">
-          <strong>Appui long : avancer</strong>
-          <span>Maintiens pour foncer vers l'avant.</span>
-        </article>
-      </div>
+      <p className="tr-c__help"><b>Appui court</b> : tirer · <b>Appui long</b> : avancer</p>
 
       {message && <p className="tr-setup__message" role="status">{message}</p>}
 
