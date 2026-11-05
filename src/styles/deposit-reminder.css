@@ -1,0 +1,16 @@
+/* MAF_RAPPELS_V1 : rappel de recharge sans capture, en haut de l'ecran, non bloquant. */
+.deposit-reminder {
+  position:fixed; z-index:11800; left:50%; transform:translateX(-50%);
+  top:calc(env(safe-area-inset-top) + 10px); width:min(520px,calc(100vw - 24px));
+  display:grid; gap:8px; padding:12px 16px 14px;
+  border:3px solid #a78bfa; border-radius:16px; text-align:center; color:#fff;
+  background:linear-gradient(145deg,#1b1038 0%,#05030F 92%);
+  box-shadow:0 10px 34px #000b,0 0 22px #7c3aed55; pointer-events:auto;
+}
+.deposit-reminder__heading { font-size:clamp(14px,4vw,17px); font-weight:900; color:#c4b5fd; letter-spacing:.015em; }
+.deposit-reminder p { margin:0; font-size:clamp(12px,3.4vw,14px); line-height:1.4; font-weight:700; }
+.deposit-reminder__actions { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+.deposit-reminder__go, .deposit-reminder__later { min-height:44px; border:0; border-radius:12px; padding:10px 14px; font:900 clamp(12px,3.6vw,15px)/1.2 var(--font-ui); }
+.deposit-reminder__go { flex:1 1 180px; background:#a78bfa; color:#1b0b3a; box-shadow:0 4px 0 #6d28d9; }
+.deposit-reminder__later { flex:0 0 auto; background:transparent; color:#ddd6fe; border:2px solid #6d28d9; }
+.deposit-reminder__go:focus-visible, .deposit-reminder__later:focus-visible { outline:3px solid #fff; outline-offset:3px; }

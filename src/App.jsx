@@ -9,6 +9,7 @@ import GamePage from "./pages/GamePage";
 import MatchReturnAlert from "./components/MatchReturnAlert";
 import OwnerRequestAlerts from "./components/OwnerRequestAlerts"; // MAF_OWNER_ALERTS_V1
 import PenaltyDuelAlert from "./components/PenaltyDuelAlert";
+import DepositReminder from "./components/DepositReminder"; // MAF_RAPPELS_V1
 import AdminPanel from "./components/AdminPanel";
 import Studio from "./pages/Studio";
 
@@ -64,6 +65,7 @@ export default function App() {
       <MatchReturnAlert />
       <OwnerRequestAlerts />
       <PenaltyDuelAlert />
+      <DepositReminder />
       <div key={view} className={`page page--${direction}`}>
         {view === "studio" && <Studio onBack={() => go("profile")} />}
         {view === "game" && <GamePage />}

@@ -34,10 +34,11 @@ const SECTIONS = [
     ],
   },
   {
-    id: 'jeux', label: 'Les jeux', glyph: '🎮', description: 'Trois univers, trois façons de prendre l’avantage.',
+    id: 'jeux', label: 'Les jeux', glyph: '🎮', description: 'Quatre univers, quatre façons de prendre l’avantage.',
     cards: [
       { id: 'foot', icon: '⚽', title: 'Tir au but', tagline: 'Une décision peut changer le score.', art: 'foot', body: 'Affronte ton adversaire dans une séance de tirs au but. Choisis la direction de ton tir ou de ton arrêt selon ton rôle. Les joueurs alternent les actions, et le score final décide du vainqueur.' },
       { id: 'dames', icon: '♛', title: 'Le jeu de dames', tagline: 'Anticipe les coups, contrôle le plateau.', art: 'checkers', body: 'Les dames internationales utilisent un plateau de 10 × 10. Les prises sont obligatoires ; il faut privilégier la séquence qui capture le plus de pièces. Avance jusqu’au bout pour obtenir une dame. Le dernier déplacement est mis en évidence.' },
+      { id: 'ludo', icon: '🎲', title: 'Le Ludo', tagline: 'Un 6 pour partir, quatre pions pour gagner.', art: 'ludo', body: 'Le Ludo se joue à deux : chacun a quatre pions. Lance le dé : il faut un 6 pour sortir un pion de ta base, puis tu le fais avancer jusqu’à l’arrivée. Un 6 te fait rejouer. Si tous tes pions sont encore dans la base, tu as jusqu’à trois essais pour obtenir un 6. Poser ton pion sur celui de l’adversaire le renvoie dans sa base, sauf sur une case protégée. Le premier qui amène ses quatre pions à l’arrivée gagne.' },
       { id: 'tank', icon: '🚀', title: 'Tank Battle', tagline: 'Vise, tire et transforme le terrain.', art: 'tank', body: 'Deux chars se font face sur des collines destructibles. Gère ton carburant pour te déplacer, oriente le canon, choisis un missile et tire. Chaque arme a sa trajectoire et ses dégâts ; les explosions creusent le sol.', note: 'Selon le déploiement, ce jeu peut encore évoluer et être en phase de test.' },
     ],
   },
@@ -98,6 +99,7 @@ function GuideIllustration({ kind }) {
   if (kind === 'reactions') return <div className="maf-guide-demo-reactions" aria-label="Émojis de réaction">😂 <span>😏</span> 👏</div>;
   if (kind === 'foot') return <div className="maf-guide-demo-game">⚽<span>🥅</span><small>VISER · TIRER · MARQUER</small></div>;
   if (kind === 'checkers') return <div className="maf-guide-demo-checkers" aria-label="Mini plateau de dames">{Array.from({length:32},(_,i)=><span key={i} className={(Math.floor(i/8)+i%8)%2 ? 'dark' : 'light'}>{[9,17].includes(i) ? '●' : [21].includes(i) ? '♛' : ''}</span>)}</div>;
+  if (kind === 'ludo') return <div className="maf-guide-demo-game">🎲<span>♟️</span><small>SORTIR UN 6 · ARRIVER AU BOUT</small></div>;
   if (kind === 'tank') return <div className="maf-guide-demo-tank"><span>🚜</span><span>💥</span><span>🚜</span><div className="maf-guide-tank-hill" /></div>;
   if (kind === 'chat') return <div className="maf-guide-demo-chat"><span>Salut ! 👋</span><span>Prêt pour le duel ?</span></div>;
   if (kind === 'studio') return <div className="maf-guide-demo-icon">◈<small>STUDIO 3D</small></div>;

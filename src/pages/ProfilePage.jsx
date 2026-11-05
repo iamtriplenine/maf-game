@@ -63,6 +63,13 @@ export default function ProfilePage({ onOpenStudio }) {
   const { session, login, register, logout, updateUser } = useSession();
   const [sheet, setSheet] = useState(null);
   const openReferralSignup = useCallback(() => setSheet('signup'), []);
+  // MAF_RAPPELS_V1 : le rappel de depot ouvre directement Recharger.
+  useEffect(() => {
+    const open = () => setSheet('recharge');
+    try { if (sessionStorage.getItem('maf:open-sheet') === 'recharge') { sessionStorage.removeItem('maf:open-sheet'); open(); } } catch { /* optionnel */ }
+    window.addEventListener('maf:open-recharge', open);
+    return () => window.removeEventListener('maf:open-recharge', open);
+  }, []);
   const {referral,refresh:refreshReferral,clear:clearReferral} = useReferralSignup(session,openReferralSignup);
   const pendingGiftCount = usePendingGifts(session?.id, sheet); // login | signup | account | recharge
   const [chatOn, setChatOn] = useState(readChatPref);
@@ -414,8 +421,8 @@ export default function ProfilePage({ onOpenStudio }) {
       <Sheet open={sheet === "login"} title="Login" onClose={close}>
         <AuthForm
           mode="login"
-          onSubmit={async (pseudo, code) => {
-            await login(pseudo, code);
+          onSubmit={async (pseudo, code, phone) => {
+            await login(pseudo, code, phone);
             close();
           }}
         />
