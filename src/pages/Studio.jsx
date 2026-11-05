@@ -83,7 +83,7 @@ export default function Studio({ onBack }) {
         <div>
           <span className="studio__eyebrow">{section === 'skins' ? 'COLLECTION DE PERSONNAGES' : 'DECORS DU PROFIL'}</span>
           <h1>{section === 'skins' ? 'Explore les skins.' : 'Choisis ton ambiance.'}</h1>
-          <p>{section === 'skins' ? 'Un personnage en grand, ses mouvements a portee de main.' : 'Les caracteres de Matrix adoptent ton theme bleu ou rose.'}</p>
+          <p>{section === 'skins' ? 'Un personnage en grand, ses mouvements a portee de main.' : 'Des ambiances animees derriere ton personnage 3D.'}</p>
         </div>
         <span className="studio__count">{section === 'skins' ? `${SKINS.length} SKINS` : `${PROFILE_BACKGROUNDS.length} FONDS`}</span>
       </section>
@@ -123,7 +123,7 @@ export default function Studio({ onBack }) {
           <button type="button" disabled={backgroundSaving || (backgroundId!=='classic'&&!ownedBackgrounds.includes(backgroundId))} onClick={applyBackground}>
             {backgroundSaving ? 'Enregistrement...' : (backgroundId!=='classic'&&!ownedBackgrounds.includes(backgroundId) ? 'Recevoir ce fond en cadeau' : 'Appliquer sur mon profil')}
           </button>
-          <p role="status" aria-live="polite">{backgroundNotice || 'Classique est public. Pluie Matrix se debloque par cadeau.'}</p>
+          <p role="status" aria-live="polite">{backgroundNotice || 'Classique est public. Les fonds exclusifs se debloquent par cadeau.'}</p>
         </div>
       )}
 

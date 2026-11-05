@@ -52,7 +52,7 @@ function BackgroundGift({backgroundId}) {
   finally{setBusy(false);}
  };
  return <div className={`maf-reveal-background ${backgroundId==='matrix-rain'?'maf-reveal-background--matrix':''}`}>
-   {backgroundId==='matrix-rain'&&<ProfileBackground id="matrix-rain"/>}
+   <ProfileBackground id={backgroundId}/>
    <div className="maf-reveal-background__action">
     <button type="button" onClick={apply} disabled={busy}>{busy?'Application...':'Appliquer'}</button>
     {notice&&<p role="status">{notice}</p>}

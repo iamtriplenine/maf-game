@@ -21,7 +21,19 @@ const COLUMNS = Array.from({ length: 36 }, (_, index) => ({
 }));
 
 export default function ProfileBackground({ id = DEFAULT_PROFILE_BACKGROUND }) {
-  if (validProfileBackground(id) !== 'matrix-rain') return null;
+  const backgroundId = validProfileBackground(id);
+  if (backgroundId === 'soap-bubbles') {
+    return (
+      <div className="profile-background profile-background--bubbles" aria-hidden="true">
+        {Array.from({ length: 5 }, (_, index) => (
+          <div key={index} className="profile-background__bubble">
+            <span /><span /><span /><span /><span />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (backgroundId !== 'matrix-rain') return null;
   return (
     <div className="profile-background profile-background--matrix" aria-hidden="true">
       <div className="profile-background__rain">

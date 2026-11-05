@@ -1,6 +1,7 @@
 // Collection des fonds publics du profil. Ajoute les futurs fonds ici.
 export const DEFAULT_PROFILE_BACKGROUND = 'classic';
 export const PROFILE_BACKGROUNDS = Object.freeze([
+  { id: 'soap-bubbles', name: 'Bulles irisées', access: 'exclusive', description: 'Exclusif : des bulles colorees a recevoir en cadeau.' },
   { id: 'matrix-rain', name: 'Pluie Matrix', access: 'exclusive', description: 'Arriere-plan exclusif a recevoir dans les cadeaux.' },
   { id: 'classic', name: 'Classique', access: 'public', description: 'Le decor original, sans animation supplementaire.' },
 ]);

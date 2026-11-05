@@ -1,5 +1,6 @@
 import { useCallback,useEffect,useState } from 'react';
 import { SKINS } from '../characters/skins';
+import { PROFILE_BACKGROUNDS } from '../profileBackgroundCatalog';
 import { clearLegacyTestGifts,createOwnerGift,ownerGiftList,revokeOwnerGift } from '../api/ownerGifts';
 import '../styles/owner-gifts.css';
 const TYPES=[['coupon','Coupon'],['skin','Skin exclusif'],['background','Arrière-plan'],['image','Image'],['balance','Solde réel (F)'],['bonus','Solde bonus (F)']];
@@ -14,7 +15,7 @@ function LotFields({lot,onChange,onImage}){
   {['coupon','balance','bonus'].includes(lot.kind)&&<label>Montant (F)<input required type="number" min="1" max="1000000" step="1" value={lot.amount} onChange={e=>set('amount',e.target.value)}/></label>}
   {lot.kind==='coupon'&&<label>Solde du coupon<select value={lot.currency} onChange={e=>set('currency',e.target.value)}><option value="F">Solde réel</option><option value="V">Solde bonus</option></select></label>}
   {lot.kind==='skin'&&<label>Skin<select required value={lot.skinId} onChange={e=>set('skinId',e.target.value)}><option value="">Choisir un skin</option>{skins.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>}
-  {lot.kind==='background'&&<label>Arrière-plan<select value={lot.backgroundId} onChange={e=>set('backgroundId',e.target.value)}><option value="matrix-rain">Pluie Matrix</option><option value="classic">Classique</option></select></label>}
+  {lot.kind==='background'&&<label>Arrière-plan<select value={lot.backgroundId} onChange={e=>set('backgroundId',e.target.value)}>{PROFILE_BACKGROUNDS.map(b=><option key={b.id} value={b.id}>{b.name}{b.access==='exclusive'?' · Exclusif':''}</option>)}</select></label>}
   {lot.kind==='image'&&<label>Image à offrir<input type="file" accept="image/png,image/jpeg,image/webp" required={!lot.imageData} onChange={e=>onImage(e.target.files?.[0])}/>{lot.imageData&&<img className="maf-owner-gifts__preview" src={lot.imageData} alt="Aperçu du lot"/>}</label>}
  </div>;
 }
@@ -76,7 +77,7 @@ export default function OwnerGiftManager(){
     {['coupon','balance','bonus'].includes(form.kind)&&<label>Montant (francs entiers)<input required type="number" min="1" max="1000000" step="1" value={form.amount} onChange={e=>set('amount',e.target.value)}/></label>}
     {form.kind==='coupon'&&<label>Solde du coupon<select value={form.currency} onChange={e=>set('currency',e.target.value)}><option value="F">Solde réel</option><option value="V">Solde bonus</option></select><small>Un code de coupon unique sera créé pour chaque bénéficiaire.</small></label>}
     {form.kind==='skin'&&<label>Skin à débloquer<select required value={form.skinId} onChange={e=>set('skinId',e.target.value)}><option value="">Choisir un skin exclusif</option>{skins.map(s=><option key={s.id} value={s.id}>{s.name} ({s.id})</option>)}</select></label>}
-    {form.kind==='background'&&<label>Arrière-plan<select value={form.backgroundId} onChange={e=>set('backgroundId',e.target.value)}><option value="matrix-rain">Pluie Matrix</option><option value="classic">Classique</option></select></label>}
+    {form.kind==='background'&&<label>Arrière-plan<select value={form.backgroundId} onChange={e=>set('backgroundId',e.target.value)}>{PROFILE_BACKGROUNDS.map(b=><option key={b.id} value={b.id}>{b.name}{b.access==='exclusive'?' · Exclusif':''}</option>)}</select></label>}
     {form.kind==='image'&&<label>Image à offrir<input type="file" required accept="image/png,image/jpeg,image/webp" onChange={imageChange}/>{form.imageData&&<img className="maf-owner-gifts__preview" src={form.imageData} alt="Image sélectionnée"/>}</label>}
     </>}
     <label>Pour qui ?<select value={form.targetMode} onChange={e=>set('targetMode',e.target.value)}><option value="clientId">Identifiant client</option><option value="pseudo">Pseudo précis</option><option value="all">Tous les comptes existants</option></select></label>
