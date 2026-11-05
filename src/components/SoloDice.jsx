@@ -3,13 +3,20 @@ import { useEffect, useRef, useState } from 'react';
 import WinDicePicker, { useWinDice } from './WinDicePicker';
 import { beginWinSoloMatch, finishWinSoloMatch, winModeIsEnabled } from '../utils/winMode';
 import { addDicePracticeRound, dicePracticeRoll, startDicePractice } from '../utils/diceTrainingEngine';
+import DiceCube from './DiceCube'; // MAF_DICE_DESIGN_V1
 
-const faces = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+// MAF_DICE_DESIGN_V1 : les faces sont maintenant dessinees par DiceCube.
 
-function PracticeFaces({ values }) {
-  return <div className="maf-solo-dice__faces" aria-label={values?.length ? `Des : ${values.join(', ')}` : 'Pas encore de lancer'}>
-    {values?.length ? values.map((value, i) => <span className="maf-solo-dice__face" key={i} role="img" aria-label={`${value}`}>
-      {faces[value]}</span>) : <span className="maf-solo-dice__empty">?</span>}
+function PracticeFaces({ values, rolling = false, count = 1 }) {
+  const n = Math.max(1, Number(count) || 1);
+  if (rolling) return <div className="maf-solo-dice__faces" aria-label="Les dés roulent">
+    {Array.from({ length: n }, (_, i) => <DiceCube key={i} value={i % 2 ? 2 : 4} rolling />)}
+  </div>;
+  if (!values?.length) return <div className="maf-solo-dice__faces" aria-label="Pas encore de lancer">
+    {Array.from({ length: n }, (_, i) => <DiceCube key={i} hidden />)}
+  </div>;
+  return <div className="maf-solo-dice__faces" aria-label={`Dés : ${values.join(', ')}`}>
+    {values.map((value, i) => <DiceCube key={`${i}-${value}`} value={value} delay={i * 90} />)}
   </div>;
 }
 
@@ -52,7 +59,7 @@ export default function SoloDice({ diceCount = 1, rounds = 3, mode = 'separate' 
   };
 
   if (!game) return <div className="maf-solo-dice maf-solo-dice--start">
-    <div className="maf-solo-dice__welcome" aria-hidden="true">🎲</div>
+    <div className="maf-solo-dice__welcome" aria-hidden="true"><DiceCube value={5} /><DiceCube value={2} /></div>
     <h3>Essayer le lancer de dés</h3>
     <p>Affronte un robot, gratuitement et sans créer de salon. Tu peux tester toutes les règles.</p>
     <p className="maf-solo-dice__config">{diceCount} dé{diceCount === 2 ? 's' : ''} · {rounds} coup{rounds > 1 ? 's' : ''} · {mode === 'cumulative' ? 'Résultats cumulés' : 'Manches séparées'}</p>
@@ -72,12 +79,12 @@ export default function SoloDice({ diceCount = 1, rounds = 3, mode = 'separate' 
     </div>
     <div className="maf-solo-dice__opponents">
       <section className="maf-solo-dice__person">
-        <small>TOI</small><PracticeFaces values={last?.host.dice} />
+        <small>TOI</small><PracticeFaces values={last?.host.dice} rolling={rolling} count={game.diceCount} />
         <strong>{last ? `${last.host.total} pts` : 'À lancer'}</strong>
         <span>{game.mode === 'cumulative' ? 'Points' : 'Manches gagnées'} : {game[category].host}</span>
       </section>
       <section className="maf-solo-dice__person">
-        <small>ROBOT 🤖</small><PracticeFaces values={last?.guest.dice} />
+        <small>ROBOT 🤖</small><PracticeFaces values={last?.guest.dice} rolling={rolling} count={game.diceCount} />
         <strong>{last ? `${last.guest.total} pts` : 'À lancer'}</strong>
         <span>{game.mode === 'cumulative' ? 'Points' : 'Manches gagnées'} : {game[category].guest}</span>
       </section>

@@ -3,18 +3,24 @@ import { useEffect, useState } from 'react';
 import WinDicePicker, { useWinDice } from './WinDicePicker';
 import { finishWinRoomMatch, winModeIsEnabled } from '../utils/winMode';
 import { createPortal } from 'react-dom';
+import DiceCube from './DiceCube'; // MAF_DICE_DESIGN_V1
 
-const pips = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
+// MAF_DICE_DESIGN_V1 : les faces sont maintenant dessinees par DiceCube.
 const sideName = (room, side) => side === 'host' ? room.host?.pseudo : room.guest?.pseudo;
 const diceText = (n) => n === 1 ? '1 dé' : '2 dés';
 const roundText = (n) => n === 1 ? '1 lancer' : `${n} coups`;
 
-function DiceFaces({ values, hidden = false }) {
-  if (hidden) return <div className="maf-dice__faces" aria-label="Dés non révélés"><span className="maf-dice__die maf-dice__die--hidden">?</span></div>;
-  if (!values?.length) return <div className="maf-dice__faces"><span className="maf-dice__die maf-dice__die--hidden">—</span></div>;
+const FILLER = [4, 2];
+function DiceFaces({ values, hidden = false, rolling = false, idle = false, count = 1 }) {
+  const n = Math.max(1, Number(count) || 1);
+  if (rolling || idle) return <div className="maf-dice__faces" aria-label={rolling ? 'Les dés roulent' : 'Dés prêts'}>
+    {Array.from({ length: n }, (_, i) => <DiceCube key={i} value={FILLER[i % 2]} rolling={rolling} />)}
+  </div>;
+  if (hidden || !values?.length) return <div className="maf-dice__faces" aria-label={hidden ? 'Dés non révélés' : 'Pas encore de lancer'}>
+    {Array.from({ length: n }, (_, i) => <DiceCube key={i} hidden />)}
+  </div>;
   return <div className="maf-dice__faces" aria-label={`Résultat : ${values.join(' et ')}`}>
-    {values.map((num,index) => <span key={index} className="maf-dice__die" aria-label={`${num}`} title={`${num}`}>
-      {pips[num] || num}</span>)}
+    {values.map((num, index) => <DiceCube key={`${index}-${num}`} value={num} delay={index * 90} />)}
   </div>;
 }
 
@@ -56,10 +62,10 @@ export default function DiceArena({ room, match, busy, error, onStart, onRoll, o
         <button className="btn btn--sm" type="button" onClick={onBack}>Retour au salon</button>
       </div> : <>
         <div className="maf-dice__players">
-          {['host','guest'].map(side => <section key={side} className={`maf-dice__player${side === viewer ? ' is-me' : ''}`}>
+          {['host','guest'].map(side => <section key={side} className={`maf-dice__player${side === viewer ? ' is-me' : ''}${last?.winner === side ? ' is-lead' : ''}`}>
             <small>{side === viewer ? 'TOI' : 'ADVERSAIRE'}</small>
             <strong>{sideName(room, side)}</strong>
-            <DiceFaces values={last?.[side]?.dice} />
+            <DiceFaces values={last?.[side]?.dice} count={count} />
             <span className="maf-dice__points">{last ? `${last[side].total} point${last[side].total > 1 ? 's':''}` : 'Aucun lancer révélé'}</span>
             <span className="maf-dice__score">{mode === 'cumulative' ? 'Total' : 'Manches'} : {match?.[mode === 'cumulative' ? 'totals' : 'wins']?.[side] ?? 0}</span>
           </section>)}
@@ -71,9 +77,10 @@ export default function DiceArena({ room, match, busy, error, onStart, onRoll, o
           {match.myRolled ? <>
             <strong>✓ Ton lancer est enregistré.</strong>
             <p>{match.opponentRolled ? 'Résolution du coup...' : 'L’adversaire doit encore lancer. Les dés seront révélés ensemble.'}</p>
-            <DiceFaces hidden />
+            <DiceFaces hidden count={count} />
           </> : <>
             <strong>{last ? 'À toi de lancer pour le prochain coup !' : 'À toi de jouer !'}</strong>
+            <DiceFaces idle rolling={busy} count={count} />
             <p>Appuie sur le bouton pour lancer {diceText(count).toLowerCase()}.</p>
             {winAvailable && <WinDicePicker count={count} value={win.value} onChange={win.choose} disabled={busy}/>}
             <button type="button" className="maf-dice__roll" disabled={busy||(winAvailable&&win.incomplete)} onClick={()=>onRoll(winAvailable&&winModeIsEnabled('dice')?win.faces:undefined)}>🎲 {busy ? 'Lancement...' : `Lancer ${count === 1 ? 'le dé' : 'les 2 dés'}`}</button>
