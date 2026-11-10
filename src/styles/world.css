@@ -1,0 +1,36 @@
+/* ============ Page World ============ */
+.world-page { display: flex; flex-direction: column; }
+.world-enter {
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 16px 28px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--accent-grad);
+  color: #fff;
+  font: 700 16px/1 var(--font-ui);
+  letter-spacing: .4px;
+  box-shadow: 0 8px 26px var(--accent-soft);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.world-enter:active { transform: scale(.97); }
+
+/* Jeu en plein ecran, au-dessus de tout (barre du bas comprise) */
+.world-play { position: fixed; inset: 0; z-index: 1000; background: #000; }
+.world-play iframe { display: block; width: 100%; height: 100%; border: 0; }
+.world-exit {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  left: 8px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, .35);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .45);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}

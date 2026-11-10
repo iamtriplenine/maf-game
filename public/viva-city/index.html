@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101d30">
+  <title>VIVA CITY — Interface 3D sans serveur</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="world3d" aria-label="Ville virtuelle jouable en 3D"></canvas>
+  <div id="crosshair" aria-hidden="true">+</div>
+
+  <header id="topbar">
+    <div class="brand"><span class="brand-badge">V</span><span>VIVA <b>CITY</b><small>MONDE 3D • SANS SERVEUR</small></span></div>
+    <div id="stats"><div><small>VIVA COINS</small><strong id="coins">0</strong></div><div><small>QUARTIER</small><strong id="district">Centre-ville</strong></div><div><small>HEURE</small><strong id="clock">12:00</strong></div></div>
+    <div id="topActions"><button id="soundBtn" title="Activer ou couper les sons">♫</button><button id="helpBtn" title="Aide">?</button><button id="settingsBtn" title="Réglages">⚙</button></div>
+  </header>
+
+  <aside id="leftSidebar">
+    <div class="task-card"><div class="eyebrow"><span class="pulse"></span> MISSION DU JOUR</div><h3 id="missionName">Bienvenue à Viva City</h3><p id="missionDetail">Explore la ville et découvre les activités.</p><div class="progress"><div id="progressBar"></div></div><span id="missionDistance">Prêt à explorer !</span></div>
+    <div class="location-card"><span>📍</span><div><b id="placeName">Place centrale</b><small id="placeSubtitle">Un monde à découvrir</small></div></div>
+  </aside>
+
+  <aside id="rightSidebar"><div class="mini-wrap"><canvas id="minimap" width="170" height="170"></canvas><div class="map-label">MINI-CARTE <span>● VOUS</span></div></div><div class="weather" id="weather">☀ Temps ensoleillé</div></aside>
+  <div id="hint" class="hidden"><span id="hintText">Appuie sur E pour interagir</span></div>
+  <div id="toast" aria-live="polite"></div>
+  <div id="drivingHud" class="hidden"><b id="speed">0</b><span>KM/H</span><small>E : sortir du véhicule</small></div>
+
+  <div id="bottomBar"><div class="control-hint"><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd><span>ou <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> • se déplacer</span></div><div class="control-hint"><span>🖱 Glisser : caméra &nbsp;•&nbsp; Molette : zoom &nbsp;•&nbsp; <kbd>E</kbd> : interagir &nbsp;•&nbsp; <kbd>Shift</kbd> : courir</span></div><button id="mapBtn">☷ Carte & lieux</button></div>
+
+  <div id="touchControls" aria-hidden="true"><div id="joyZone"><div id="joyRing"><div id="joyKnob"></div></div></div><div class="touch-right"><button id="touchRun">COURIR</button><button id="touchAction">E</button></div></div>
+
+  <section class="overlay" id="welcome"><div class="welcome-card"><div class="eyebrow">BIENVENUE DANS LE MONDE</div><h1>VIVA <em>CITY</em></h1><p>Explore une ville côtière en 3D, promène-toi, conduis des voitures, retrouve des personnages et découvre des activités.</p><div class="features"><span>🏙 Ville complète</span><span>🚗 Véhicules</span><span>🧍 Personnages</span><span>🎯 Missions</span><span>🌴 Plage</span></div><button class="primary" id="startBtn">ENTRER DANS LA VILLE <span>→</span></button><small>100 % côté navigateur • aucune inscription • aucun backend • fonctionne hors ligne</small></div></section>
+
+  <section class="overlay hidden" id="modalOverlay"><div class="modal"><button id="closeModal" class="close" aria-label="Fermer">×</button><div id="modalInner"></div></div></section>
+  <section class="overlay hidden" id="errorOverlay"><div class="modal"><h2>Impossible de lancer la 3D</h2><p id="errorMessage">Ton navigateur doit prendre en charge WebGL.</p></div></section>
+
+  <script src="config.js"></script>
+  <script src="engine.js"></script>
+  <script src="world.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
