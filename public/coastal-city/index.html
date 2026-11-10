@@ -68,9 +68,14 @@
     background:#b36bf3;color:#160b23;font:800 10px/16px system-ui,sans-serif}
 
   /* MAF-FOOD-V1: bouton discret sur le comptoir, identique aux controles des sieges. */
-  #worldEatButton{position:absolute;left:0;top:0;z-index:4;transform:translate(-50%,-50%);
-    width:44px;height:44px;border-radius:50%;border:1px solid #ffd166;background:rgba(8,20,32,.92);
-    color:#fff;font-size:22px;box-shadow:0 3px 16px #0008;cursor:pointer;pointer-events:auto;touch-action:manipulation}
+  /* MAF-FOOD-FIX-V2 : bouton toujours visible sur l'ecran lorsque le joueur
+     se trouve du bon cote du comptoir, meme si la caisse est hors camera. */
+  #worldEatButton{position:absolute;left:50%;top:auto;bottom:calc(88px + env(safe-area-inset-bottom));
+    z-index:25;transform:translateX(-50%);min-width:172px;min-height:46px;padding:8px 14px;
+    border-radius:24px;border:1px solid #ffd166;background:rgba(8,20,32,.95);
+    color:#fff;font:700 14px/1.2 'Segoe UI',system-ui,sans-serif;
+    box-shadow:0 3px 16px #0009;cursor:pointer;pointer-events:auto;touch-action:manipulation}
+  #worldEatButton:disabled{opacity:.65;cursor:wait}
   #worldEatButton[hidden]{display:none}
   #energyVal{color:#ffd166}
   #worldSeatLayer{position:absolute;inset:0;pointer-events:none}
@@ -319,7 +324,7 @@
 </div>
 
 <div id="hud" class="hidden">
-  <button id="worldEatButton" hidden type="button" aria-label="Manger au fastfood" title="Manger : +50 energie">🍔</button>
+  <button id="worldEatButton" hidden type="button" aria-label="Manger au fastfood" title="Manger : +50 energie">🍔 Manger (+50 ⚡)</button>
   <div id="worldSeatLayer" hidden></div>
   <div id="worldStatusLayer"></div>
   <div id="statusBar" class="panel">
@@ -1141,12 +1146,16 @@ VILLA_SEATS.push(...LOFT_SEATS);
 
 const VILLA_PATH = [-2.2, (BEACH_Z - 0.68 - VILLA.z) / VILLA.scale, 2.2, -11.90,
   (CURB_H + 0.017 - VILLA.y) / VILLA.scale];
-// Le fichier BurgerPiz comporte aussi routes, parking, batiments voisins et vegetation.
-// Zone au nord-ouest, hors de la grille procedurale pour eviter les chevauchements.
-// Dimensions source ~407 x 270 unites ; a 0.75 : ~305 x 202 unites.
+// MAF-FOOD-FIX-V2 : on conserve la taille du restaurant et de son parking,
+// mais on ne rend plus l'immense quartier annexe du GLB (ni la haie cote route).
+// Le modele d'origine reste INTACT : aucun GLB modifie ou redimensionne.
 const FASTFOOD = { x: -100, z: -310, y: CURB_H, scale: 0.75 };
 const fastfood = { model: null, loading: false, retryAt: 0 };
-const foodAt = { x: FASTFOOD.x - 2.5 * FASTFOOD.scale, z: FASTFOOD.z + 6.2 * FASTFOOD.scale };
+// Les 3 caisses sont sur le comptoir a z=9.2, cote CLIENT a z>9.7.
+// Centre d'action, en unites du GLB, x=-1.5 z=11.4.
+const foodAt = { x: FASTFOOD.x - 1.5 * FASTFOOD.scale,
+  z: FASTFOOD.z + 11.4 * FASTFOOD.scale };
+const FOOD_REACH = 4.4;
 // Places 40-47 sur les fauteuils du restaurant (y du coussin ~0.51).
 const FOOD_SEATS = [
   [-5, 14, 90], [-5, 15.56, 90], [-5, 17.93, 90], [-5, 20.30, 90],
@@ -1500,13 +1509,36 @@ async function loadFastFood() {
     // Les deux panneaux de portes cote est sont decoratifs et fixes dans le GLB :
     // les masquer pour que les visiteurs puissent traverser l'ouverture.
     ['Door_F', 'Door_F.001', 'Door_Fr'].forEach(name => { const door = model.getObjectByName(name); if (door) door.visible = false; });
+    // On retire a l'AFFICHAGE les grands quartiers decoratifs inutiles,
+    // les facades lointaines et les arbres qui ferment la vue cote route/porte EST.
+    // Rien n'est supprime du GLB original : retour arriere possible.
+    model.updateMatrixWorld(true);
+    const bounds = new THREE.Box3(), center = new THREE.Vector3(), dims = new THREE.Vector3();
+    let hiddenScenery = 0;
     model.traverse(obj => {
       if (!obj.isMesh) return;
+      obj.geometry.computeBoundingBox();
+      bounds.copy(obj.geometry.boundingBox).applyMatrix4(obj.matrixWorld);
+      bounds.getCenter(center); bounds.getSize(dims);
+      const sx = (center.x - FASTFOOD.x) / FASTFOOD.scale;
+      const sz = (center.z - FASTFOOD.z) / FASTFOOD.scale;
+      const dx = dims.x / FASTFOOD.scale, dz = dims.z / FASTFOOD.scale;
+      const tree = /Tree|Plants|plant|Bush|Hedge|shrubs/i.test(obj.name);
+      const huge = dx > 110 || dz > 95;
+      const outside = sx < -38 || sx > 56 || sz < -26 || sz > 54;
+      const roadsideTrees = tree && ((sx > 18 && sz > -23 && sz < 55) ||
+        (sz < -8 && sx > -35 && sx < 56));
+      // Les batiments et routes de tout un quartier ne font pas partie du fastfood.
+      const extraBuilding = /^Building[._]/i.test(obj.name);
+      if (huge || outside || roadsideTrees || extraBuilding) {
+        obj.visible = false;
+        hiddenScenery++;
+        return;
+      }
       obj.receiveShadow = true;
-      // Les centaines de vegetaux gardent leur aspect mais n'ajoutent pas
-      // des centaines de projections d'ombres couteuses.
-      obj.castShadow = !/Tree|Grass|Bush|Leaf|Leaves/i.test(obj.name);
+      obj.castShadow = !tree;
     });
+    console.info('Fastfood :', hiddenScenery, 'elements exterieurs masques (emprise reduite).');
     scene.add(model);
     fastfood.model = model;
     addFastFoodColliders();
@@ -2506,6 +2538,7 @@ function sitOnVillaSeat(seat) {
   ui.touch.classList.add('villa-seated');
   ui.worldStandButton.hidden = false;
   MP.lastSend = -Infinity;
+  MP.seatRefusalCount = 0;
   hudDirty = true;
   return true;
 }
@@ -3181,12 +3214,12 @@ async function refreshEnergy() {
   finally { energy.fetching = false; }
 }
 function canEatAtFastFood() {
+  const lx = (player.x - FASTFOOD.x) / FASTFOOD.scale;
+  const lz = (player.z - FASTFOOD.z) / FASTFOOD.scale;
   return !!(fastfood.model && !player.seating && player.mode === 'walk' && player.onGround &&
     !menuOpen() && !ui.worldMapDialog.open && !ui.worldStatusDialog.open &&
-    (player.x-FASTFOOD.x)/FASTFOOD.scale > -5.5 &&
-    (player.x-FASTFOOD.x)/FASTFOOD.scale < 8.5 &&
-    (player.z-FASTFOOD.z)/FASTFOOD.scale > -3 &&
-    Math.hypot(player.x - foodAt.x, player.z - foodAt.z) <= 2.75);
+    lx > -5.6 && lx < 8.8 && lz > 8.8 && lz < 17.0 &&
+    Math.hypot(player.x - foodAt.x, player.z - foodAt.z) <= FOOD_REACH);
 }
 async function eatAtFastFood() {
   if (!canEatAtFastFood()) return false;
@@ -3208,14 +3241,9 @@ async function eatAtFastFood() {
   return true;
 }
 function drawFoodButton() {
-  if (!canEatAtFastFood()) { ui.worldEatButton.hidden = true; return; }
-  const point = _proj.set(foodAt.x, FASTFOOD.y + 1.55, foodAt.z).project(camera);
-  if (Math.abs(point.x) > .95 || Math.abs(point.y) > .95 || point.z > 1 || point.z < -1) {
-    ui.worldEatButton.hidden = true; return;
-  }
-  ui.worldEatButton.style.left = Math.round((point.x + 1) * innerWidth / 2) + 'px';
-  ui.worldEatButton.style.top = Math.round((1 - point.y) * innerHeight / 2) + 'px';
-  ui.worldEatButton.hidden = false;
+  // Bouton fixe et accessible : le player n'a pas besoin de viser exactement
+  // une caisse avec la camera pour declencher le repas.
+  ui.worldEatButton.hidden = !canEatAtFastFood();
 }
 function tryEatAtFastFood() {
   if (!canEatAtFastFood()) return false;
@@ -3342,8 +3370,8 @@ function buildMinimapBase() {
   world.parks.forEach(p => g.fillRect(w2s(p.x - 20), w2s(p.z - 20), 40 * mm.scale, 40 * mm.scale));
   // Repere d'emprise du restaurant et de ses espaces exterieurs.
   g.fillStyle = '#66795a';
-  g.fillRect(w2s(FASTFOOD.x - 200*FASTFOOD.scale), w2s(FASTFOOD.z - 110*FASTFOOD.scale),
-    350*FASTFOOD.scale*mm.scale, 235*FASTFOOD.scale*mm.scale);
+  g.fillRect(w2s(FASTFOOD.x - 23*FASTFOOD.scale), w2s(FASTFOOD.z - 24*FASTFOOD.scale),
+    69*FASTFOOD.scale*mm.scale, 72*FASTFOOD.scale*mm.scale);
   g.fillStyle = '#946747';
   g.fillRect(w2s(FASTFOOD.x - 6.2*FASTFOOD.scale), w2s(FASTFOOD.z - 4.3*FASTFOOD.scale),
     18.3*FASTFOOD.scale*mm.scale, 30*FASTFOOD.scale*mm.scale);
@@ -3812,7 +3840,7 @@ function bindInput() {
     if (e.pointerType === 'mouse') {
       if (pointerLocked && e.button === 0) {
         const target = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-        if (target?.matches('.world-status-bubble, .world-seat-button, #worldStandButton')) { target.click(); return; }
+        if (target?.matches('.world-status-bubble, .world-seat-button, #worldStandButton, #worldEatButton')) { target.click(); return; }
       }
       dragging = true; dragX = e.clientX; dragY = e.clientY;
       if (!pointerLocked && !IS_TOUCH) { try { ui.gl.requestPointerLock(); } catch (err) {} }
@@ -4886,7 +4914,9 @@ function mpSend() {
   const voiceDone = Array.from(worldVoice.done).slice(0, 16);
   const body = {
     x: playerX(), z: playerZ(), yaw: veh ? player.veh.yaw : player.yaw,
-    mv: (veh ? Math.abs(player.veh.speed) : player.speed) > 0.5 ? 1 : 0, veh: veh ? 1 : 0,
+    // Une place assise n'est jamais transmise comme un joueur en mouvement.
+    mv: seating ? 0 : ((veh ? Math.abs(player.veh.speed) : player.speed) > 0.5 ? 1 : 0),
+    veh: veh ? 1 : 0,
     seat: seating?.seat.id ?? null,
     voice: true, voiceClient: worldChat.client, voiceDone
   };
@@ -4904,9 +4934,19 @@ function mpSend() {
       if (j.me && j.me.skin) mpSetLocal(j.me.skin);
       mpSyncOwnStatus(j.me);
       mpApply(j.players || []);
-      if (seating && seating === player.seating && j.me && 'seat' in j.me && j.me.seat !== seating.seat.id) {
-        leaveVillaSeat();
-        toast('Cette place est déjà occupée.', 'bad');
+      if (seating && seating === player.seating && j.me && 'seat' in j.me) {
+        if (j.me.seat === seating.seat.id) {
+          MP.seatRefusalCount = 0;
+        } else {
+          // Ne pas ejecter un joueur a cause d'une seule reponse transitoire.
+          MP.seatRefusalCount = (MP.seatRefusalCount || 0) + 1;
+          if (j.me.seatError === 'occupied' || MP.seatRefusalCount >= 2) {
+            leaveVillaSeat();
+            toast(j.me.seatError === 'occupied' ? 'Cette place est occupée par un autre joueur.' :
+              'Impossible de rester sur cette place. Reessaie.', 'bad');
+            MP.seatRefusalCount = 0;
+          }
+        }
       }
     })
     .catch(st => {
