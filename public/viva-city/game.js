@@ -102,16 +102,31 @@
  let drag=false,prevX=0,prevY=0,dragId;
  // MAF_TOUCH_V1 : au doigt, n'importe ou sur l'ecran = joystick invisible (l'origine est ou le doigt se pose).
  let joyPtr=null,joyOx=0,joyOy=0;const JOY_R=55,JOY_DEAD=.12,JOY_FOLLOW=1.6;
+ const CAM_MIN=6,CAM_MAX=150,CAM_PITCH_MIN=-.05,CAM_PITCH_MAX=1.2;
+ const fingers=new Map();let pinch=null;
+ const pinchState=()=>{const p=[...fingers.values()],a=p[0],b=p[1];return{dist:Math.hypot(b.x-a.x,b.y-a.y),angle:Math.atan2(b.y-a.y,b.x-a.x),y:(a.y+b.y)/2}};
  canvas.addEventListener('pointerdown',e=>{if(state.active||!state.running)return;
-  if(e.pointerType==='touch'){if(joyPtr!==null)return;joyPtr=e.pointerId;joyOx=e.clientX;joyOy=e.clientY;touchAxis={x:0,y:0};try{canvas.setPointerCapture(e.pointerId)}catch{}return}
+  if(e.pointerType==='touch'){
+   try{canvas.setPointerCapture(e.pointerId)}catch{}
+   fingers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+   if(fingers.size===1){joyPtr=e.pointerId;joyOx=e.clientX;joyOy=e.clientY;touchAxis={x:0,y:0}}
+   else if(fingers.size===2){joyPtr=null;touchAxis={x:0,y:0};pinch=pinchState()}
+   return}
   drag=true;dragId=e.pointerId;prevX=e.clientX;prevY=e.clientY;canvas.setPointerCapture(e.pointerId)});
  canvas.addEventListener('pointermove',e=>{
+  if(fingers.has(e.pointerId)){const f=fingers.get(e.pointerId);f.x=e.clientX;f.y=e.clientY;
+   if(fingers.size>=2&&pinch){const now=pinchState();
+    // MAF_CAM2_V1 : deux doigts = pincer (zoom), tourner les doigts (pivoter), monter/descendre (inclinaison)
+    camera.distance=limit(camera.distance*(pinch.dist/Math.max(now.dist,1)),CAM_MIN,CAM_MAX);
+    let da=now.angle-pinch.angle;if(da>Math.PI)da-=Math.PI*2;if(da<-Math.PI)da+=Math.PI*2;
+    camera.yaw-=da;camera.pitch=limit(camera.pitch+(now.y-pinch.y)*.004,CAM_PITCH_MIN,CAM_PITCH_MAX);
+    pinch=now;return}}
   if(e.pointerId===joyPtr){let dx=e.clientX-joyOx,dy=e.clientY-joyOy,mag=Math.hypot(dx,dy);
    if(mag>JOY_R*JOY_FOLLOW){const over=mag-JOY_R*JOY_FOLLOW;joyOx+=dx/mag*over;joyOy+=dy/mag*over;dx=e.clientX-joyOx;dy=e.clientY-joyOy;mag=Math.hypot(dx,dy)}
    const k=Math.min(mag,JOY_R)/JOY_R;touchAxis=k<JOY_DEAD?{x:0,y:0}:{x:dx/mag*k,y:dy/mag*k};return}
-  if(!drag||e.pointerId!==dragId)return;let dx=e.clientX-prevX,dy=e.clientY-prevY;prevX=e.clientX;prevY=e.clientY;camera.yaw-=dx*.006;camera.pitch=limit(camera.pitch+dy*.003,-.05,.89)});
- const stopDrag=e=>{if(e.pointerId===joyPtr){joyPtr=null;touchAxis={x:0,y:0};return}if(e.pointerId===dragId)drag=false};canvas.addEventListener('pointerup',stopDrag);canvas.addEventListener('pointercancel',stopDrag);
- canvas.addEventListener('wheel',e=>{e.preventDefault();camera.distance=limit(camera.distance+Math.sign(e.deltaY)*1.6,7,34)},{passive:false});
+  if(!drag||e.pointerId!==dragId)return;let dx=e.clientX-prevX,dy=e.clientY-prevY;prevX=e.clientX;prevY=e.clientY;camera.yaw-=dx*.006;camera.pitch=limit(camera.pitch+dy*.003,CAM_PITCH_MIN,CAM_PITCH_MAX)});
+ const stopDrag=e=>{if(fingers.has(e.pointerId)){fingers.delete(e.pointerId);if(fingers.size<2)pinch=null;if(e.pointerId===joyPtr||fingers.size===0){joyPtr=null;touchAxis={x:0,y:0}}return}if(e.pointerId===dragId)drag=false};canvas.addEventListener('pointerup',stopDrag);canvas.addEventListener('pointercancel',stopDrag);
+ canvas.addEventListener('wheel',e=>{e.preventDefault();camera.distance=limit(camera.distance*(e.deltaY>0?1.12:1/1.12),CAM_MIN,CAM_MAX)},{passive:false});
  // Joystick tactile, accessible sans moteur externe.
  const joy=$('joyZone'),knob=$('joyKnob');let joyId=null;const resetJoy=()=>{touchAxis={x:0,y:0};knob.style.transform='translate(0px,0px)';joyId=null};
  joy.addEventListener('pointerdown',e=>{joyId=e.pointerId;joy.setPointerCapture(e.pointerId);updateJoy(e)});
