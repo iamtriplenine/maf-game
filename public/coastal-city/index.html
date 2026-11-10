@@ -100,9 +100,34 @@
 
   #minimapStack{position:absolute;left:10px;top:var(--minimap-top);width:var(--minimap-extent);display:grid;gap:6px}
   #minimapStack > .panel{position:relative;min-width:0}
-  #minimapWrap{padding:6px;pointer-events:auto;cursor:pointer}
-  #minimap{display:block;width:var(--minimap-size);height:var(--minimap-size);border-radius:8px;background:#0d2233}
-  #mmLabel{position:absolute;left:8px;top:4px;font:600 9px/1 'Segoe UI',system-ui;letter-spacing:1.2px;opacity:.55}
+  #hud #minimapWrap{display:block;width:var(--minimap-extent);padding:6px;border-radius:50%;color:#eaf2fb;
+    border-color:rgba(187,219,239,.36);overflow:hidden;pointer-events:auto;cursor:zoom-in;touch-action:manipulation}
+  #minimap{display:block;width:var(--minimap-size);height:var(--minimap-size);border-radius:50%;background:#0d2233}
+  .world-compass-letter{position:absolute;display:grid;place-items:center;width:16px;height:16px;border-radius:50%;
+    background:rgba(8,20,31,.84);color:#e8f2ff;font:800 9px/1 system-ui,sans-serif;pointer-events:none}
+  .world-compass-n{top:3px;left:50%;transform:translateX(-50%);color:#86f3d9}
+  .world-compass-s{bottom:3px;left:50%;transform:translateX(-50%)}
+  .world-compass-e{right:3px;top:50%;transform:translateY(-50%)}
+  .world-compass-o{left:3px;top:50%;transform:translateY(-50%)}
+  #worldMapDialog{position:fixed;inset:0;width:min(88vw,880px);height:min(74vh,640px);height:min(74dvh,640px);margin:auto;padding:0;overflow:hidden;
+    border:1px solid rgba(204,226,245,.32);border-radius:17px;background:#0c1c2b;color:#edf6ff;box-shadow:0 22px 64px rgba(0,0,0,.55)}
+  #worldMapDialog[open]{display:grid;grid-template-rows:auto minmax(0,1fr) auto}
+  #worldMapDialog::backdrop{background:rgba(5,13,22,.34)}
+  .world-map-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px}
+  .world-map-head h2{margin:0;font-size:16px}
+  #worldMapHint{margin:3px 0 0;color:#bdd2e3;font:600 11px/1.3 system-ui,sans-serif}
+  .world-map-frame{position:relative;min-width:0;min-height:0;overflow:hidden;background:#12283a}
+  #worldMapCanvas{display:block;width:100%;height:100%;cursor:crosshair;touch-action:none;outline-offset:-3px}
+  #worldMapCanvas:active{cursor:grabbing}
+  .world-map-north{position:absolute;right:9px;top:9px;display:grid;place-items:center;gap:1px;width:31px;height:37px;
+    border-radius:9px;background:rgba(8,20,31,.85);color:#86f3d9;font:800 10px/1 system-ui,sans-serif;pointer-events:none}
+  #worldMapNorth{display:block;font-size:17px;line-height:1}
+  .world-map-tools{display:flex;align-items:center;flex-wrap:wrap;gap:5px;padding:6px 9px}
+  .world-map-button{display:grid;place-items:center;min-width:34px;height:34px;padding:0 8px;flex:none;cursor:pointer;
+    border:1px solid rgba(199,226,248,.25);border-radius:8px;background:#1a3043;color:#f1f7ff;font:700 15px/1 system-ui,sans-serif}
+  .world-map-button:active{background:#29465d}
+  .world-map-button:disabled{opacity:.45;cursor:default}
+  #worldMapClear{margin-left:auto;font-size:11px}
   #worldComms{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1fr);min-height:44px;overflow:hidden}
   #worldOnline{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;padding:4px;
     font:600 11px/1.2 'Segoe UI',system-ui,sans-serif;white-space:nowrap}
@@ -339,10 +364,13 @@
   </div>
 
   <div id="minimapStack">
-    <div id="minimapWrap" class="panel" role="button" tabindex="0" aria-label="Minimap, tap to zoom">
-      <span id="mmLabel">MAP</span>
+    <button id="minimapWrap" class="panel" type="button" aria-haspopup="dialog" aria-controls="worldMapDialog" aria-label="Ouvrir la carte de World" title="Ouvrir la carte de World">
       <canvas id="minimap" width="164" height="164"></canvas>
-    </div>
+      <span class="world-compass-letter world-compass-n" aria-hidden="true">N</span>
+      <span class="world-compass-letter world-compass-e" aria-hidden="true">E</span>
+      <span class="world-compass-letter world-compass-s" aria-hidden="true">S</span>
+      <span class="world-compass-letter world-compass-o" aria-hidden="true">O</span>
+    </button>
     <div id="worldComms" class="panel">
       <div id="worldOnline" role="status" aria-label="Joueurs présents dans World">
         <span class="world-online-light" aria-hidden="true"></span>
@@ -373,6 +401,25 @@
 
 <div id="banner" class="hidden"><div class="b1" id="bTitle"></div><div class="b2" id="bSub"></div></div>
 <div id="fadeVeil"></div>
+
+<dialog id="worldMapDialog" aria-labelledby="worldMapTitle">
+  <header class="world-map-head">
+    <div><h2 id="worldMapTitle">Carte de World</h2><p id="worldMapHint" role="status">Glisse pour explorer · Appuie pour tracer</p></div>
+    <button id="worldMapClose" class="world-map-button" type="button" aria-label="Fermer la carte" title="Fermer" autofocus>×</button>
+  </header>
+  <div class="world-map-frame">
+    <canvas id="worldMapCanvas" tabindex="0" aria-label="Carte de World. Utilise les flèches pour déplacer la vue, puis Entrée pour choisir le centre."></canvas>
+    <span class="world-map-north" aria-hidden="true"><span id="worldMapNorth">↑</span>N</span>
+  </div>
+  <footer class="world-map-tools">
+    <button id="worldMapMinus" class="world-map-button" type="button" aria-label="Dézoomer" title="Dézoomer">−</button>
+    <button id="worldMapPlus" class="world-map-button" type="button" aria-label="Zoomer" title="Zoomer">+</button>
+    <button id="worldMapLeft" class="world-map-button" type="button" aria-label="Tourner à gauche" title="Tourner à gauche">↶</button>
+    <button id="worldMapRight" class="world-map-button" type="button" aria-label="Tourner à droite" title="Tourner à droite">↷</button>
+    <button id="worldMapOverview" class="world-map-button" type="button" aria-label="Vue générale, nord en haut" title="Vue générale">◎</button>
+    <button id="worldMapClear" class="world-map-button" type="button" disabled>Effacer le trajet</button>
+  </footer>
+</dialog>
 
 <dialog id="worldStatusDialog" class="sheet" aria-labelledby="worldStatusTitle">
   <div class="world-status-head">
@@ -2582,6 +2629,8 @@ function qs(id) { return document.getElementById(id); }
 function grabUI() {
   ['loading', 'bootMsg', 'spinner', 'hud', 'clockVal', 'cashVal', 'runsVal', 'mTitle', 'mSub', 'mTimerWrap', 'mTimer',
     'spdVal', 'spdUnit', 'gearVal', 'minimap', 'minimapWrap', 'prompt', 'toastWrap', 'objArrow', 'objDist',
+    'worldMapDialog', 'worldMapHint', 'worldMapClose', 'worldMapCanvas', 'worldMapNorth', 'worldMapMinus', 'worldMapPlus',
+    'worldMapLeft', 'worldMapRight', 'worldMapOverview', 'worldMapClear',
     'kbHelp', 'menuSheet', 'banner', 'bTitle', 'bSub', 'menu', 'btnMenu', 'btnClose', 'btnSound', 'btnCam', 'btnMission', 'btnExport',
     'btnImport', 'btnNew', 'btnReset', 'fileIn', 'seedLine', 'touch', 'stickZone', 'stickBase', 'stickKnob',
     'lookZone', 'tbA', 'tbE', 'tbRun', 'tbHorn', 'tbFix', 'qualitySeg', 'btnPerf', 'perfHud', 'fadeVeil', 'gl',
@@ -2656,7 +2705,15 @@ function updateHUD() {
 }
 
 /* ------------------------------------------------------------ minimap */
-const mm = { base: null, scale: 1, size: 1200, zoom: 1.7, ctx: null, dpr: 1 };
+const WORLD_MAP_SOUTH = SHORE_Z + 30;
+const WORLD_MAP_MAX_ZOOM = 12;
+const WORLD_MAP_HINT = 'Glisse pour explorer · Appuie pour tracer';
+const mm = {
+  base: null, scale: 1, size: 1200, zoom: 1.7,
+  destination: null, route: [], routeOrigin: null,
+  viewer: { x: 0, z: (WORLD_MAP_SOUTH - OUTER) / 2, zoom: 1, angle: 0 }
+};
+
 function buildMinimapBase() {
   const S = mm.size;
   const c = mkCanvas(S, S);
@@ -2682,22 +2739,166 @@ function buildMinimapBase() {
   g.fillStyle = 'rgba(72,120,64,.85)';
   world.parks.forEach(p => g.fillRect(w2s(p.x - 20), w2s(p.z - 20), 40 * mm.scale, 40 * mm.scale));
   mm.base = c;
+  if (mm.destination) clearWorldMapRoute();
 }
-function drawMinimap() {
-  const cv = ui.minimap; if (!cv || !mm.base) return;
-  const ctx = mm.ctx || (mm.ctx = cv.getContext('2d'));
-  const W = cv.width, H = cv.height;
-  const px = playerX(), pz = playerZ();
-  const view = 210 / mm.zoom;                 // metres visible across the map
-  const sw = view * mm.scale, sh = view * mm.scale;
-  const sx = (px + OUTER) * mm.scale - sw / 2, sy = (pz + OUTER) * mm.scale - sh / 2;
+
+function mapRoadAnchor(point) {
+  const road = nearestRoadPoint(point.x, point.z);
+  return { x: clamp(road.x, X0, X1), z: clamp(road.z, Z0, Z1), along: road.along };
+}
+
+function mapLegClear(a, b) {
+  const dx = b.x - a.x, dz = b.z - a.z;
+  const length = Math.hypot(dx, dz);
+  return length < 0.2 || rayHitDist(a.x, 1, a.z, dx / length, 0, dz / length, length) >= length - 0.15;
+}
+
+function mapRoadAccess(point) {
+  const i = clamp(Math.floor((point.x - X0) / PITCH), 0, NX - 2);
+  const j = clamp(Math.floor((point.z - Z0) / PITCH), 0, NZ - 2);
+  const x = clamp(point.x, X0, X1), z = clamp(point.z, Z0, Z1);
+  return [
+    { x: roadX(i), z, along: 'z' },
+    { x: roadX(i + 1), z, along: 'z' },
+    { x, z: roadZ(j), along: 'x' },
+    { x, z: roadZ(j + 1), along: 'x' }
+  ].filter(road => mapLegClear(point, road));
+}
+
+function mapStreetPath(a, b) {
+  if (a.along !== b.along) {
+    return [a, { x: a.along === 'z' ? a.x : b.x, z: a.along === 'x' ? a.z : b.z }, b];
+  }
+  const axis = a.along;
+  const across = axis === 'x' ? 'z' : 'x';
+  if (a[across] === b[across]) return [a, b];
+  // Les rues forment une grille complète. Pour deux rues parallèles, on compare les deux traverses voisines.
+  const first = axis === 'x' ? X0 : Z0;
+  const count = axis === 'x' ? NX : NZ;
+  const before = first + clamp(Math.floor((a[axis] - first) / PITCH), 0, count - 2) * PITCH;
+  const after = before + PITCH;
+  const cost = crossing => Math.abs(crossing - a[axis]) + Math.abs(crossing - b[axis]);
+  const crossing = cost(after) < cost(before) ? after : before;
+  return [a, { ...a, [axis]: crossing }, { ...b, [axis]: crossing }, b];
+}
+
+function planWorldMapRoute(start, end) {
+  const outsideCity = p => p.x < CITY_X0 || p.x > CITY_X1 || p.z < CITY_Z0 || p.z > CITY_Z1;
+  if ((Math.hypot(end.x - start.x, end.z - start.z) <= 12 || (outsideCity(start) && outsideCity(end))) &&
+      mapLegClear(start, end)) return [start, end];
+  const entries = mapRoadAccess(start), exits = mapRoadAccess(end);
+  if (!entries.length) entries.push(mapRoadAnchor(start));
+  if (!exits.length) exits.push(mapRoadAnchor(end));
+  let best = [], bestDistance = Infinity;
+  for (const entry of entries) {
+    for (const exit of exits) {
+      const points = [start, ...mapStreetPath(entry, exit), end];
+      let distance = 0;
+      for (let i = 1; i < points.length; i++) {
+        distance += Math.hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z);
+      }
+      if (distance < bestDistance) { best = points; bestDistance = distance; }
+    }
+  }
+  return best;
+}
+
+function clearWorldMapRoute(message = WORLD_MAP_HINT) {
+  mm.destination = null;
+  mm.route = [];
+  mm.routeOrigin = null;
+  ui.worldMapHint.textContent = message;
+  ui.worldMapClear.disabled = true;
+}
+
+function selectWorldMapDestination(point) {
+  const limit = clampToWorld({ ...point });
+  if (point.x !== limit.x || point.z !== limit.z || point.z > SHORE_Z) {
+    ui.worldMapHint.textContent = 'Choisis un lieu sur la terre ferme.';
+    return;
+  }
+  const blocked = insideAnyCollider(point.x, point.z, 0.5) || !mapRoadAccess(point).length;
+  mm.destination = blocked ? mapRoadAnchor(point) : point;
+  mm.routeOrigin = null;
+  ui.worldMapClear.disabled = false;
+  ui.worldMapHint.textContent = blocked ? 'Repère placé sur la rue la plus proche.' : 'Itinéraire tracé.';
+  drawMinimap();
+}
+
+function updateWorldMapRoute(x, z) {
+  const target = mm.destination;
+  if (!target) return;
+  if (Math.hypot(target.x - x, target.z - z) <= 4) {
+    clearWorldMapRoute('Arrivé à destination.');
+  } else if (!mm.routeOrigin || Math.hypot(mm.routeOrigin.x - x, mm.routeOrigin.z - z) >= 2.5) {
+    mm.routeOrigin = { x, z };
+    mm.route = planWorldMapRoute(mm.routeOrigin, target);
+  }
+}
+
+function mapView(w, h, x, z, scale, angle) {
+  return { w, h, x, z, scale, angle, cos: Math.cos(angle), sin: Math.sin(angle) };
+}
+
+function mapToScreen(view, x, z) {
+  const dx = (x - view.x) * view.scale, dz = (z - view.z) * view.scale;
+  return [view.w / 2 + dx * view.cos - dz * view.sin, view.h / 2 + dx * view.sin + dz * view.cos];
+}
+
+function screenToMap(view, x, y) {
+  const dx = (x - view.w / 2) / view.scale, dy = (y - view.h / 2) / view.scale;
+  return { x: view.x + dx * view.cos + dy * view.sin, z: view.z - dx * view.sin + dy * view.cos };
+}
+
+function mapEdgePoint(point, w, h, padding, round) {
+  if (!round) {
+    const x = clamp(point[0], padding, w - padding), y = clamp(point[1], padding, h - padding);
+    return [x, y, x === point[0] && y === point[1]];
+  }
+  const dx = point[0] - w / 2, dy = point[1] - h / 2;
+  const radius = Math.max(1, Math.min(w, h) / 2 - Math.max(16, padding));
+  const factor = Math.min(1, radius / (Math.hypot(dx, dy) || 1));
+  return [w / 2 + dx * factor, h / 2 + dy * factor, factor === 1];
+}
+
+function drawWorldMapRoute(ctx, toS) {
+  if (mm.route.length < 2) return;
+  ctx.save();
+  ctx.lineCap = ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(...toS(playerX(), playerZ()));
+  for (let i = 1; i < mm.route.length; i++) {
+    const point = mm.route[i];
+    ctx.lineTo(...toS(point.x, point.z));
+  }
+  ctx.strokeStyle = '#162935'; ctx.lineWidth = 4; ctx.stroke();
+  ctx.strokeStyle = '#6af0d0'; ctx.lineWidth = 2; ctx.stroke();
+  const p = toS(mm.destination.x, mm.destination.z);
+  ctx.beginPath(); ctx.arc(p[0], p[1], 4.5, 0, TAU);
+  ctx.fillStyle = '#162935'; ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+function paintWorldMap(cv, view, round) {
+  if (!view || !mm.base) return;
+  const { w: W, h: H, scale } = view;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const width = Math.max(1, Math.round(W * dpr)), height = Math.max(1, Math.round(H * dpr));
+  if (cv.width !== width) cv.width = width;
+  if (cv.height !== height) cv.height = height;
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(width / W, 0, 0, height / H, 0, 0);
   ctx.clearRect(0, 0, W, H);
   ctx.save();
-  ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+  if (round) { ctx.beginPath(); ctx.arc(W / 2, H / 2, Math.min(W, H) / 2, 0, TAU); ctx.clip(); }
   ctx.fillStyle = '#12283a'; ctx.fillRect(0, 0, W, H);
-  ctx.drawImage(mm.base, sx, sy, sw, sh, 0, 0, W, H);
-  const k = W / view;
-  const toS = (x, z) => [(x - px) * k + W / 2, (z - pz) * k + H / 2];
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.rotate(view.angle);
+  ctx.drawImage(mm.base, (-OUTER - view.x) * scale, (-OUTER - view.z) * scale, OUTER * 2 * scale, OUTER * 2 * scale);
+  ctx.restore();
+  const toS = (x, z) => mapToScreen(view, x, z);
+  drawWorldMapRoute(ctx, toS);
   // traffic
   ctx.fillStyle = '#cfd8e0';
   for (let i = 0; i < traffic.cars.length; i++) {
@@ -2716,18 +2917,17 @@ function drawMinimap() {
   // objective
   if (mission.state !== 'idle') {
     const p = toS(mission.tx, mission.tz);
-    const cx = clamp(p[0], 8, W - 8), cy = clamp(p[1], 8, H - 8);
+    const [cx, cy] = mapEdgePoint(p, W, H, 8, round);
     ctx.fillStyle = mission.state === 'toPickup' ? '#6fd3ff' : '#ffd166';
     ctx.beginPath(); ctx.arc(cx, cy, 5, 0, TAU); ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 1.4; ctx.stroke();
   }
-  mmPorscheIcon(ctx, toS, W, H);
+  mmPorscheIcon(ctx, toS, W, H, round);
   // MAF-WORLD-ONLINE-V1 : vrais joueurs en violet (au bord de la carte s'ils sont hors de vue)
   if (typeof MP !== 'undefined' && MP.remotes.size) {
     MP.remotes.forEach(r => {
       const p = toS(r.x, r.z);
-      const inside = p[0] >= 5 && p[0] <= W - 5 && p[1] >= 5 && p[1] <= H - 5;
-      const cx = clamp(p[0], 5, W - 5), cy = clamp(p[1], 5, H - 5);
+      const [cx, cy, inside] = mapEdgePoint(p, W, H, 5, round);
       ctx.globalAlpha = inside ? 1 : 0.55;
       ctx.fillStyle = '#a855f7';
       ctx.beginPath(); ctx.arc(cx, cy, inside ? 4.2 : 3.2, 0, TAU); ctx.fill();
@@ -2737,12 +2937,171 @@ function drawMinimap() {
   }
   // player arrow
   const yaw = player.mode === 'drive' && player.veh ? player.veh.yaw : player.yaw;
-  ctx.translate(W / 2, H / 2); ctx.rotate(-yaw + Math.PI);
+  ctx.translate(...toS(playerX(), playerZ())); ctx.rotate(-yaw + Math.PI + view.angle);
   ctx.fillStyle = '#ff5f56';
   ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(5, 6); ctx.lineTo(0, 3); ctx.lineTo(-5, 6); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 1.2; ctx.stroke();
   ctx.restore();
 }
+
+function expandedWorldMapView() {
+  const cv = ui.worldMapCanvas;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return null;
+  const scale = Math.min(w / (2 * OUTER), h / (OUTER + WORLD_MAP_SOUTH)) * 0.94;
+  const { x, z, zoom, angle } = mm.viewer;
+  return mapView(w, h, x, z, scale * zoom, angle);
+}
+
+function drawExpandedWorldMap() {
+  if (!ui.worldMapDialog.open) return;
+  paintWorldMap(ui.worldMapCanvas, expandedWorldMapView(), false);
+  ui.worldMapNorth.style.transform = 'rotate(' + mm.viewer.angle + 'rad)';
+  ui.worldMapMinus.disabled = mm.viewer.zoom <= 1;
+  ui.worldMapPlus.disabled = mm.viewer.zoom >= WORLD_MAP_MAX_ZOOM;
+}
+
+function drawMinimap() {
+  const cv = ui.minimap;
+  if (!cv || !mm.base) return;
+  const x = playerX(), z = playerZ();
+  updateWorldMapRoute(x, z);
+  if (cv.clientWidth && cv.clientHeight) {
+    const w = cv.clientWidth, h = cv.clientHeight;
+    paintWorldMap(cv, mapView(w, h, x, z, w * mm.zoom / 210, 0), true);
+  }
+  drawExpandedWorldMap();
+}
+
+function adjustWorldMap(from, to, zoomFactor = 1, turn = 0) {
+  const view = expandedWorldMapView();
+  if (!view) return;
+  const anchor = screenToMap(view, from.x, from.y);
+  const viewer = mm.viewer;
+  viewer.zoom = clamp(viewer.zoom * zoomFactor, 1, WORLD_MAP_MAX_ZOOM);
+  viewer.angle = angDelta(0, viewer.angle + turn);
+  const underPointer = screenToMap(expandedWorldMapView(), to.x, to.y);
+  viewer.x = clamp(viewer.x + anchor.x - underPointer.x, -OUTER, OUTER);
+  viewer.z = clamp(viewer.z + anchor.z - underPointer.z, -OUTER, WORLD_MAP_SOUTH);
+  drawExpandedWorldMap();
+}
+
+function bindWorldMap() {
+  const dialog = ui.worldMapDialog, canvas = ui.worldMapCanvas;
+  const pointers = new Map();
+  let tapOrigin = null, moved = false;
+  const localPoint = event => {
+    const rect = canvas.getBoundingClientRect();
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  };
+  const gesture = () => {
+    const [a, b] = pointers.values();
+    if (!b) return { ...a, distance: 0, angle: 0 };
+    const dx = b.x - a.x, dy = b.y - a.y;
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, distance: Math.hypot(dx, dy), angle: Math.atan2(dy, dx) };
+  };
+  const center = () => ({ x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 });
+  const changeAtCenter = (factor, angle = 0) => {
+    const point = center();
+    adjustWorldMap(point, point, factor, angle);
+  };
+  const choose = point => {
+    const view = expandedWorldMapView();
+    if (view && point.x >= 0 && point.x <= view.w && point.y >= 0 && point.y <= view.h) {
+      selectWorldMapDestination(screenToMap(view, point.x, point.y));
+    }
+  };
+
+  ui.minimapWrap.onclick = () => {
+    if (dialog.open || !mm.base) return;
+    keys.clear();
+    lookAccum.x = lookAccum.y = 0;
+    if (pointerLocked) { try { document.exitPointerLock(); } catch (err) {} }
+    dialog.showModal();
+    drawExpandedWorldMap();
+  };
+  ui.worldMapClose.onclick = () => dialog.close();
+  dialog.addEventListener('click', event => {
+    if (event.target !== dialog) return;
+    const rect = dialog.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) {
+      dialog.close();
+    }
+  });
+  dialog.addEventListener('close', () => {
+    for (const id of pointers.keys()) {
+      if (canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
+    }
+    pointers.clear();
+    keys.clear();
+    ui.minimapWrap.focus({ preventScroll: true });
+  });
+
+  canvas.addEventListener('pointerdown', event => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    event.preventDefault();
+    const point = localPoint(event);
+    if (!pointers.size) { tapOrigin = point; moved = false; }
+    else moved = true;
+    pointers.set(event.pointerId, point);
+    try { canvas.setPointerCapture(event.pointerId); } catch (err) {}
+  });
+  canvas.addEventListener('pointermove', event => {
+    if (!pointers.has(event.pointerId)) return;
+    const before = gesture();
+    pointers.set(event.pointerId, localPoint(event));
+    const after = gesture();
+    if (!moved) {
+      if (Math.hypot(after.x - tapOrigin.x, after.y - tapOrigin.y) < 6) return;
+      moved = true;
+      adjustWorldMap(tapOrigin, after);
+    } else {
+      const pinching = before.distance >= 8 && after.distance >= 8;
+      adjustWorldMap(before, after, pinching ? after.distance / before.distance : 1,
+        pinching ? angDelta(before.angle, after.angle) : 0);
+    }
+  });
+  const endPointer = event => {
+    if (!pointers.delete(event.pointerId)) return;
+    if (event.type === 'pointerup' && !moved && !pointers.size) {
+      const point = localPoint(event);
+      if (Math.hypot(point.x - tapOrigin.x, point.y - tapOrigin.y) < 6) choose(point);
+    }
+  };
+  canvas.addEventListener('pointerup', endPointer);
+  canvas.addEventListener('pointercancel', endPointer);
+  canvas.addEventListener('lostpointercapture', endPointer);
+  canvas.addEventListener('wheel', event => {
+    event.preventDefault();
+    const point = localPoint(event);
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? canvas.clientHeight : 1;
+    const delta = clamp(event.deltaY * unit, -480, 480);
+    if (event.shiftKey) adjustWorldMap(point, point, 1, -delta * 0.003);
+    else adjustWorldMap(point, point, Math.exp(-delta * 0.0025));
+  }, { passive: false });
+  canvas.addEventListener('keydown', event => {
+    const point = center();
+    const directions = { ArrowLeft: [-32, 0], ArrowRight: [32, 0], ArrowUp: [0, -32], ArrowDown: [0, 32] };
+    const step = directions[event.key];
+    if (step) {
+      event.preventDefault();
+      adjustWorldMap(point, { x: point.x - step[0], y: point.y - step[1] });
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      choose(point);
+    }
+  });
+  ui.worldMapMinus.onclick = () => changeAtCenter(1 / 1.35);
+  ui.worldMapPlus.onclick = () => changeAtCenter(1.35);
+  ui.worldMapLeft.onclick = () => changeAtCenter(1, -Math.PI / 6);
+  ui.worldMapRight.onclick = () => changeAtCenter(1, Math.PI / 6);
+  ui.worldMapOverview.onclick = () => {
+    Object.assign(mm.viewer, { x: 0, z: (WORLD_MAP_SOUTH - OUTER) / 2, zoom: 1, angle: 0 });
+    drawExpandedWorldMap();
+  };
+  ui.worldMapClear.onclick = () => { clearWorldMapRoute(); drawMinimap(); };
+}
+
 let _proj;
 function updateObjArrow() {
   if (mission.state === 'idle') {
@@ -2782,8 +3141,9 @@ function bindInput() {
   if (IS_TOUCH) ui.touch.classList.remove('hidden');
 
   addEventListener('keydown', e => {
-    if (ui.worldStatusDialog.open || e.target === ui.worldChatText || e.repeat) return;
+    if (ui.worldStatusDialog.open || ui.worldMapDialog.open || e.target === ui.worldChatText || e.repeat) return;
     const k = e.code;
+    if (k === 'Space' && e.target === ui.minimapWrap) return;
     if (!pointerLocked && (MP.statusVersion >= 0 || worldVoice.available) &&
         (k === 'Tab' || (k === 'Space' && e.target.matches?.('#btnWorldTools, #btnWorldStatus, .world-status-bubble, #btnWorldMic, #btnWorldVoiceMute, #btnWorldChat, #worldChatPanel button')))) return;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].indexOf(k) >= 0) e.preventDefault();
@@ -2935,13 +3295,12 @@ function bindInput() {
   ui.btnSound.onclick = () => { audioResume(); toggleSound(); };
   ui.btnCam.onclick = () => cycleCam();
   ui.btnMission.onclick = () => { audioResume(); startMission(); };
-  ui.minimapWrap.onclick = () => { mm.zoom = mm.zoom > 2.4 ? 1.0 : mm.zoom * 1.55; drawMinimap(); };
-  ui.minimapWrap.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ui.minimapWrap.onclick(); } };
+  bindWorldMap();
   ui.menu.addEventListener('click', e => { if (e.target === ui.menu) toggleMenu(false); });
 }
 
 function gatherInput(dt) {
-  if (ui.worldStatusDialog.open) {
+  if (ui.worldStatusDialog.open || ui.worldMapDialog.open) {
     input.moveX = input.moveZ = input.throttle = input.steer = input.hand = input.lookX = input.lookY = 0;
     input.run = input.jump = false;
     lookAccum.x = lookAccum.y = 0;
@@ -4769,12 +5128,11 @@ function mpPorscheInit() {
 }
 
 // Icone voiture sur la mini-carte : au bord de la carte si elle est hors de vue.
-function mmPorscheIcon(ctx, toS, W, H) {
+function mmPorscheIcon(ctx, toS, W, H, round) {
   const v = MP.porsche;
   if (!v || v === player.veh) return;
   const p = toS(v.x, v.z);
-  const inside = p[0] >= 10 && p[0] <= W - 10 && p[1] >= 10 && p[1] <= H - 10;
-  const cx = clamp(p[0], 10, W - 10), cy = clamp(p[1], 10, H - 10);
+  const [cx, cy, inside] = mapEdgePoint(p, W, H, 10, round);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.globalAlpha = inside ? 1 : 0.8;
