@@ -1872,9 +1872,10 @@ const player = {
 };
 const cam = {
   yaw: Math.PI, pitch: -0.14, dist: 5.4, distGoal: 5.4, mode: 1, zoomU: 1, fogBase: null,
-  shake: 0, pos: null, look: null, userLook: 0
+  shake: 0, pos: null, look: null, userLook: 0, walkInputYaw: null
 };
 const CAM_MODES = [0.72, 1.0, 1.42];
+const WALK_FOLLOW_MAX_ZOOM = 1.6;
 
 function shake(a) { cam.shake = Math.min(1.2, cam.shake + a); }
 
@@ -1885,7 +1886,14 @@ function stepPlayer(dt, input) {
   let mx = input.moveX, mz = input.moveZ;
   const mag = Math.hypot(mx, mz);
   if (mag > 1) { mx /= mag; mz /= mag; }
-  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+  // Hold the movement axes steady while the camera turns to follow this input.
+  if (mag <= 0.05 || cam.userLook > 0 || cam.zoomU > WALK_FOLLOW_MAX_ZOOM) {
+    cam.walkInputYaw = null;
+  } else if (cam.walkInputYaw === null) {
+    cam.walkInputYaw = cam.yaw;
+  }
+  const moveYaw = cam.walkInputYaw ?? cam.yaw;
+  const cy = Math.cos(moveYaw), sy = Math.sin(moveYaw);
   // camera forward on the ground plane
   const fwdX = -sy, fwdZ = -cy;
   const rgtX = cy, rgtZ = -sy;
@@ -1981,6 +1989,7 @@ function updateCamera(dt, input) {
 
   let tx, ty, tz, baseDist;
   if (player.mode === 'drive' && player.veh) {
+    cam.walkInputYaw = null;
     const v = player.veh;
     tx = v.x; ty = v.y + v.t.bodyH + v.t.ride + 0.55; tz = v.z;
     baseDist = v.t.l * 1.28 + 3.2;
@@ -1994,6 +2003,11 @@ function updateCamera(dt, input) {
   } else {
     tx = player.x; ty = player.y + 1.45; tz = player.z;
     baseDist = 5.0;
+    if (cam.walkInputYaw !== null && cam.userLook <= 0 && cam.zoomU <= WALK_FOLLOW_MAX_ZOOM &&
+        Math.hypot(player.vx, player.vz) > 0.12) {
+      const behind = Math.atan2(player.vx, player.vz) + Math.PI;
+      cam.yaw += angDelta(cam.yaw, behind) * (1 - Math.pow(0.03, dt));
+    }
   }
   const zf = cam.zoomU;
   if (!cam.beacon) {           // repere jaune au-dessus du joueur quand on est zoome loin
