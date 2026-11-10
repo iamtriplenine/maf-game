@@ -51,14 +51,16 @@
   #statusBar .val{font-size:15px}
   #cashVal{color:#8ce99a}
 
-  #topBtns{position:absolute;right:10px;top:calc(10px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:auto}
-  #topDrop{display:flex;flex-direction:column;gap:8px;overflow:hidden;max-height:0;opacity:0;pointer-events:none;transition:max-height .22s ease,opacity .18s ease}
-  #topBtns.open #topDrop{max-height:380px;opacity:1;pointer-events:auto}
-  #topBtns button{min-width:44px;min-height:44px;width:44px;height:44px;border-radius:12px;
+  #topMenus{position:absolute;right:10px;top:calc(10px + env(safe-area-inset-top));display:flex;align-items:flex-start;gap:8px}
+  .world-top-menu{display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:auto}
+  .world-top-drop{display:flex;flex-direction:column;gap:8px;overflow:hidden;max-height:0;opacity:0;pointer-events:none;transition:max-height .22s ease,opacity .18s ease}
+  .world-top-menu.open .world-top-drop{max-height:380px;opacity:1;pointer-events:auto}
+  #topMenus button{min-width:44px;min-height:44px;width:44px;height:44px;border-radius:12px;
     border:1px solid rgba(255,255,255,.2);background:rgba(6,16,26,.66);color:#eaf2fb;font-size:17px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;padding:0}
-  #topBtns button:active{background:rgba(255,255,255,.24)}
-  #topBtns button[aria-pressed="false"]{opacity:.55}
+  #topMenus button:active{background:rgba(255,255,255,.24)}
+  #topMenus button[aria-pressed="false"]{opacity:.55}
+  #btnWorldTools[aria-expanded="true"]{color:#e4cbff;border-color:rgba(198,138,255,.68)}
 
   #worldStatusLayer{position:absolute;inset:0;pointer-events:none}
   .world-status-bubble{position:absolute;left:0;top:0;pointer-events:auto;touch-action:manipulation;
@@ -91,9 +93,17 @@
   #speedo .su{font:600 9px/1 'Segoe UI',system-ui;letter-spacing:1.6px;opacity:.65;text-transform:uppercase}
   #speedo .gear{font:700 11px/1 'Segoe UI',system-ui;letter-spacing:1px;margin-top:5px;color:#ffd166}
 
-  #minimapWrap{left:10px;top:calc(64px + env(safe-area-inset-top));padding:6px;pointer-events:auto;cursor:pointer}
-  #minimap{display:block;width:164px;height:164px;border-radius:8px;background:#0d2233}
+  #minimapStack{--minimap-size:164px;position:absolute;left:10px;top:calc(64px + env(safe-area-inset-top));
+    width:calc(var(--minimap-size) + 14px);display:grid;gap:6px}
+  #minimapStack > .panel{position:relative;min-width:0}
+  #minimapWrap{padding:6px;pointer-events:auto;cursor:pointer}
+  #minimap{display:block;width:var(--minimap-size);height:var(--minimap-size);border-radius:8px;background:#0d2233}
   #mmLabel{position:absolute;left:8px;top:4px;font:600 9px/1 'Segoe UI',system-ui;letter-spacing:1.2px;opacity:.55}
+  #worldOnline{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:5px;
+    font:600 11px/1.2 'Segoe UI',system-ui,sans-serif;white-space:nowrap}
+  #worldOnlineCount{color:#e4cbff;font:700 16px/1 ui-monospace,Menlo,Consolas,monospace}
+  .world-online-light{flex:none;width:9px;height:9px;border-radius:50%;background:#645078}
+  #worldOnline[data-live] .world-online-light{background:#c68aff;box-shadow:0 0 7px #b86aff,0 0 14px rgba(170,86,255,.62)}
 
   #prompt{pointer-events:auto;cursor:pointer;position:absolute;left:50%;bottom:calc(26vh + env(safe-area-inset-bottom));transform:translateX(-50%);
     background:rgba(6,16,26,.78);border:1px solid rgba(255,255,255,.22);border-radius:11px;padding:9px 16px;
@@ -183,7 +193,8 @@
 
   /* ---------- responsive ---------- */
   @media (max-width:760px){
-    #minimap{width:118px;height:118px}
+    #minimapStack{--minimap-size:118px}
+    #worldOnline{min-height:38px}
     #speedo{bottom:calc(148px + env(safe-area-inset-bottom));min-width:88px;padding:6px 10px}
     #speedo .sv{font-size:22px}
     #statusBar{gap:10px;padding:6px 9px}
@@ -199,7 +210,7 @@
   }
   @media (max-height:460px){
     #tBtns{bottom:calc(10px + env(safe-area-inset-bottom))}
-    #minimap{width:92px;height:92px}
+    #minimapStack{--minimap-size:92px}
     #speedo{bottom:calc(112px + env(safe-area-inset-bottom))}
     #prompt{bottom:calc(10px + env(safe-area-inset-bottom));max-width:min(50vw,340px)}
     #toastWrap{bottom:calc(62px + env(safe-area-inset-bottom));width:min(50vw,340px)}
@@ -238,27 +249,44 @@
     <div class="mtimerWrap hidden" id="mTimerWrap"><div class="mtimer" id="mTimer"></div></div>
   </div>
 
-<div id="topBtns">
-    <button id="btnMenu" aria-label="Menu" aria-expanded="false">☰</button>
-    <div id="topDrop">
-      <button id="btnMission" aria-label="Start or cancel delivery run" title="Delivery run (M)">📦</button>
-      <button id="btnSound" aria-label="Toggle sound" aria-pressed="true" title="Sound (P)">🔊</button>
-      <button id="btnCam" aria-label="Cycle camera" title="Camera (C)">🎥</button>
-      <button id="btnLocate" aria-label="Show my position" title="My position">📍</button>
-      <button id="btnSettings" aria-label="Open settings" title="Settings (Esc)">⚙️</button>
-      <button id="btnExit" aria-label="Exit the world" title="Exit">🚪</button>
+  <div id="topMenus">
+    <div id="worldTools" class="world-top-menu hidden">
+      <button id="btnWorldTools" type="button" aria-label="Options World" title="Options World" aria-expanded="false" aria-controls="worldToolsDrop">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/>
+          <rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>
+        </svg>
+      </button>
+      <div id="worldToolsDrop" class="world-top-drop" inert>
+        <button id="btnWorldStatus" type="button" aria-label="Mon statut" title="Mon statut (T)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M20 15a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2zM8 9h8m-8 4h5"/>
+          </svg>
+        </button>
+      </div>
     </div>
-    <button id="btnWorldStatus" class="hidden" type="button" aria-label="Mon statut" title="Mon statut (T)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-        <path d="M20 15a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2zM8 9h8m-8 4h5"/>
-      </svg>
-    </button>
+    <div id="topBtns" class="world-top-menu">
+      <button id="btnMenu" type="button" aria-label="Menu" aria-expanded="false" aria-controls="topDrop">☰</button>
+      <div id="topDrop" class="world-top-drop" inert>
+        <button id="btnMission" aria-label="Start or cancel delivery run" title="Delivery run (M)">📦</button>
+        <button id="btnSound" aria-label="Toggle sound" aria-pressed="true" title="Sound (P)">🔊</button>
+        <button id="btnCam" aria-label="Cycle camera" title="Camera (C)">🎥</button>
+        <button id="btnLocate" aria-label="Show my position" title="My position">📍</button>
+        <button id="btnSettings" aria-label="Open settings" title="Settings (Esc)">⚙️</button>
+        <button id="btnExit" aria-label="Exit the world" title="Exit">🚪</button>
+      </div>
+    </div>
   </div>
 
-
-  <div id="minimapWrap" class="panel" role="button" tabindex="0" aria-label="Minimap, tap to zoom">
-    <span id="mmLabel">MAP</span>
-    <canvas id="minimap" width="164" height="164"></canvas>
+  <div id="minimapStack">
+    <div id="minimapWrap" class="panel" role="button" tabindex="0" aria-label="Minimap, tap to zoom">
+      <span id="mmLabel">MAP</span>
+      <canvas id="minimap" width="164" height="164"></canvas>
+    </div>
+    <div id="worldOnline" class="panel" role="status" aria-label="Joueurs présents dans World">
+      <span class="world-online-light" aria-hidden="true"></span>
+      <span id="worldOnlineCount">—</span><span>en ligne</span>
+    </div>
   </div>
 
   <div id="prompt" class="hidden"></div>
@@ -2486,7 +2514,8 @@ function grabUI() {
     'kbHelp', 'menuSheet', 'banner', 'bTitle', 'bSub', 'menu', 'btnMenu', 'btnClose', 'btnSound', 'btnCam', 'btnMission', 'btnExport',
     'btnImport', 'btnNew', 'btnReset', 'fileIn', 'seedLine', 'touch', 'stickZone', 'stickBase', 'stickKnob',
     'lookZone', 'tbA', 'tbE', 'tbRun', 'tbHorn', 'tbFix', 'qualitySeg', 'btnPerf', 'perfHud', 'fadeVeil', 'gl',
-    'missionCard', 'worldStatusLayer', 'btnWorldStatus', 'worldStatusDialog', 'worldStatusTitle', 'worldStatusClose',
+    'missionCard', 'worldTools', 'worldOnline', 'worldOnlineCount', 'worldStatusLayer', 'btnWorldStatus', 'worldStatusDialog',
+    'worldStatusTitle', 'worldStatusClose',
     'worldStatusFull', 'worldStatusForm', 'worldStatusText', 'worldStatusSave', 'worldStatusErase',
     'worldStatusFeedback'].forEach(id => { ui[id] = qs(id); });
 }
@@ -2686,7 +2715,7 @@ function bindInput() {
     if (ui.worldStatusDialog.open || e.repeat) return;
     const k = e.code;
     if (!pointerLocked && MP.statusVersion >= 0 &&
-        (k === 'Tab' || (k === 'Space' && e.target.matches?.('#btnWorldStatus, .world-status-bubble')))) return;
+        (k === 'Tab' || (k === 'Space' && e.target.matches?.('#btnWorldTools, #btnWorldStatus, .world-status-bubble')))) return;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].indexOf(k) >= 0) e.preventDefault();
     keys.add(k);
     audioResume();
@@ -2804,15 +2833,33 @@ function bindInput() {
     cam.zoomU = clamp(cam.zoomU * Math.exp(e.deltaY * 0.0015), 1, ZOOM_MAX); cam.recenter = 0;
   }, { passive: false });
 
-  // top bar + menu
-  const topBox = qs('topBtns');
-  const setDrop = o => { topBox.classList.toggle('open', o); ui.btnMenu.textContent = o ? '✕' : '☰'; ui.btnMenu.setAttribute('aria-expanded', o ? 'true' : 'false'); };
-  ui.btnMenu.onclick = () => { audioResume(); setDrop(!topBox.classList.contains('open')); };
+  // Les deux menus partagent les memes interactions et s'ouvrent un par un.
+  const topMenus = [
+    { box: qs('topBtns'), button: ui.btnMenu, drop: qs('topDrop') },
+    { box: ui.worldTools, button: qs('btnWorldTools'), drop: qs('worldToolsDrop') }
+  ];
+  const setDrop = (item, open) => {
+    item.box.classList.toggle('open', open);
+    item.button.setAttribute('aria-expanded', String(open));
+    item.drop.inert = !open;
+    if (item.button === ui.btnMenu) item.button.textContent = open ? '✕' : '☰';
+  };
+  for (const item of topMenus) {
+    item.button.onclick = () => {
+      audioResume();
+      const open = !item.box.classList.contains('open');
+      for (const menu of topMenus) setDrop(menu, menu === item && open);
+    };
+    item.drop.addEventListener('click', () => setDrop(item, false));
+  }
+  document.addEventListener('pointerdown', e => {
+    for (const item of topMenus) {
+      if (item.box.classList.contains('open') && !item.box.contains(e.target)) setDrop(item, false);
+    }
+  });
   qs('btnSettings').onclick = () => { audioResume(); toggleMenu(); };
   qs('btnLocate').onclick = () => { audioResume(); cam.recenter = 1; toast('You are here'); };
   qs('btnExit').onclick = () => { try { if (window.parent && window.parent !== window) window.parent.postMessage({ mafWorldExit: true }, window.location.origin); } catch (e) {} };
-  qs('topDrop').addEventListener('click', () => setDrop(false));
-  document.addEventListener('pointerdown', e => { if (topBox.classList.contains('open') && !topBox.contains(e.target)) setDrop(false); });
   ui.prompt.onclick = () => { audioResume(); tryEnterExit(); };
   ui.btnClose.onclick = () => toggleMenu(false);
   ui.btnSound.onclick = () => { audioResume(); toggleSound(); };
@@ -3714,19 +3761,29 @@ function mpSend() {
     .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
     .then(j => {
       MP.fails = 0; MP.gap = 400;
+      mpShowOnline(j.onlineCount);
       if (j.me && j.me.skin) mpSetLocal(j.me.skin);
       mpSyncOwnStatus(j.me);
       mpApply(j.players || []);
     })
     .catch(st => {
       MP.fails++; MP.gap = Math.min(5000, 400 * Math.pow(2, MP.fails));
+      mpShowOnline(null);
       if (st === 401) {
         MP.ready = false;
-        ui.btnWorldStatus.classList.add('hidden');
+        ui.worldTools.classList.add('hidden');
         ui.worldStatusLayer.classList.add('hidden');
       }
     })
     .then(() => { MP.busy = false; });
+}
+
+function mpShowOnline(count) {
+  const live = Number.isSafeInteger(count) && count >= 0;
+  const text = live ? String(count) : '—';
+  if (ui.worldOnlineCount.textContent === text) return;
+  ui.worldOnlineCount.textContent = text;
+  ui.worldOnline.toggleAttribute('data-live', live);
 }
 
 function mpBindStatuses() {
@@ -3757,7 +3814,7 @@ function mpSyncOwnStatus(data) {
       data.statusVersion < MP.statusVersion) return;
   MP.statusVersion = data.statusVersion;
   if (MP.statusBubble.textContent !== data.status) MP.statusBubble.textContent = data.status;
-  ui.btnWorldStatus.classList.remove('hidden');
+  ui.worldTools.classList.remove('hidden');
 }
 
 function mpOpenStatus(title, editing) {
