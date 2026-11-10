@@ -2568,6 +2568,19 @@ function drawMinimap() {
     ctx.beginPath(); ctx.arc(cx, cy, 5, 0, TAU); ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 1.4; ctx.stroke();
   }
+  // MAF-WORLD-ONLINE-V1 : vrais joueurs en violet (au bord de la carte s'ils sont hors de vue)
+  if (typeof MP !== 'undefined' && MP.remotes.size) {
+    MP.remotes.forEach(r => {
+      const p = toS(r.x, r.z);
+      const inside = p[0] >= 5 && p[0] <= W - 5 && p[1] >= 5 && p[1] <= H - 5;
+      const cx = clamp(p[0], 5, W - 5), cy = clamp(p[1], 5, H - 5);
+      ctx.globalAlpha = inside ? 1 : 0.55;
+      ctx.fillStyle = '#a855f7';
+      ctx.beginPath(); ctx.arc(cx, cy, inside ? 4.2 : 3.2, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.2; ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+  }
   // player arrow
   const yaw = player.mode === 'drive' && player.veh ? player.veh.yaw : player.yaw;
   ctx.translate(W / 2, H / 2); ctx.rotate(-yaw + Math.PI);
@@ -3790,20 +3803,36 @@ function mpRemove(id) {
   } catch (err) {}
 }
 
+function mpAnnounce(first, joined, left, total) {
+  const cnt = total + (total > 1 ? ' joueurs' : ' joueur') + ' dans la ville';
+  if (first) { if (total > 1) toast(cnt); return; }
+  if (joined.length) toast(joined.slice(0, 3).join(', ') + (joined.length > 1 ? ' viennent' : ' vient') + " d'arriver dans la ville - " + cnt);
+  if (left.length) toast(left.slice(0, 3).join(', ') + (left.length > 1 ? ' ont' : ' a') + ' quitte la ville - ' + cnt);
+}
+
 function mpApply(list) {
   const seen = new Set();
+  const joined = [], left = [];
+  const first = !MP.seenFirst; MP.seenFirst = true;
   for (const p of list) {
     seen.add(p.id);
     let r = MP.remotes.get(p.id);
-    if (r && r.skin !== p.skin) { mpRemove(p.id); r = null; }     // il a change de skin
-    if (!r) { r = mpCreate(p); MP.remotes.set(p.id, r); }
+    let swap = false;
+    if (r && r.skin !== p.skin) { mpRemove(p.id); r = null; swap = true; }     // il a change de skin
+    if (!r) { r = mpCreate(p); MP.remotes.set(p.id, r); if (!swap) joined.push(p.name); }
     if (r.name !== p.name) {
       scene.remove(r.tag); r.tag.material.map.dispose(); r.tag.material.dispose();
       r.tag = mpTag(p.name); scene.add(r.tag); r.name = p.name;
     }
     r.tx = p.x; r.tz = p.z; r.tyaw = p.yaw; r.mv = !!p.mv; r.veh = !!p.veh;
   }
-  for (const id of Array.from(MP.remotes.keys())) if (!seen.has(id)) mpRemove(id);
+  for (const id of Array.from(MP.remotes.keys())) {
+    if (seen.has(id)) continue;
+    const gone = MP.remotes.get(id);
+    if (gone && gone.name) left.push(gone.name);
+    mpRemove(id);
+  }
+  if (first || joined.length || left.length) mpAnnounce(first, joined, left, list.length + 1);
 }
 
 // Marche par defaut (skins sans marche) : on emprunte celle de Loki, sinon celle de Bailarina,
