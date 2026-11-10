@@ -1891,8 +1891,9 @@ function stepPlayer(dt, input) {
   // camera forward on the ground plane
   const fwdX = -sy, fwdZ = -cy;
   const rgtX = cy, rgtZ = -sy;
-  const dx = fwdX * (-mz) + rgtX * mx;
-  const dz = fwdZ * (-mz) + rgtZ * mx;
+  // MAF-WORLD-DIR-V1 : pousser vers le haut = avancer (le signe etait inverse)
+  const dx = fwdX * mz + rgtX * mx;
+  const dz = fwdZ * mz + rgtZ * mx;
   const want = input.run ? RUN_SPD : WALK_SPD;
   const dmag = Math.hypot(dx, dz);
   const tvx = dmag > 0.01 ? (dx / dmag) * want * Math.min(1, dmag) : 0;
