@@ -50,7 +50,9 @@
   #statusBar .val{font-size:15px}
   #cashVal{color:#8ce99a}
 
-  #topBtns{position:absolute;right:10px;top:calc(10px + env(safe-area-inset-top));display:flex;gap:8px;pointer-events:auto}
+  #topBtns{position:absolute;right:10px;top:calc(10px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:auto}
+  #topDrop{display:flex;flex-direction:column;gap:8px;overflow:hidden;max-height:0;opacity:0;pointer-events:none;transition:max-height .22s ease,opacity .18s ease}
+  #topBtns.open #topDrop{max-height:260px;opacity:1;pointer-events:auto}
   #topBtns button{min-width:44px;min-height:44px;width:44px;height:44px;border-radius:12px;
     border:1px solid rgba(255,255,255,.2);background:rgba(6,16,26,.66);color:#eaf2fb;font-size:17px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;padding:0}
@@ -77,7 +79,7 @@
   #minimap{display:block;width:164px;height:164px;border-radius:8px;background:#0d2233}
   #mmLabel{position:absolute;left:8px;top:4px;font:600 9px/1 'Segoe UI',system-ui;letter-spacing:1.2px;opacity:.55}
 
-  #prompt{position:absolute;left:50%;bottom:calc(26vh + env(safe-area-inset-bottom));transform:translateX(-50%);
+  #prompt{pointer-events:auto;cursor:pointer;position:absolute;left:50%;bottom:calc(26vh + env(safe-area-inset-bottom));transform:translateX(-50%);
     background:rgba(6,16,26,.78);border:1px solid rgba(255,255,255,.22);border-radius:11px;padding:9px 16px;
     font:600 14px/1.3 'Segoe UI',system-ui;text-align:center;white-space:nowrap;transition:opacity .16s}
   #prompt kbd{background:#ffd166;color:#101b26;border-radius:5px;padding:2px 7px;font:700 13px/1 ui-monospace,Menlo,monospace;
@@ -99,14 +101,14 @@
     color:#fff;text-shadow:0 1px 4px #000;pointer-events:none;white-space:nowrap}
 
   /* ---------- touch controls ---------- */
-  #touch{position:fixed;inset:0;z-index:22;pointer-events:none}
-  #stickZone{position:absolute;left:0;bottom:0;width:46%;height:52%;pointer-events:auto;touch-action:none}
+  #touch{position:fixed;inset:0;z-index:19;pointer-events:none}
+  #stickZone{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:auto;touch-action:none}
   #stickBase{position:absolute;width:132px;height:132px;border-radius:50%;border:2px solid rgba(255,255,255,.3);
     background:rgba(6,16,26,.36);left:0;top:0;margin:-66px 0 0 -66px;opacity:0;transition:opacity .14s;pointer-events:none}
   #stickKnob{position:absolute;width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.5);
     border:2px solid rgba(255,255,255,.75);left:0;top:0;margin:-30px 0 0 -30px;opacity:0;transition:opacity .14s;
     pointer-events:none;will-change:transform}
-  #lookZone{position:absolute;right:0;top:0;width:54%;height:62%;pointer-events:auto;touch-action:none}
+  #lookZone{display:none}
   #tBtns{position:absolute;right:calc(10px + env(safe-area-inset-right));bottom:calc(190px + env(safe-area-inset-bottom));
     display:flex;flex-direction:column-reverse;gap:11px;pointer-events:auto}
   #tBtns .row{display:flex;gap:11px;justify-content:flex-end}
@@ -217,11 +219,14 @@
     <div class="mtimerWrap hidden" id="mTimerWrap"><div class="mtimer" id="mTimer"></div></div>
   </div>
 
-  <div id="topBtns">
-    <button id="btnMission" aria-label="Start or cancel delivery run" title="Delivery run (M)">📦</button>
-    <button id="btnSound" aria-label="Toggle sound" aria-pressed="true" title="Sound (P)">🔊</button>
-    <button id="btnCam" aria-label="Cycle camera" title="Camera (C)">🎥</button>
-    <button id="btnMenu" aria-label="Open menu" title="Menu (Esc)">☰</button>
+<div id="topBtns">
+    <button id="btnMenu" aria-label="Menu" aria-expanded="false">☰</button>
+    <div id="topDrop">
+      <button id="btnMission" aria-label="Start or cancel delivery run" title="Delivery run (M)">📦</button>
+      <button id="btnSound" aria-label="Toggle sound" aria-pressed="true" title="Sound (P)">🔊</button>
+      <button id="btnCam" aria-label="Cycle camera" title="Camera (C)">🎥</button>
+      <button id="btnSettings" aria-label="Open settings" title="Settings (Esc)">⚙️</button>
+    </div>
   </div>
 
   <div id="speedo" class="panel">
@@ -244,19 +249,6 @@
 <div id="touch" class="hidden">
   <div id="stickZone"><div id="stickBase"></div><div id="stickKnob"></div></div>
   <div id="lookZone"></div>
-  <div id="tBtns">
-    <div class="row">
-      <button class="tbtn" id="tbA" aria-label="Jump or handbrake">JUMP</button>
-    </div>
-    <div class="row">
-      <button class="tbtn sm" id="tbE" aria-label="Enter or exit vehicle">ENTER</button>
-      <button class="tbtn sm" id="tbRun" aria-label="Run or boost">RUN</button>
-    </div>
-    <div class="row">
-      <button class="tbtn sm" id="tbHorn" aria-label="Horn">HORN</button>
-      <button class="tbtn sm" id="tbFix" aria-label="Unstick and respawn">FIX</button>
-    </div>
-  </div>
 </div>
 
 <div id="banner" class="hidden"><div class="b1" id="bTitle"></div><div class="b2" id="bSub"></div></div>
@@ -1879,7 +1871,7 @@ const player = {
   mesh: null, phase: 0, jumpHold: 0, air: 0
 };
 const cam = {
-  yaw: Math.PI, pitch: -0.14, dist: 5.4, distGoal: 5.4, mode: 1,
+  yaw: Math.PI, pitch: -0.14, dist: 5.4, distGoal: 5.4, mode: 1, zoomU: 1, fogBase: null,
   shake: 0, pos: null, look: null, userLook: 0
 };
 const CAM_MODES = [0.72, 1.0, 1.42];
@@ -1991,13 +1983,20 @@ function updateCamera(dt, input) {
     tx = player.x; ty = player.y + 1.45; tz = player.z;
     baseDist = 5.0;
   }
-  cam.distGoal = baseDist * CAM_MODES[cam.mode];
+  const zf = cam.zoomU;
+  cam.distGoal = baseDist * CAM_MODES[cam.mode] * zf;
+  if (zf > 1.001) {            // zoom arriere : le centre glisse vers le milieu de la ville
+    const kc = clamp((zf - 12) / 50, 0, 1);
+    tx += (0 - tx) * kc; tz += (20 - tz) * kc;
+  }
 
-  const cp = Math.cos(cam.pitch), sp2 = Math.sin(cam.pitch);
+  const kp = clamp((zf - 1.3) / 12, 0, 1);
+  const pEff = cam.pitch + (-1.3 - cam.pitch) * kp * kp * (3 - 2 * kp);
+  const cp = Math.cos(pEff), sp2 = Math.sin(pEff);
   const dirX = Math.sin(cam.yaw) * cp, dirY = -sp2, dirZ = Math.cos(cam.yaw) * cp;
   // pull the camera in if a wall is in the way (analytic AABB march, no scene raycast)
   const maxD = cam.distGoal;
-  const hit = rayHitDist(tx, ty, tz, dirX, dirY, dirZ, maxD + 0.6);
+  const hit = zf > 1.6 ? 1e9 : rayHitDist(tx, ty, tz, dirX, dirY, dirZ, maxD + 0.6);
   let d = Math.min(maxD, Math.max(1.15, hit - 0.42));
   cam.dist = d < cam.dist ? d : damp(cam.dist, d, 0.0008, dt);
   // squeezed against a wall the character fills the frame; hide it rather than clip through it
@@ -2006,6 +2005,13 @@ function updateCamera(dt, input) {
     if (player.mesh.visible !== want) player.mesh.visible = want;
   }
 
+  if (scene && scene.fog) {
+    if (zf > 1.001) {
+      if (!cam.fogBase) cam.fogBase = { n: scene.fog.near, f: scene.fog.far };
+      const fm = 1 + zf * 0.05;
+      scene.fog.near = cam.fogBase.n * fm; scene.fog.far = cam.fogBase.f * fm;
+    } else if (cam.fogBase) { scene.fog.near = cam.fogBase.n; scene.fog.far = cam.fogBase.f; cam.fogBase = null; }
+  }
   const px = tx + dirX * cam.dist;
   const py = ty + dirY * cam.dist + 0.15;
   const pz = tz + dirZ * cam.dist;
@@ -2627,70 +2633,77 @@ function bindInput() {
   });
   document.addEventListener('pointerlockchange', () => { pointerLocked = document.pointerLockElement === ui.gl; });
 
-  // ---- touch: left stick, right look, action buttons
+  // MAF-WORLD-CTRL-V1
+  // ---- touch : 1 doigt = deplacement (joystick flottant, n'importe ou), 2 doigts = zoom / rotation / inclinaison
+  const ZOOM_MAX = 120;
   const sz = ui.stickZone;
+  const ptrs = new Map();
+  let g = null;
+  const stickOff = () => {
+    touchState.stickId = -1; touchState.vx = 0; touchState.vy = 0; touchState.btn.run = false;
+    ui.stickBase.style.opacity = '0'; ui.stickKnob.style.opacity = '0';
+  };
+  const twoInfo = () => {
+    const it = ptrs.values(); const p = it.next().value, q = it.next().value;
+    return { d: Math.max(20, Math.hypot(q.x - p.x, q.y - p.y)), a: Math.atan2(q.y - p.y, q.x - p.x), cy: (p.y + q.y) / 2 };
+  };
   sz.addEventListener('pointerdown', e => {
     audioResume();
-    if (touchState.stickId >= 0) return;
-    touchState.stickId = e.pointerId; touchState.ox = e.clientX; touchState.oy = e.clientY;
-    ui.stickBase.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px)';
-    ui.stickKnob.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px)';
-    ui.stickBase.style.opacity = '1'; ui.stickKnob.style.opacity = '1';
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     try { sz.setPointerCapture(e.pointerId); } catch (err) {}
+    if (ptrs.size === 1) {
+      touchState.stickId = e.pointerId; touchState.ox = e.clientX; touchState.oy = e.clientY;
+      ui.stickBase.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px)';
+      ui.stickKnob.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px)';
+      ui.stickBase.style.opacity = '1'; ui.stickKnob.style.opacity = '1';
+    } else if (ptrs.size === 2) {
+      stickOff(); g = twoInfo();
+    }
     e.preventDefault();
   });
   sz.addEventListener('pointermove', e => {
-    if (e.pointerId !== touchState.stickId) return;
-    let dx = e.clientX - touchState.ox, dy = e.clientY - touchState.oy;
-    const d = Math.hypot(dx, dy), max = 62;
-    if (d > max) { dx = dx / d * max; dy = dy / d * max; }
-    touchState.vx = dx / max; touchState.vy = dy / max;
-    ui.stickKnob.style.transform = 'translate(' + (touchState.ox + dx) + 'px,' + (touchState.oy + dy) + 'px)';
+    const pt = ptrs.get(e.pointerId);
+    if (!pt) return;
+    pt.x = e.clientX; pt.y = e.clientY;
+    if (ptrs.size >= 2) {
+      if (!g) { g = twoInfo(); return; }
+      const n = twoInfo();
+      let da = n.a - g.a;
+      if (da > Math.PI) da -= 2 * Math.PI; else if (da < -Math.PI) da += 2 * Math.PI;
+      cam.zoomU = clamp(cam.zoomU * (g.d / n.d), 1, ZOOM_MAX);   // pincer = voir plus large
+      lookAccum.x -= da;                                         // pivoter les doigts = tourner la vue
+      lookAccum.y += (n.cy - g.cy) * TOUCH_SENS;                 // glisser a deux doigts = incliner
+      g = n;
+    } else if (e.pointerId === touchState.stickId) {
+      let dx = e.clientX - touchState.ox, dy = e.clientY - touchState.oy;
+      const d = Math.hypot(dx, dy), max = 60;
+      if (d > max) { dx = dx / d * max; dy = dy / d * max; }
+      const live = d >= 6;
+      touchState.vx = live ? dx / max : 0; touchState.vy = live ? dy / max : 0;
+      touchState.btn.run = d >= max * 0.9;                       // pousser a fond = courir
+      ui.stickKnob.style.transform = 'translate(' + (touchState.ox + dx) + 'px,' + (touchState.oy + dy) + 'px)';
+    }
     e.preventDefault();
   });
-  const endStick = e => {
-    if (e.pointerId !== touchState.stickId) return;
-    touchState.stickId = -1; touchState.vx = 0; touchState.vy = 0;
-    ui.stickBase.style.opacity = '0'; ui.stickKnob.style.opacity = '0';
+  const endPtr = e => {
+    ptrs.delete(e.pointerId);
+    if (e.pointerId === touchState.stickId) stickOff();
+    if (ptrs.size < 2) g = null;
   };
-  sz.addEventListener('pointerup', endStick); sz.addEventListener('pointercancel', endStick);
-
-  const lz = ui.lookZone;
-  lz.addEventListener('pointerdown', e => {
-    audioResume();
-    if (touchState.lookId >= 0) return;
-    touchState.lookId = e.pointerId; touchState.lx = e.clientX; touchState.ly = e.clientY;
-    try { lz.setPointerCapture(e.pointerId); } catch (err) {}
+  sz.addEventListener('pointerup', endPtr); sz.addEventListener('pointercancel', endPtr);
+  ui.gl.addEventListener('wheel', e => {
     e.preventDefault();
-  });
-  lz.addEventListener('pointermove', e => {
-    if (e.pointerId !== touchState.lookId) return;
-    lookAccum.x += (e.clientX - touchState.lx) * TOUCH_SENS;
-    lookAccum.y += (e.clientY - touchState.ly) * TOUCH_SENS;
-    touchState.lx = e.clientX; touchState.ly = e.clientY;
-    e.preventDefault();
-  });
-  const endLook = e => { if (e.pointerId === touchState.lookId) touchState.lookId = -1; };
-  lz.addEventListener('pointerup', endLook); lz.addEventListener('pointercancel', endLook);
-
-  const hold = (el, name, onDown) => {
-    if (!el) return;
-    el.addEventListener('pointerdown', e => {
-      e.preventDefault(); audioResume();
-      touchState.btn[name] = true; el.classList.add('on');
-      if (onDown) onDown();
-    });
-    const up = e => { touchState.btn[name] = false; el.classList.remove('on'); };
-    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('pointerleave', up);
-  };
-  hold(ui.tbA, 'a');
-  hold(ui.tbRun, 'run');
-  hold(ui.tbE, 'e', tryEnterExit);
-  hold(ui.tbHorn, 'horn', sfxHorn);
-  hold(ui.tbFix, 'fix', unstick);
+    cam.zoomU = clamp(cam.zoomU * Math.exp(e.deltaY * 0.0015), 1, ZOOM_MAX);
+  }, { passive: false });
 
   // top bar + menu
-  ui.btnMenu.onclick = () => { audioResume(); toggleMenu(); };
+  const topBox = qs('topBtns');
+  const setDrop = o => { topBox.classList.toggle('open', o); ui.btnMenu.textContent = o ? '✕' : '☰'; ui.btnMenu.setAttribute('aria-expanded', o ? 'true' : 'false'); };
+  ui.btnMenu.onclick = () => { audioResume(); setDrop(!topBox.classList.contains('open')); };
+  qs('btnSettings').onclick = () => { audioResume(); toggleMenu(); };
+  qs('topDrop').addEventListener('click', () => setDrop(false));
+  document.addEventListener('pointerdown', e => { if (topBox.classList.contains('open') && !topBox.contains(e.target)) setDrop(false); });
+  ui.prompt.onclick = () => { audioResume(); tryEnterExit(); };
   ui.btnClose.onclick = () => toggleMenu(false);
   ui.btnSound.onclick = () => { audioResume(); toggleSound(); };
   ui.btnCam.onclick = () => cycleCam();
