@@ -3669,10 +3669,27 @@ function mpLoaders() {
   return MP.loaders;
 }
 
-function mpPrepExtra(clip) {          // marche empruntee : on retire la translation des hanches
+// MAF-WORLD-FIT-V1 : toute animation du monde est "nettoyee" : on retire le deplacement des hanches
+// et les echelles d'os (sources de geants, de pieds en l'air et de personnages qui derivent).
+function mpPrepExtra(clip) {
   const k = clip.clone();
-  k.tracks = k.tracks.filter(t => !/mixamorigHips\.position$/i.test(t.name));
+  k.tracks = k.tracks.filter(t => !/(hips|pelvis|root)\.position$/i.test(t.name) && !/\.scale$/i.test(t.name));
   return k;
+}
+
+// Taille et pieds : mesure PRECISE du modele (avec son squelette), faite une seule fois par skin.
+// Hauteur = MP_H, pieds poses sur le sol, personnage centre.
+function mpFit(src, model) {
+  if (!src.fit) {
+    const p0 = model.position.clone();
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model, true);
+    const size = box.getSize(new THREE.Vector3()), ctr = box.getCenter(new THREE.Vector3());
+    const s = MP_H / Math.max(size.y, 0.01);
+    src.fit = { s, dx: -(ctr.x - p0.x) * s, dy: -(box.min.y - p0.y) * s, dz: -(ctr.z - p0.z) * s };
+  }
+  model.scale.multiplyScalar(src.fit.s);
+  model.position.set(src.fit.dx, src.fit.dy, src.fit.dz);
 }
 function mpFlatten(clip) {            // course sur place : on garde le personnage au meme endroit
   const k = clip.clone();
@@ -3709,11 +3726,14 @@ function mpSource(id) {
       if (type === 'dance') m = own.find(c => /danc|samba|danse/i.test(c.name)) || null;
       else if (type === 'walk') m = own.find(c => WALK_RX.test(c.name)) || null;
       if (!m && own.length) m = own.reduce((b, c) => (c.tracks.length > b.tracks.length ? c : b));
-      if (m && type !== 'walk') m = mpFlatten(m);     // danse / provocation / balayage : sur place, sans deriver ni tourner
+      if (m) m = mpPrepExtra(m);     // sur place : ni deplacement ni echelle des hanches
     }
-    const idle = own.find(c => /idle|repos|stand/i.test(c.name)) || null;
-    let walk = exWalk || own.find(c => WALK_RX.test(c.name)) || (type === 'walk' ? m : null);
-    if (!walk) walk = await mpDefaultWalk(load, root);   // ce skin n'a pas de marche : on lui en donne une normale
+    const idleRaw = own.find(c => /idle|repos|stand/i.test(c.name)) || null;
+    const idle = idleRaw ? mpPrepExtra(idleRaw) : null;
+    const ownWalk = own.find(c => WALK_RX.test(c.name)) || null;
+    // Marche droite de reference (celle de Loki) pour tout le monde : pas de demi-tour ni de rotation sur place.
+    let walk = await mpDefaultWalk(load, root);
+    if (!walk) walk = exWalk || (ownWalk ? mpPrepExtra(ownWalk) : null) || (type === 'walk' ? m : null);
     let plan = { mode: 'none' };
     if (m || walk) plan = { mode: 'anim', main: m, idle, walk, hasExtra: !!exWalk, type };
     return { L, root, meta, plan };
@@ -3728,12 +3748,7 @@ function mpLoadSkin(r) {
     if (MP.remotes.get(r.id) !== r) return;           // le joueur est parti pendant le chargement
     const model = src.L.clone(src.root);
     model.traverse(o => { if (o.isMesh) o.frustumCulled = false; });
-    const p0 = model.position.clone();
-    const box = new THREE.Box3().setFromObject(model);
-    const size = box.getSize(new THREE.Vector3()), ctr = box.getCenter(new THREE.Vector3());
-    const s = MP_H / Math.max(size.y, 0.01);
-    model.scale.multiplyScalar(s);
-    model.position.set(-(ctr.x - p0.x) * s, -(box.min.y - p0.y) * s, -(ctr.z - p0.z) * s);
+    mpFit(src, model);
     const spin = new THREE.Group(); spin.rotation.y = src.meta.rotation || 0; spin.add(model);
     r.group.remove(r.ph); r.group.add(spin); r.model = model;
     if (src.plan.mode === 'anim') { r.mixer = new THREE.AnimationMixer(model); r.plan = src.plan; }
@@ -3773,12 +3788,7 @@ function mpSetLocal(id) {
     mpClearLocal();
     const model = src.L.clone(src.root);
     model.traverse(o => { if (o.isMesh) { o.frustumCulled = false; o.castShadow = true; } });
-    const p0 = model.position.clone();
-    const box = new THREE.Box3().setFromObject(model);
-    const size = box.getSize(new THREE.Vector3()), ctr = box.getCenter(new THREE.Vector3());
-    const s = MP_H / Math.max(size.y, 0.01);
-    model.scale.multiplyScalar(s);
-    model.position.set(-(ctr.x - p0.x) * s, -(box.min.y - p0.y) * s, -(ctr.z - p0.z) * s);
+    mpFit(src, model);
     const spin = new THREE.Group(); spin.rotation.y = src.meta.rotation || 0; spin.add(model);
     player.mesh.add(spin);
     if (player.mesh.userData.hips) player.mesh.userData.hips.visible = false;   // on cache le bonhomme par defaut
@@ -3847,7 +3857,7 @@ function mpWalkFits(clip, root) {
 }
 function mpDefaultWalk(load, root) {
   if (!MP.dwalks) {
-    MP.dwalks = Promise.all(['characters/loki/model.glb', 'characters/bailarina/model.glb'].map(async f => {
+    MP.dwalks = Promise.all(['characters/loki/model.glb'].map(async f => {
       try {
         const o = await load(f);
         const cl = (o.animations || []).filter(k => k.duration > 0 && k.tracks.length > 0);
