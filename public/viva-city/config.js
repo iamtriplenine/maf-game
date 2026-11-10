@@ -4,6 +4,8 @@ window.VIVA_CONFIG = {
   initialCoins: 100,
   daySeconds: 260,
   renderScale: 1,
+  // MAF_FINITIONS_V1 : image un peu moins fine sur telephone pour rester fluide
+  maxPixelRatio: (('ontouchstart' in window) || navigator.maxTouchPoints > 0) ? 1.25 : 1.6,
   cityX: [-160,-112,-64,-16,32,80,128,176],
   cityZ: [-144,-96,-48,0,48,96,144],
   startX: -16,

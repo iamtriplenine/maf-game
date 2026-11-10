@@ -81,7 +81,7 @@
   uploadStatic(mesh){const gl=this.gl;this.staticCount=mesh.count;gl.bindBuffer(gl.ARRAY_BUFFER,this.staticBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(mesh.data),gl.STATIC_DRAW)}
   bind(buffer){const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);for(let [attr,offset] of [[this.aPos,0],[this.aNormal,12],[this.aColor,24]]){gl.enableVertexAttribArray(attr);gl.vertexAttribPointer(attr,3,gl.FLOAT,false,36,offset)}}
   draw(mesh,eye,target,time,brightness){
-   const gl=this.gl,c=this.canvas,dpr=Math.min(window.devicePixelRatio||1,1.6),width=Math.max(1,Math.floor(c.clientWidth*dpr)),height=Math.max(1,Math.floor(c.clientHeight*dpr));
+   const gl=this.gl,c=this.canvas,dpr=Math.min(window.devicePixelRatio||1,(window.VIVA_CONFIG&&window.VIVA_CONFIG.maxPixelRatio)||1.6),width=Math.max(1,Math.floor(c.clientWidth*dpr)),height=Math.max(1,Math.floor(c.clientHeight*dpr));
    if(c.width!==width||c.height!==height){c.width=width;c.height=height;gl.viewport(0,0,width,height)}
    const sun=[.75,Math.cos((time-.5)*Math.PI*2)*1.0+.3,.45],fog=[.52*brightness,.76*brightness,.85*brightness];gl.clearColor(...fog,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
    gl.useProgram(this.program);gl.uniformMatrix4fv(this.uVP,false,multiply(perspective(Math.PI/3,width/height,.1,650),lookAt(eye,target)));

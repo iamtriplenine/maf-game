@@ -126,5 +126,9 @@
  $('soundBtn').onclick=()=>{state.sound=!state.sound;$('soundBtn').style.color=state.sound?'#51efbe':'white';if(state.sound)beep(550);toast(state.sound?'Son activé':'Son désactivé')};
  // MAF_EPURE_V1 : on entre directement dans la ville, sans ecran de bienvenue.
  $('startBtn').onclick();
+ // MAF_FINITIONS_V1 : ecran qui reste allume, pas de menu au appui long du doigt.
+ canvas.addEventListener('contextmenu',e=>e.preventDefault());
+ let wake=null;const keepAwake=async()=>{try{if(navigator.wakeLock&&document.visibilityState==='visible')wake=await navigator.wakeLock.request('screen')}catch{}};
+ keepAwake();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')keepAwake()});
  requestAnimationFrame(animate);
 })();
