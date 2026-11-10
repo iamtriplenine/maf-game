@@ -67,6 +67,12 @@
   #worldChatBadge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;
     background:#b36bf3;color:#160b23;font:800 10px/16px system-ui,sans-serif}
 
+  /* MAF-FOOD-V1: bouton discret sur le comptoir, identique aux controles des sieges. */
+  #worldEatButton{position:absolute;left:0;top:0;z-index:4;transform:translate(-50%,-50%);
+    width:44px;height:44px;border-radius:50%;border:1px solid #ffd166;background:rgba(8,20,32,.92);
+    color:#fff;font-size:22px;box-shadow:0 3px 16px #0008;cursor:pointer;pointer-events:auto;touch-action:manipulation}
+  #worldEatButton[hidden]{display:none}
+  #energyVal{color:#ffd166}
   #worldSeatLayer{position:absolute;inset:0;pointer-events:none}
   .world-seat-button{position:absolute;left:0;top:0;display:grid;place-items:center;width:40px;height:40px;
     padding:0;border:0;background:none;color:#fff1d2;pointer-events:auto;cursor:pointer;touch-action:manipulation}
@@ -313,12 +319,13 @@
 </div>
 
 <div id="hud" class="hidden">
+  <button id="worldEatButton" hidden type="button" aria-label="Manger au fastfood" title="Manger : +50 energie">🍔</button>
   <div id="worldSeatLayer" hidden></div>
   <div id="worldStatusLayer"></div>
   <div id="statusBar" class="panel">
     <div class="st"><span class="lbl">Time</span><span class="val" id="clockVal">08:00</span></div>
     <div class="st"><span class="lbl">Cash</span><span class="val" id="cashVal">$0</span></div>
-    <div class="st"><span class="lbl">Runs</span><span class="val" id="runsVal">0</span></div>
+    <div class="st"><span class="lbl">⚡ Énergie</span><span class="val" id="energyVal">40%</span></div>
     <div class="st"><span class="lbl" id="spdUnit">km/h</span><span class="val" id="spdVal">0</span></div>
     <span id="gearVal" class="hidden"></span>
   </div>
@@ -1134,7 +1141,24 @@ VILLA_SEATS.push(...LOFT_SEATS);
 
 const VILLA_PATH = [-2.2, (BEACH_Z - 0.68 - VILLA.z) / VILLA.scale, 2.2, -11.90,
   (CURB_H + 0.017 - VILLA.y) / VILLA.scale];
-const WORLD_MAP_PLACES = [{ label: 'Villa', x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale }];
+// Le fichier BurgerPiz comporte aussi routes, parking, batiments voisins et vegetation.
+// Zone au nord-ouest, hors de la grille procedurale pour eviter les chevauchements.
+// Dimensions source ~407 x 270 unites ; a 0.75 : ~305 x 202 unites.
+const FASTFOOD = { x: -100, z: -310, y: CURB_H, scale: 0.75 };
+const fastfood = { model: null, loading: false, retryAt: 0 };
+const foodAt = { x: FASTFOOD.x - 2.5 * FASTFOOD.scale, z: FASTFOOD.z + 6.2 * FASTFOOD.scale };
+// Places 40-47 sur les fauteuils du restaurant (y du coussin ~0.51).
+const FOOD_SEATS = [
+  [-5, 14, 90], [-5, 15.56, 90], [-5, 17.93, 90], [-5, 20.30, 90],
+  [7.94, 16.12, -90], [7.94, 17.72, -90], [7.94, 20.87, -90], [7.94, 22.46, -90]
+].map(([x,z,yaw],i) => ({ id: 40+i, x: FASTFOOD.x+x*FASTFOOD.scale,
+  y: FASTFOOD.y+0.51*FASTFOOD.scale, z: FASTFOOD.z+z*FASTFOOD.scale,
+  yaw: yaw*Math.PI/180 }));
+VILLA_SEATS.push(...FOOD_SEATS);
+const WORLD_MAP_PLACES = [
+  { label: 'Villa', x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale },
+  { label: 'Fastfood 🍔', x: FASTFOOD.x, z: FASTFOOD.z+8*FASTFOOD.scale }
+];
 const villa = { model: null, loading: false, retryAt: 0, rocks: [], ray: null, hits: [] };
 const villaLighting = { rig: null, loading: false, retryAt: 0 };
 
@@ -1441,6 +1465,56 @@ function addLoftColliders() {
       VILLA.z + (LOFT.z - z0) * VILLA.scale,
       VILLA.y + (LOFT.y + top) * VILLA.scale, 1);
   }
+}
+
+function addFastFoodColliders() {
+  if (!fastfood.model) return;
+  // Enveloppe selective : entrees laissees ouvertes au sud (-Z) et a l'est (+X).
+  const parts = [
+    [-6.1, -3.85, -1.9, -3.70, 5.8], // facade sud a gauche de la porte
+    [-0.4, -3.85, 11.9, -3.70, 5.8],
+    [-6.1, 24.8, 12.0, 25.0, 6.0], // facade arriere
+    [-6.1, -3.8, -5.9, 24.9, 5.8], // mur ouest
+    [11.7, -3.8, 11.9, 9.5, 5.8],  // aile sud-est
+    [8.7, 9.4, 8.95, 11.65, 5.8], // grande vitrine est et acces
+    [8.7, 14.10, 8.95, 24.8, 5.8],
+    [-4.45, 8.78, 1.8, 9.66, 1.0],// comptoir
+    [-5.7, 5.65, -4.85, 8.4, 1.0],
+    [-5.7, 9.8, -4.65, 12.8, 1.0]
+  ];
+  for (const [x0,z0,x1,z1,h] of parts) addCollider(
+    FASTFOOD.x+x0*FASTFOOD.scale, FASTFOOD.z+z0*FASTFOOD.scale,
+    FASTFOOD.x+x1*FASTFOOD.scale, FASTFOOD.z+z1*FASTFOOD.scale,
+    FASTFOOD.y+h*FASTFOOD.scale, 1);
+}
+
+async function loadFastFood() {
+  if (fastfood.model || fastfood.loading) return;
+  fastfood.loading = true;
+  try {
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const url = new URL('./burgerpiz.glb', document.baseURI);
+    const { scene: model } = await new GLTFLoader().loadAsync(url.href);
+    model.position.set(FASTFOOD.x, FASTFOOD.y, FASTFOOD.z);
+    model.scale.setScalar(FASTFOOD.scale);
+    // Les deux panneaux de portes cote est sont decoratifs et fixes dans le GLB :
+    // les masquer pour que les visiteurs puissent traverser l'ouverture.
+    ['Door_F', 'Door_F.001', 'Door_Fr'].forEach(name => { const door = model.getObjectByName(name); if (door) door.visible = false; });
+    model.traverse(obj => {
+      if (!obj.isMesh) return;
+      obj.receiveShadow = true;
+      // Les centaines de vegetaux gardent leur aspect mais n'ajoutent pas
+      // des centaines de projections d'ombres couteuses.
+      obj.castShadow = !/Tree|Grass|Bush|Leaf|Leaves/i.test(obj.name);
+    });
+    scene.add(model);
+    fastfood.model = model;
+    addFastFoodColliders();
+    buildColliderHash();
+  } catch (error) {
+    fastfood.retryAt = nowMs() + 15000;
+    console.warn('Fastfood : modele indisponible', error);
+  } finally { fastfood.loading = false; }
 }
 
 function addVillaColliders() {
@@ -1994,6 +2068,7 @@ function generateWorld(seed) {
   }
 
   if (villa.model) addVillaColliders();
+  if (fastfood.model) addFastFoodColliders();
   buildColliderHash();
   return G;
 }
@@ -2405,7 +2480,7 @@ function villaSeatVisible(x, y, z, seat) {
 }
 
 function canUseVillaSeat(seat) {
-  if (!villa.model || player.seating || player.mode !== 'walk' || !player.onGround ||
+  if ((seat.id <= 39 ? !villa.model : !fastfood.model) || player.seating || player.mode !== 'walk' || !player.onGround ||
       menuOpen() || ui.worldMapDialog.open || ui.worldStatusDialog.open ||
       Math.hypot(seat.x - player.x, seat.z - player.z) > VILLA_SEAT_REACH ||
       insideAnyCollider(player.x, player.z, 0.3)) return false;
@@ -2474,7 +2549,9 @@ function drawVillaSeatButtons() {
     (loftExtension.model && Math.hypot(
       player.x - (VILLA.x + LOFT.x * VILLA.scale),
       player.z - (VILLA.z + LOFT.z * VILLA.scale)) < 16));
-  if (!nearVilla || player.seating || player.mode !== 'walk' || menuOpen() ||
+  const nearFastFood = fastfood.model &&
+    Math.hypot(player.x - FASTFOOD.x, player.z - FASTFOOD.z-9*FASTFOOD.scale) < 25;
+  if ((!nearVilla && !nearFastFood) || player.seating || player.mode !== 'walk' || menuOpen() ||
       ui.worldMapDialog.open || ui.worldStatusDialog.open) {
     ui.worldSeatLayer.hidden = true;
     return;
@@ -3082,12 +3159,75 @@ function stepMission(dt) {
   }
 }
 
+// Energie persistante par utilisateur : 100 points se consomment en 24 heures reelles.
+// Les achats/cout en Cash seront definis lors du futur catalogue alimentaire.
+const energy = { value: 40, at: Date.now(), ready: false, fetching: false, eating: false, nextRefresh: 0 };
+function acceptEnergy(answer) {
+  if (!answer || typeof answer.energy !== 'number' || !Number.isFinite(answer.energy)) return;
+  energy.value = clamp(answer.energy, 0, 100);
+  energy.at = Date.now(); energy.ready = true; hudDirty = true;
+}
+async function refreshEnergy() {
+  if (!MP.ready || energy.fetching) return;
+  energy.fetching = true;
+  energy.nextRefresh = Date.now() + 60000;
+  try {
+    const response = await fetch(MP.api + '/api/world/energy', {
+      headers: { Authorization: 'Bearer ' + MP.token }, cache: 'no-store'
+    });
+    if (!response.ok) throw new Error('energie indisponible');
+    acceptEnergy(await response.json());
+  } catch (error) { energy.nextRefresh = Date.now() + 15000; }
+  finally { energy.fetching = false; }
+}
+function canEatAtFastFood() {
+  return !!(fastfood.model && !player.seating && player.mode === 'walk' && player.onGround &&
+    !menuOpen() && !ui.worldMapDialog.open && !ui.worldStatusDialog.open &&
+    (player.x-FASTFOOD.x)/FASTFOOD.scale > -5.5 &&
+    (player.x-FASTFOOD.x)/FASTFOOD.scale < 8.5 &&
+    (player.z-FASTFOOD.z)/FASTFOOD.scale > -3 &&
+    Math.hypot(player.x - foodAt.x, player.z - foodAt.z) <= 2.75);
+}
+async function eatAtFastFood() {
+  if (!canEatAtFastFood()) return false;
+  if (!MP.ready) { toast('Connecte-toi pour manger.', 'bad'); return true; }
+  if (energy.eating) return true;
+  energy.eating = true;
+  ui.worldEatButton.disabled = true;
+  try {
+    const response = await fetch(MP.api + '/api/world/eat', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + MP.token }
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Repas indisponible');
+    const before = Math.max(0, energy.value - (Date.now() - energy.at) * (100 / 86400000));
+    acceptEnergy(data);
+    toast('Repas termine : +' + Math.round(Math.max(0, energy.value - before)) + ' energie ⚡', 'good');
+  } catch (err) { toast(err.message || 'Impossible de manger.', 'bad'); }
+  finally { energy.eating = false; ui.worldEatButton.disabled = false; }
+  return true;
+}
+function drawFoodButton() {
+  if (!canEatAtFastFood()) { ui.worldEatButton.hidden = true; return; }
+  const point = _proj.set(foodAt.x, FASTFOOD.y + 1.55, foodAt.z).project(camera);
+  if (Math.abs(point.x) > .95 || Math.abs(point.y) > .95 || point.z > 1 || point.z < -1) {
+    ui.worldEatButton.hidden = true; return;
+  }
+  ui.worldEatButton.style.left = Math.round((point.x + 1) * innerWidth / 2) + 'px';
+  ui.worldEatButton.style.top = Math.round((1 - point.y) * innerHeight / 2) + 'px';
+  ui.worldEatButton.hidden = false;
+}
+function tryEatAtFastFood() {
+  if (!canEatAtFastFood()) return false;
+  void eatAtFastFood(); return true;
+}
+
 /* ------------------------------------------------------------- 9 HUD */
 const ui = {};
 let hudDirty = true, hudAccum = 0, mmAccum = 0;
 function qs(id) { return document.getElementById(id); }
 function grabUI() {
-  ['loading', 'bootMsg', 'spinner', 'hud', 'clockVal', 'cashVal', 'runsVal', 'mTitle', 'mSub', 'mTimerWrap', 'mTimer',
+  ['loading', 'bootMsg', 'spinner', 'hud', 'clockVal', 'cashVal', 'energyVal', 'worldEatButton', 'mTitle', 'mSub', 'mTimerWrap', 'mTimer',
     'spdVal', 'spdUnit', 'gearVal', 'minimap', 'minimapWrap', 'prompt', 'toastWrap', 'objArrow', 'objDist',
     'worldMapDialog', 'worldMapHint', 'worldMapClose', 'worldMapCanvas', 'worldMapNorth', 'worldMapMinus', 'worldMapPlus',
     'worldMapLeft', 'worldMapRight', 'worldMapOverview', 'worldMapClear',
@@ -3135,7 +3275,9 @@ function setPrompt(t) {
 function updateHUD() {
   ui.clockVal.textContent = fmtClock(env.tod);
   ui.cashVal.textContent = '$' + mission.cash;
-  ui.runsVal.textContent = String(mission.runs);
+  const remaining = Math.max(0, energy.value - (Date.now() - energy.at) * (100 / 86400000));
+  ui.energyVal.textContent = Math.floor(remaining + 0.0001) + '%';
+  ui.energyVal.style.color = remaining <= 20 ? '#ff8787' : '#ffd166';
   if (player.mode === 'drive' && player.veh) {
     const kmh = Math.abs(player.veh.speed) * 3.6;
     ui.spdVal.textContent = String(Math.round(kmh));
@@ -3198,6 +3340,13 @@ function buildMinimapBase() {
   });
   g.fillStyle = 'rgba(72,120,64,.85)';
   world.parks.forEach(p => g.fillRect(w2s(p.x - 20), w2s(p.z - 20), 40 * mm.scale, 40 * mm.scale));
+  // Repere d'emprise du restaurant et de ses espaces exterieurs.
+  g.fillStyle = '#66795a';
+  g.fillRect(w2s(FASTFOOD.x - 200*FASTFOOD.scale), w2s(FASTFOOD.z - 110*FASTFOOD.scale),
+    350*FASTFOOD.scale*mm.scale, 235*FASTFOOD.scale*mm.scale);
+  g.fillStyle = '#946747';
+  g.fillRect(w2s(FASTFOOD.x - 6.2*FASTFOOD.scale), w2s(FASTFOOD.z - 4.3*FASTFOOD.scale),
+    18.3*FASTFOOD.scale*mm.scale, 30*FASTFOOD.scale*mm.scale);
   g.fillStyle = '#6e5d56';
   for (const [x0, z0, x1, z1] of VILLA.floors) {
     g.fillRect(w2s(VILLA.x + x0 * VILLA.scale), w2s(VILLA.z + z0 * VILLA.scale),
@@ -3645,7 +3794,7 @@ function bindInput() {
     audioResume();
     if (k === 'Escape') { toggleMenu(); }
     if (menuOpen()) return;
-    if (k === 'KeyE') tryEnterExit();
+    if (k === 'KeyE' && !tryEatAtFastFood()) tryEnterExit();
     if (k === 'KeyF' && player.mode === 'drive') tryEnterExit();
     if (k === 'KeyM') startMission();
     if (k === 'KeyC') cycleCam();
@@ -3803,7 +3952,8 @@ function bindInput() {
   qs('btnSettings').onclick = () => { audioResume(); toggleMenu(); };
   qs('btnLocate').onclick = () => { audioResume(); cam.recenter = 1; toast('You are here'); };
   qs('btnExit').onclick = () => { try { if (window.parent && window.parent !== window) window.parent.postMessage({ mafWorldExit: true }, window.location.origin); } catch (e) {} };
-  ui.prompt.onclick = () => { audioResume(); tryEnterExit(); };
+  ui.prompt.onclick = () => { audioResume(); if (!tryEatAtFastFood()) tryEnterExit(); };
+  ui.worldEatButton.onclick = () => { audioResume(); void eatAtFastFood(); };
   ui.worldStandButton.onclick = () => { audioResume(); leaveVillaSeat(); };
   ui.btnClose.onclick = () => toggleMenu(false);
   ui.btnSound.onclick = () => { audioResume(); toggleSound(); };
@@ -4424,6 +4574,10 @@ function frame() {
       Math.hypot(playerX() - VILLA.x, playerZ() - VILLA.z) <= 175) loadVilla();
   if (villa.model && !loftExtension.model && !loftExtension.loading && now >= loftExtension.retryAt &&
       Math.hypot(playerX() - VILLA.x, playerZ() - VILLA.z) <= 175) loadLoft();
+  const foodDist = Math.hypot(playerX() - FASTFOOD.x, playerZ() - FASTFOOD.z);
+  if (!fastfood.model && !fastfood.loading && now >= fastfood.retryAt && foodDist < 135) loadFastFood();
+  if (fastfood.model) fastfood.model.visible = foodDist < 260;
+  if (MP.ready && Date.now() >= energy.nextRefresh) void refreshEnergy();
   if (player.mode === 'walk') animateCharacter(simDt);
   applyTrafficMeshes();
   applyPedMeshes();
@@ -4443,6 +4597,7 @@ function frame() {
 
   renderer.render(scene, camera);
   drawVillaSeatButtons();
+  drawFoodButton();
   mpDrawStatuses();
 }
 
@@ -4474,6 +4629,7 @@ function updatePrompt() {
     setPrompt((IS_TOUCH ? 'Tap <kbd>ENTER</kbd>' : 'Press <kbd>F</kbd>') + ' to step out');
     return;
   }
+  if (canEatAtFastFood()) { setPrompt(tapE + ' pour manger (+50 ⚡)'); return; }
   let best = null, bd = 5.2;
   for (const v of vehicles) { if (v.occupied) continue; const d = Math.hypot(v.x - player.x, v.z - player.z); if (d < bd) { bd = d; best = v; } }
   if (best) { setPrompt(tapE + ' to drive the ' + best.t.name); return; }
@@ -4710,6 +4866,8 @@ function mpInit() {
     if (!d || !d.token || !d.api) return;
     MP.api = String(d.api).replace(/\/+$/, ''); MP.token = d.token; MP.base = d.base || '/';
     MP.skins = d.skins || {}; MP.ready = true;
+    energy.nextRefresh = 0;
+    void refreshEnergy();
     ui.worldStatusLayer.classList.remove('hidden');
     if (d.mySkin) mpSetLocal(d.mySkin);
   });
