@@ -1942,6 +1942,11 @@ function animateCharacter(dt) {
   const u = g.userData;
   g.position.set(player.x, player.y, player.z);
   g.rotation.y = player.yaw;
+  if (MP.me && MP.me.model) {   // MAF-WORLD-MYSKIN-V1 : mon propre skin de profil
+    mpPlay(MP.me, player.speed > 0.5);
+    if (MP.me.mixer) MP.me.mixer.update(dt);
+    return;
+  }
   const sp = player.speed;
   const swing = clamp(sp / RUN_SPD, 0, 1);
   const ph = player.phase;
@@ -3600,6 +3605,7 @@ function mpInit() {
     if (!d || !d.token || !d.api) return;
     MP.api = String(d.api).replace(/\/+$/, ''); MP.token = d.token; MP.base = d.base || '/';
     MP.skins = d.skins || {}; MP.ready = true;
+    if (d.mySkin) mpSetLocal(d.mySkin);
   });
   try { window.parent.postMessage({ mafWorldHello: true }, window.location.origin); } catch (err) {}
   addEventListener('pagehide', () => {
@@ -3621,7 +3627,7 @@ function mpSend() {
     body: JSON.stringify(body)
   })
     .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
-    .then(j => { MP.fails = 0; MP.gap = 400; mpApply(j.players || []); })
+    .then(j => { MP.fails = 0; MP.gap = 400; if (j.me && j.me.skin) mpSetLocal(j.me.skin); mpApply(j.players || []); })
     .catch(st => { MP.fails++; MP.gap = Math.min(5000, 400 * Math.pow(2, MP.fails)); if (st === 401) MP.ready = false; })
     .then(() => { MP.busy = false; });
 }
@@ -3699,7 +3705,7 @@ function mpSource(id) {
     return { L, root, meta, plan };
   })();
   MP.cache.set(id, pr);
-  pr.catch(() => {});
+  pr.catch(() => { MP.cache.delete(id); });   // echec reseau : on pourra reessayer
   return pr;
 }
 
@@ -3730,6 +3736,45 @@ function mpCreate(p) {
     x: p.x, z: p.z, yaw: p.yaw, tx: p.x, tz: p.z, tyaw: p.yaw, mv: false, veh: false };
   mpLoadSkin(r);
   return r;
+}
+
+/* MAF-WORLD-MYSKIN-V1 : le joueur local prend le skin enregistre sur son profil. */
+function mpClearLocal() {
+  const me = MP.me;
+  if (!me) return;
+  MP.me = null;
+  try {
+    if (me.mixer) { me.mixer.stopAllAction(); me.mixer.uncacheRoot(me.model); }
+    if (me.spin && me.spin.parent) me.spin.parent.remove(me.spin);
+  } catch (err) {}
+  if (player.mesh && player.mesh.userData.hips) player.mesh.userData.hips.visible = true;
+}
+
+function mpSetLocal(id) {
+  if (!id || MP.meSkin === id) return;
+  if (MP.meRetry && nowMs() < MP.meRetry) return;
+  MP.meSkin = id;
+  mpSource(id).then(src => {
+    if (MP.meSkin !== id || !player.mesh) return;
+    mpClearLocal();
+    const model = src.L.clone(src.root);
+    model.traverse(o => { if (o.isMesh) { o.frustumCulled = false; o.castShadow = true; } });
+    const p0 = model.position.clone();
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3()), ctr = box.getCenter(new THREE.Vector3());
+    const s = MP_H / Math.max(size.y, 0.01);
+    model.scale.multiplyScalar(s);
+    model.position.set(-(ctr.x - p0.x) * s, -(box.min.y - p0.y) * s, -(ctr.z - p0.z) * s);
+    const spin = new THREE.Group(); spin.rotation.y = src.meta.rotation || 0; spin.add(model);
+    player.mesh.add(spin);
+    if (player.mesh.userData.hips) player.mesh.userData.hips.visible = false;   // on cache le bonhomme par defaut
+    const me = { skin: id, model, spin, mixer: null, plan: null, acts: new Map(), cur: null };
+    if (src.plan.mode === 'anim') { me.mixer = new THREE.AnimationMixer(model); me.plan = src.plan; }
+    MP.me = me;
+  }).catch(() => {
+    // modele introuvable : on garde le bonhomme par defaut et on reessaie dans 15 s
+    if (MP.meSkin === id) { MP.meSkin = null; MP.meRetry = nowMs() + 15000; }
+  });
 }
 
 function mpRemove(id) {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { IconGlobe } from "../components/Icons";
-import { currentToken } from "../api/accounts";
+import { currentSession, currentToken } from "../api/accounts";
 import { API_URL } from "../api/config";
 import { SKINS } from "../characters/skins";
 import "../styles/nav.css";
@@ -87,7 +87,7 @@ export default function WorldPage() {
         const token = currentToken();
         if (!token) return; // visiteur non connecte : pas de multijoueur
         e.source.postMessage(
-          { mafWorldInit: { api: API_URL, token, base: import.meta.env.BASE_URL, skins: buildSkinTable() } },
+          { mafWorldInit: { api: API_URL, token, base: import.meta.env.BASE_URL, skins: buildSkinTable(), mySkin: (currentSession() || {}).skin_id || null } },
           window.location.origin
         );
       }
