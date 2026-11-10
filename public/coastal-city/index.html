@@ -40,7 +40,8 @@
     cursor:pointer;min-height:44px;min-width:44px;margin-top:12px}
 
   /* ---------- HUD ---------- */
-  #hud{position:fixed;inset:0;z-index:20;pointer-events:none}
+  #hud{--minimap-size:164px;--minimap-top:calc(64px + env(safe-area-inset-top));--minimap-extent:calc(var(--minimap-size) + 14px);
+    position:fixed;inset:0;z-index:20;pointer-events:none}
   #hud .panel{position:absolute;background:rgba(6,16,26,.62);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
     border:1px solid rgba(255,255,255,.14);border-radius:12px}
 
@@ -51,7 +52,7 @@
   #statusBar .val{font-size:15px}
   #cashVal{color:#8ce99a}
 
-  #topMenus{position:absolute;right:10px;top:calc(10px + env(safe-area-inset-top));display:flex;align-items:flex-start;gap:8px}
+  #topMenus{position:absolute;right:10px;top:calc(10px + env(safe-area-inset-top));z-index:2;display:flex;align-items:flex-start;gap:8px}
   .world-top-menu{display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:auto}
   .world-top-drop{display:flex;flex-direction:column;gap:8px;overflow:hidden;max-height:0;opacity:0;pointer-events:none;transition:max-height .22s ease,opacity .18s ease}
   .world-top-menu.open .world-top-drop{max-height:380px;opacity:1;pointer-events:auto}
@@ -61,6 +62,10 @@
   #topMenus button:active{background:rgba(255,255,255,.24)}
   #topMenus button[aria-pressed="false"]{opacity:.55}
   #btnWorldTools[aria-expanded="true"]{color:#e4cbff;border-color:rgba(198,138,255,.68)}
+  #btnWorldChat{position:relative}
+  #btnWorldChat[aria-expanded="true"],#btnWorldChat[data-playing]{color:#e4cbff;border-color:rgba(198,138,255,.68)}
+  #worldChatBadge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;
+    background:#b36bf3;color:#160b23;font:800 10px/16px system-ui,sans-serif}
 
   #worldStatusLayer{position:absolute;inset:0;pointer-events:none}
   .world-status-bubble{position:absolute;left:0;top:0;pointer-events:auto;touch-action:manipulation;
@@ -93,8 +98,7 @@
   #speedo .su{font:600 9px/1 'Segoe UI',system-ui;letter-spacing:1.6px;opacity:.65;text-transform:uppercase}
   #speedo .gear{font:700 11px/1 'Segoe UI',system-ui;letter-spacing:1px;margin-top:5px;color:#ffd166}
 
-  #minimapStack{--minimap-size:164px;position:absolute;left:10px;top:calc(64px + env(safe-area-inset-top));
-    width:calc(var(--minimap-size) + 14px);display:grid;gap:6px}
+  #minimapStack{position:absolute;left:10px;top:var(--minimap-top);width:var(--minimap-extent);display:grid;gap:6px}
   #minimapStack > .panel{position:relative;min-width:0}
   #minimapWrap{padding:6px;pointer-events:auto;cursor:pointer}
   #minimap{display:block;width:var(--minimap-size);height:var(--minimap-size);border-radius:8px;background:#0d2233}
@@ -115,12 +119,31 @@
   #btnWorldMic[data-recording] .world-mic-icon,
   #btnWorldMic:not([data-recording]) :is(.world-mic-stop,#worldMicSeconds){display:none}
   #worldMicSeconds{font:700 10px/1 ui-monospace,Menlo,Consolas,monospace}
-  #worldVoicePlayback{display:flex;align-items:center;justify-content:space-between;gap:4px;min-height:32px;
-    padding:0 3px 0 7px;color:#e4cbff;font:600 11px/1.2 'Segoe UI',system-ui,sans-serif}
-  #worldVoiceWho{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  #btnWorldVoiceClose{width:29px;height:30px;flex:none;border:0;border-radius:7px;background:none;color:inherit;
-    font-size:17px;cursor:pointer;pointer-events:auto;touch-action:manipulation}
-  #btnWorldVoiceClose:active{background:rgba(255,255,255,.15)}
+  #worldChatPanel{position:absolute;top:var(--minimap-top);left:calc(20px + var(--minimap-extent));right:10px;
+    height:var(--minimap-extent);z-index:1;display:grid;grid-template-rows:46px minmax(0,1fr) 31px;
+    border:1px solid rgba(225,235,255,.26);border-radius:13px;overflow:hidden;pointer-events:auto;
+    background:linear-gradient(135deg,rgba(198,218,251,.16),rgba(11,21,33,.37) 50%,rgba(57,30,78,.28));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.16);backdrop-filter:blur(11px) saturate(1.35);
+    -webkit-backdrop-filter:blur(11px) saturate(1.35);
+    clip-path:polygon(0 0,calc(100% - 52px) 0,calc(100% - 52px) 40px,calc(100% - 46px) 47px,100% 47px,100% 100%,0 100%)}
+  .world-chat-head{display:flex;align-items:center;gap:6px;min-width:0;padding:0 54px 0 9px;color:#f3e8ff;
+    font:700 12px/1.2 system-ui,sans-serif;white-space:nowrap}
+  #worldChatTitle{overflow:hidden;text-overflow:ellipsis}
+  .world-chat-range{flex:none;border-radius:7px;background:rgba(204,159,255,.18);padding:2px 5px;font:600 10px/1.2 system-ui,sans-serif}
+  #worldChatFeed{min-width:0;min-height:0;padding:0 6px;overflow:auto;overscroll-behavior:contain;touch-action:pan-y;
+    scrollbar-width:thin;font:600 11px/1.25 system-ui,sans-serif}
+  .world-chat-empty{margin:5px 3px;color:#e1d4ed}
+  .world-chat-line{display:flex;align-items:center;gap:4px;min-height:26px;padding:1px 3px;margin:0 0 3px;
+    border-radius:7px;background:rgba(9,15,26,.37);overflow-wrap:anywhere}
+  .world-chat-line strong{color:#ebd6ff}
+  .world-chat-copy{min-width:0}
+  .world-chat-action,#worldChatSend{flex:none;min-width:26px;min-height:26px;padding:0;border:1px solid rgba(224,204,255,.24);
+    border-radius:7px;color:#f1e5ff;background:rgba(140,89,204,.30);font:700 12px/1 system-ui,sans-serif;cursor:pointer;touch-action:manipulation}
+  .world-chat-action:disabled,#worldChatSend:disabled{opacity:.55;cursor:default}
+  #worldChatForm{display:flex;align-items:center;gap:4px;padding:2px 5px;border-top:1px solid rgba(226,210,255,.14)}
+  #worldChatText{flex:1;min-width:0;height:25px;padding:2px 6px;border:0;border-radius:7px;outline-offset:-2px;
+    background:rgba(6,11,20,.50);color:#fff;font:16px/1 system-ui,sans-serif;touch-action:manipulation}
+  #worldChatText::placeholder{font-size:11px;color:#c9bdd7}
 
   #prompt{pointer-events:auto;cursor:pointer;position:absolute;left:50%;bottom:calc(26vh + env(safe-area-inset-bottom));transform:translateX(-50%);
     background:rgba(6,16,26,.78);border:1px solid rgba(255,255,255,.22);border-radius:11px;padding:9px 16px;
@@ -210,13 +233,14 @@
 
   /* ---------- responsive ---------- */
   @media (max-width:760px){
-    #minimapStack{--minimap-size:118px}
+    #hud{--minimap-size:118px}
     #worldComms{min-height:38px}
     #speedo{bottom:calc(148px + env(safe-area-inset-bottom));min-width:88px;padding:6px 10px}
     #speedo .sv{font-size:22px}
     #statusBar{gap:10px;padding:6px 9px}
     #statusBar .val{font-size:13px}
     #missionCard{left:auto;right:10px;transform:none;top:calc(64px + env(safe-area-inset-top));min-width:0;width:min(calc(100vw - 150px),300px)}
+    #hud.world-chat-open #missionCard{top:calc(var(--minimap-top) + var(--minimap-extent) + 7px)}
     #prompt{font-size:13px;white-space:normal;max-width:min(92vw,340px)}
     #toastWrap{width:min(92vw,340px)}
   }
@@ -227,7 +251,7 @@
   }
   @media (max-height:460px){
     #tBtns{bottom:calc(10px + env(safe-area-inset-bottom))}
-    #minimapStack{--minimap-size:92px}
+    #hud{--minimap-size:92px}
     #speedo{bottom:calc(112px + env(safe-area-inset-bottom))}
     #prompt{bottom:calc(10px + env(safe-area-inset-bottom));max-width:min(50vw,340px)}
     #toastWrap{bottom:calc(62px + env(safe-area-inset-bottom));width:min(50vw,340px)}
@@ -266,6 +290,14 @@
     <div class="mtimerWrap hidden" id="mTimerWrap"><div class="mtimer" id="mTimer"></div></div>
   </div>
 
+  <section id="worldChatPanel" class="hidden" aria-labelledby="worldChatTitle">
+    <header class="world-chat-head"><span id="worldChatTitle">Chat de proximité</span><span class="world-chat-range">8 m</span></header>
+    <div id="worldChatFeed" role="log" aria-live="polite"><p class="world-chat-empty">Aucun échange à proximité.</p></div>
+    <form id="worldChatForm">
+      <input id="worldChatText" type="text" maxlength="160" autocomplete="off" aria-label="Message de proximité" placeholder="Écrire à proximité…">
+      <button id="worldChatSend" type="submit" aria-label="Envoyer le message" title="Envoyer">➤</button>
+    </form>
+  </section>
   <div id="topMenus">
     <div id="worldTools" class="world-top-menu hidden">
       <button id="btnWorldTools" type="button" aria-label="Options World" title="Options World" aria-expanded="false" aria-controls="worldToolsDrop">
@@ -280,7 +312,7 @@
             <path d="M20 15a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2zM8 9h8m-8 4h5"/>
           </svg>
         </button>
-        <button id="btnWorldVoiceMute" class="hidden" type="button" aria-label="Vocaux reçus" aria-pressed="true" title="Couper les vocaux reçus">
+        <button id="btnWorldVoiceMute" class="hidden" type="button" aria-label="Lecture automatique des vocaux" aria-pressed="true" title="Couper la lecture automatique">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M11 5 6 9H3v6h3l5 4V5m4 4a4 4 0 0 1 0 6m3-9a8 8 0 0 1 0 12"/>
           </svg>
@@ -289,6 +321,12 @@
     </div>
     <div id="topBtns" class="world-top-menu">
       <button id="btnMenu" type="button" aria-label="Menu" aria-expanded="false" aria-controls="topDrop">☰</button>
+      <button id="btnWorldChat" class="hidden" type="button" aria-label="Chat de proximité" title="Chat de proximité" aria-expanded="false" aria-controls="worldChatPanel">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 15a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2zM8 9h8m-8 4h5"/>
+        </svg>
+        <span id="worldChatBadge" class="hidden" aria-hidden="true"></span>
+      </button>
       <div id="topDrop" class="world-top-drop" inert>
         <button id="btnMission" aria-label="Start or cancel delivery run" title="Delivery run (M)">📦</button>
         <button id="btnSound" aria-label="Toggle sound" aria-pressed="true" title="Sound (P)">🔊</button>
@@ -319,10 +357,6 @@
         </svg>
         <span id="worldMicSeconds" aria-hidden="true">30</span>
       </button>
-    </div>
-    <div id="worldVoicePlayback" class="panel hidden" role="status">
-      <span id="worldVoiceWho"></span>
-      <button id="btnWorldVoiceClose" type="button" aria-label="Fermer le vocal" title="Fermer le vocal">×</button>
     </div>
   </div>
 
@@ -2552,7 +2586,7 @@ function grabUI() {
     'btnImport', 'btnNew', 'btnReset', 'fileIn', 'seedLine', 'touch', 'stickZone', 'stickBase', 'stickKnob',
     'lookZone', 'tbA', 'tbE', 'tbRun', 'tbHorn', 'tbFix', 'qualitySeg', 'btnPerf', 'perfHud', 'fadeVeil', 'gl',
     'missionCard', 'worldTools', 'worldOnline', 'worldOnlineCount', 'btnWorldMic', 'worldMicSeconds',
-    'btnWorldVoiceMute', 'worldVoicePlayback', 'worldVoiceWho', 'btnWorldVoiceClose',
+    'btnWorldVoiceMute', 'btnWorldChat', 'worldChatBadge', 'worldChatPanel', 'worldChatFeed', 'worldChatForm', 'worldChatText', 'worldChatSend',
     'worldStatusLayer', 'btnWorldStatus', 'worldStatusDialog',
     'worldStatusTitle', 'worldStatusClose',
     'worldStatusFull', 'worldStatusForm', 'worldStatusText', 'worldStatusSave', 'worldStatusErase',
@@ -2748,10 +2782,10 @@ function bindInput() {
   if (IS_TOUCH) ui.touch.classList.remove('hidden');
 
   addEventListener('keydown', e => {
-    if (ui.worldStatusDialog.open || e.repeat) return;
+    if (ui.worldStatusDialog.open || e.target === ui.worldChatText || e.repeat) return;
     const k = e.code;
-    if (!pointerLocked && MP.statusVersion >= 0 &&
-        (k === 'Tab' || (k === 'Space' && e.target.matches?.('#btnWorldTools, #btnWorldStatus, .world-status-bubble, #btnWorldMic, #btnWorldVoiceMute, #btnWorldVoiceClose')))) return;
+    if (!pointerLocked && (MP.statusVersion >= 0 || worldVoice.available) &&
+        (k === 'Tab' || (k === 'Space' && e.target.matches?.('#btnWorldTools, #btnWorldStatus, .world-status-bubble, #btnWorldMic, #btnWorldVoiceMute, #btnWorldChat, #worldChatPanel button')))) return;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].indexOf(k) >= 0) e.preventDefault();
     keys.add(k);
     audioResume();
@@ -3094,6 +3128,10 @@ function buildAmbience() {
 function toggleSound() {
   A.on = !A.on;
   if (A.master) A.master.gain.value = A.on ? 0.55 : 0;
+  if (!A.on && worldVoice.playback?.automatic) {
+    mpVoicePause();
+    mpChatRender();
+  }
   ui.btnSound.textContent = A.on ? '🔊' : '🔇';
   ui.btnSound.setAttribute('aria-pressed', A.on ? 'true' : 'false');
   saveSoon();
@@ -3763,11 +3801,15 @@ const MP = { ready: false, api: '', token: '', base: '/', skins: {}, remotes: ne
 const MP_H = 1.75;
 const WALK_RX = /walk|marche|defile|catwalk|strut/i;
 const WORLD_VOICE_MAX_MS = 30000;
-const WORLD_VOICE_MAX_BYTES = 512 * 1024;
-const WORLD_VOICE_FORMATS = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
+const WORLD_VOICE_WAV_RATE = 12000;
+const WORLD_VOICE_MAX_BYTES = 44 + WORLD_VOICE_WAV_RATE * 2 * WORLD_VOICE_MAX_MS / 1000;
+const WORLD_VOICE_FORMATS = ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
 const worldVoice = {
-  available: false, canRecord: false, canPlay: false, muted: false,
-  capture: null, playback: null, inbox: [], done: new Set()
+  available: false, canRecord: false, muted: false, autoBlocked: false,
+  audio: null, capture: null, playback: null, notes: new Map(), done: new Set()
+};
+const worldChat = {
+  client: '', open: false, sending: false, messages: [], sent: [], signature: ''
 };
 
 function mpInit() {
@@ -3785,8 +3827,7 @@ function mpInit() {
   });
   try { window.parent.postMessage({ mafWorldHello: true }, window.location.origin); } catch (err) {}
   addEventListener('pagehide', () => {
-    mpVoiceAbortCapture();
-    mpVoiceDiscard();
+    mpVoiceReceive(null, null);
     if (!MP.ready) return;
     try { fetch(MP.api + '/api/world/leave', { method: 'POST', keepalive: true, headers: { Authorization: 'Bearer ' + MP.token } }); } catch (err) {}
   });
@@ -3799,7 +3840,7 @@ function mpSend() {
   const body = {
     x: playerX(), z: playerZ(), yaw: veh ? player.veh.yaw : player.yaw,
     mv: (veh ? Math.abs(player.veh.speed) : player.speed) > 0.5 ? 1 : 0, veh: veh ? 1 : 0,
-    voice: mpVoiceCanHear(), voiceDone
+    voice: true, voiceClient: worldChat.client, voiceDone
   };
   fetch(MP.api + '/api/world/presence', {
     method: 'POST',
@@ -3811,7 +3852,7 @@ function mpSend() {
       MP.fails = 0; MP.gap = 400;
       mpShowOnline(j.onlineCount);
       for (const id of voiceDone) worldVoice.done.delete(id);
-      mpVoiceReceive(j.voices);
+      mpVoiceReceive(j.voices, j.chat);
       if (j.me && j.me.skin) mpSetLocal(j.me.skin);
       mpSyncOwnStatus(j.me);
       mpApply(j.players || []);
@@ -3823,7 +3864,7 @@ function mpSend() {
         MP.ready = false;
         ui.worldTools.classList.add('hidden');
         ui.worldStatusLayer.classList.add('hidden');
-        mpVoiceReceive(null);
+        mpVoiceReceive(null, null);
       }
     })
     .then(() => { MP.busy = false; });
@@ -3839,26 +3880,34 @@ function mpShowOnline(count) {
 
 function mpBindVoice() {
   worldVoice.canRecord = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
-  worldVoice.canPlay = Boolean(window.AudioContext || window.webkitAudioContext);
+  worldChat.client = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
+  worldVoice.audio = document.createElement('audio');
+  worldVoice.audio.preload = 'auto';
+  worldVoice.audio.setAttribute('playsinline', '');
   try { worldVoice.muted = localStorage.getItem('maf-world-voice-muted') === '1'; } catch (e) {}
   ui.btnWorldMic.onclick = mpVoiceToggleRecording;
-  ui.btnWorldVoiceClose.onclick = () => mpVoiceFinishPlayback(worldVoice.playback);
+  ui.btnWorldChat.onclick = () => mpChatSetOpen(!worldChat.open);
+  ui.worldChatForm.addEventListener('submit', mpChatSend);
+  ui.worldChatText.addEventListener('focus', () => keys.clear());
   ui.btnWorldVoiceMute.onclick = () => {
     worldVoice.muted = !worldVoice.muted;
     try { localStorage.setItem('maf-world-voice-muted', worldVoice.muted ? '1' : '0'); } catch (e) {}
-    if (worldVoice.muted) mpVoiceDiscard();
+    if (worldVoice.muted) mpVoicePause();
     mpVoiceControls();
+    mpChatRender();
+    mpVoicePump();
   };
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) return;
     mpVoiceAbortCapture();
-    mpVoiceFinishPlayback(worldVoice.playback);
+    mpVoicePause();
+    mpChatRender();
   });
   mpVoiceControls();
 }
 
-function mpVoiceCanHear() {
-  return worldVoice.canPlay && !worldVoice.muted && A.on;
+function mpVoiceCanAutoPlay() {
+  return A.on && !worldVoice.muted && !worldVoice.autoBlocked;
 }
 
 function mpVoiceRenderMic() {
@@ -3882,24 +3931,24 @@ function mpVoiceRenderMic() {
 
 function mpVoiceControls() {
   mpVoiceRenderMic();
-  ui.btnWorldVoiceMute.classList.toggle('hidden', !worldVoice.available || !worldVoice.canPlay);
+  ui.btnWorldChat.classList.toggle('hidden', !worldVoice.available);
+  ui.btnWorldVoiceMute.classList.toggle('hidden', !worldVoice.available);
   ui.btnWorldVoiceMute.setAttribute('aria-pressed', String(!worldVoice.muted));
-  ui.btnWorldVoiceMute.title = worldVoice.muted ? 'Réactiver les vocaux reçus' : 'Couper les vocaux reçus';
+  ui.btnWorldVoiceMute.title = worldVoice.muted ? 'Réactiver la lecture automatique' : 'Couper la lecture automatique';
 }
 
-async function mpVoiceRequest(path, body, controller) {
+async function mpCommsRequest(path, body, controller, binary = false) {
   const timer = setTimeout(() => controller.abort(), 12000);
   try {
-    const headers = { Authorization: 'Bearer ' + MP.token };
-    if (body) headers['Content-Type'] = 'application/json';
-    const response = await fetch(MP.api + '/api/world/voice' + path, {
-      method: 'POST', headers, body: body ? JSON.stringify(body) : undefined, signal: controller.signal
+    const response = await fetch(MP.api + '/api/world' + path, {
+      method: 'POST', headers: { Authorization: 'Bearer ' + MP.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body), signal: controller.signal
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || 'Vocal indisponible.');
+      throw new Error(error.error || 'Échange indisponible.');
     }
-    return body ? await response.json() : await response.arrayBuffer();
+    return binary ? await response.blob() : await response.json();
   } finally {
     clearTimeout(timer);
   }
@@ -3922,6 +3971,7 @@ function mpVoiceAbortCapture() {
   }
   mpVoiceReleaseMic(run);
   mpVoiceRenderMic();
+  mpChatRender();
 }
 
 function mpVoiceStopRecording() {
@@ -3944,10 +3994,11 @@ async function mpVoiceToggleRecording() {
   if (worldVoice.capture?.phase === 'recording') { mpVoiceStopRecording(); return; }
   if (worldVoice.capture || !worldVoice.available || !worldVoice.canRecord || !MP.ready) return;
   audioResume();
-  mpVoiceFinishPlayback(worldVoice.playback);
+  mpVoicePause();
   const run = { phase: 'opening' };
   worldVoice.capture = run;
   mpVoiceRenderMic();
+  mpChatRender();
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 }
@@ -3993,6 +4044,42 @@ function mpVoiceEncode(blob) {
   });
 }
 
+async function mpVoicePortable(blob) {
+  if (blob.type.toLowerCase().includes('mp4a.40.2') || !A.ctx) return blob;
+  let decoded;
+  try { decoded = await A.ctx.decodeAudioData(await blob.arrayBuffer()); }
+  catch (error) { return blob; } // Safari peut déjà livrer un MP4 lisible par le lecteur natif.
+  const rate = WORLD_VOICE_WAV_RATE;
+  const ratio = decoded.sampleRate / rate;
+  const frames = Math.min(rate * WORLD_VOICE_MAX_MS / 1000, Math.floor(decoded.length / ratio));
+  if (!frames || !decoded.numberOfChannels) return blob;
+  const channels = Array.from({ length: decoded.numberOfChannels }, (_, index) => decoded.getChannelData(index));
+  const data = new Uint8Array(44 + frames * 2);
+  const view = new DataView(data.buffer);
+  const ascii = new TextEncoder();
+  data.set(ascii.encode('RIFF'), 0);
+  view.setUint32(4, data.length - 8, true);
+  data.set(ascii.encode('WAVEfmt '), 8);
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  data.set(ascii.encode('data'), 36);
+  view.setUint32(40, frames * 2, true);
+  for (let i = 0; i < frames; i++) {
+    const start = Math.floor(i * ratio);
+    const end = Math.min(decoded.length, Math.max(start + 1, Math.floor((i + 1) * ratio)));
+    let sum = 0;
+    for (const channel of channels) for (let j = start; j < end; j++) sum += channel[j];
+    const sample = clamp(sum / ((end - start) * channels.length), -1, 1);
+    view.setInt16(44 + i * 2, sample * (sample < 0 ? 32768 : 32767), true);
+  }
+  return new Blob([data], { type: 'audio/wav' });
+}
+
 async function mpVoiceUpload(run, chunks) {
   const ms = run.duration ?? Math.round(Math.min(WORLD_VOICE_MAX_MS, nowMs() - run.startedAt));
   mpVoiceReleaseMic(run);
@@ -4000,16 +4087,19 @@ async function mpVoiceUpload(run, chunks) {
   run.phase = 'sending';
   mpVoiceRenderMic();
   try {
-    const blob = new Blob(chunks, { type: run.recorder.mimeType || chunks[0]?.type || '' });
-    if (ms < 300 || !blob.size) { toast('Vocal trop court.', 'bad'); return; }
+    const recorded = new Blob(chunks, { type: run.recorder.mimeType || chunks[0]?.type || '' });
+    if (ms < 300 || !recorded.size) { toast('Vocal trop court.', 'bad'); return; }
+    const blob = await mpVoicePortable(recorded);
     if (blob.size > WORLD_VOICE_MAX_BYTES) { toast('Vocal trop lourd.', 'bad'); return; }
     const audio = await mpVoiceEncode(blob);
     if (worldVoice.capture !== run || !MP.ready) return;
     run.controller = new AbortController();
-    const result = await mpVoiceRequest('', { audio, ms }, run.controller);
+    const result = await mpCommsRequest('/voice', { audio, ms }, run.controller);
     if (worldVoice.capture !== run) return;
     if (result.count > 0) {
-      toast('Vocal envoyé à ' + result.count + (result.count === 1 ? ' joueur.' : ' joueurs.'), 'good');
+      worldChat.sent.push({ id: result.id, at: result.at, count: result.count, ms, expires: nowMs() + 90000 });
+      worldChat.sent = worldChat.sent.slice(-8);
+      toast('Vocal disponible pour ' + result.count + (result.count === 1 ? ' joueur.' : ' joueurs.'), 'good');
     } else {
       toast('Aucun joueur à portée pour recevoir le vocal.');
     }
@@ -4021,67 +4111,250 @@ async function mpVoiceUpload(run, chunks) {
     if (worldVoice.capture === run) {
       worldVoice.capture = null;
       mpVoiceRenderMic();
+      mpChatRender();
     }
   }
 }
 
-function mpVoiceReceive(notes) {
-  const available = Array.isArray(notes);
+function mpVoiceReceive(notes, messages) {
+  const available = Array.isArray(notes) && Array.isArray(messages);
   if (available !== worldVoice.available) {
     worldVoice.available = available;
-    if (!available) mpVoiceAbortCapture();
     mpVoiceControls();
   }
-  if (!available || !mpVoiceCanHear()) { mpVoiceDiscard(); return; }
-  worldVoice.inbox = notes.filter(note => typeof note?.id === 'string' &&
-    !worldVoice.done.has(note.id) && note.id !== worldVoice.playback?.id);
-  if (worldVoice.inbox.length && !A.started && !document.hidden) audioResume();
-  void mpVoicePlayNext();
+  if (!available) {
+    mpVoiceAbortCapture();
+    for (const note of worldVoice.notes.values()) mpVoiceDrop(note);
+    worldVoice.done.clear();
+    worldChat.messages = [];
+    worldChat.sent = [];
+    mpChatSetOpen(false);
+    mpChatRender();
+    return;
+  }
+  const waiting = new Set();
+  for (const entry of notes) {
+    if (typeof entry?.id !== 'string' || worldVoice.done.has(entry.id)) continue;
+    waiting.add(entry.id);
+    if (!worldVoice.notes.has(entry.id)) {
+      worldVoice.notes.set(entry.id, { ...entry, url: null, controller: null, autoTried: false, position: 0, hint: '' });
+    }
+  }
+  for (const note of worldVoice.notes.values()) {
+    if (!waiting.has(note.id) && worldVoice.playback?.note !== note) mpVoiceDrop(note);
+  }
+  worldChat.messages = messages;
+  mpChatRender();
+  mpVoicePump();
 }
 
-function mpVoiceFinishPlayback(playback) {
-  if (!playback || worldVoice.playback !== playback) return;
+function mpVoicePause() {
+  const playback = worldVoice.playback;
+  if (!playback) return;
+  const audio = worldVoice.audio;
+  if (Number.isFinite(audio.currentTime)) playback.note.position = audio.currentTime;
   worldVoice.playback = null;
-  playback.controller.abort();
-  if (playback.source) {
-    playback.source.onended = null;
-    try { playback.source.stop(); } catch (e) {}
-    playback.source.disconnect();
-  }
-  worldVoice.done.add(playback.id);
-  ui.worldVoicePlayback.classList.add('hidden');
+  audio.onended = audio.onerror = audio.ontimeupdate = null;
+  audio.pause();
+  audio.removeAttribute('src');
+  audio.load();
 }
 
-function mpVoiceDiscard() {
-  mpVoiceFinishPlayback(worldVoice.playback);
-  for (const note of worldVoice.inbox) worldVoice.done.add(note.id);
-  worldVoice.inbox = [];
+function mpVoiceDrop(note) {
+  if (worldVoice.playback?.note === note) mpVoicePause();
+  worldVoice.notes.delete(note.id);
+  note.controller?.abort();
+  if (note.url) URL.revokeObjectURL(note.url);
 }
 
-async function mpVoicePlayNext() {
-  const context = A.ctx;
-  if (worldVoice.playback || worldVoice.capture || document.hidden ||
-      !mpVoiceCanHear() || !A.master || context?.state !== 'running') return;
-  const note = worldVoice.inbox.shift();
-  if (!note) return;
-  const playback = { id: note.id, controller: new AbortController() };
-  worldVoice.playback = playback;
-  ui.worldVoiceWho.textContent = 'Vocal de ' + (note.name || 'Joueur');
-  ui.worldVoicePlayback.classList.remove('hidden');
+function mpVoiceFinish(note) {
+  if (worldVoice.notes.get(note.id) !== note) return;
+  mpVoiceDrop(note);
+  worldVoice.done.add(note.id);
+  mpChatRender();
+  mpVoicePump();
+}
+
+async function mpVoiceLoad(note) {
+  if (note.url) return true;
+  if (note.controller || worldVoice.notes.get(note.id) !== note) return false;
+  const controller = new AbortController();
+  note.controller = controller;
+  note.hint = '';
+  mpChatRender();
   try {
-    const audio = await mpVoiceRequest('/' + encodeURIComponent(note.id) + '/listen', null, playback.controller);
-    const buffer = await context.decodeAudioData(audio);
-    if (worldVoice.playback !== playback) return;
-    if (!mpVoiceCanHear() || document.hidden) { mpVoiceFinishPlayback(playback); return; }
-    const source = context.createBufferSource();
-    playback.source = source;
-    source.buffer = buffer;
-    source.connect(A.master);
-    source.onended = () => mpVoiceFinishPlayback(playback);
-    source.start(0, 0, Math.min(buffer.duration, WORLD_VOICE_MAX_MS / 1000));
+    const blob = await mpCommsRequest('/voice/' + encodeURIComponent(note.id) + '/listen',
+      { voiceClient: worldChat.client }, controller, true);
+    if (worldVoice.notes.get(note.id) !== note) return false;
+    if (!blob.size) throw new Error('Vocal vide.');
+    note.url = URL.createObjectURL(blob);
+    return true;
   } catch (error) {
-    mpVoiceFinishPlayback(playback);
+    if (worldVoice.notes.get(note.id) === note) note.hint = 'Chargement à réessayer';
+    return false;
+  } finally {
+    note.controller = null;
+    mpChatRender();
   }
+}
+
+function mpVoicePlay(note, automatic) {
+  if (!note.url || worldVoice.notes.get(note.id) !== note || worldVoice.playback ||
+      worldVoice.capture || document.hidden || (automatic && !mpVoiceCanAutoPlay())) return;
+  const audio = worldVoice.audio;
+  const playback = { note, automatic };
+  worldVoice.playback = playback;
+  note.autoTried = true;
+  note.hint = '';
+  const fail = error => {
+    if (worldVoice.playback !== playback) return;
+    const autoplayDenied = error?.name === 'NotAllowedError';
+    if (autoplayDenied) {
+      worldVoice.autoBlocked = true;
+      note.hint = 'Appuie sur ▶ pour écouter';
+    } else {
+      note.hint = 'Lecture à réessayer';
+    }
+    mpVoicePause();
+    if (!autoplayDenied) {
+      URL.revokeObjectURL(note.url);
+      note.url = null;
+    }
+    mpChatRender();
+  };
+  audio.onended = () => mpVoiceFinish(note);
+  audio.ontimeupdate = () => {
+    if (audio.currentTime >= WORLD_VOICE_MAX_MS / 1000) mpVoiceFinish(note);
+  };
+  audio.onerror = () => fail(audio.error);
+  audio.src = note.url;
+  if (note.position > 0) { try { audio.currentTime = note.position; } catch (e) {} }
+  try {
+    Promise.resolve(audio.play()).then(() => {
+      if (worldVoice.playback === playback && !automatic) worldVoice.autoBlocked = false;
+    }, fail);
+  } catch (error) {
+    fail(error);
+  }
+  mpChatRender();
+}
+
+function mpVoicePump() {
+  if (!worldVoice.available || worldVoice.playback || worldVoice.capture || document.hidden) return;
+  const notes = Array.from(worldVoice.notes.values());
+  if (notes.some(note => note.controller)) return;
+  const automatic = mpVoiceCanAutoPlay() && notes.find(note => !note.autoTried);
+  if (automatic) {
+    automatic.autoTried = true;
+    if (automatic.url) mpVoicePlay(automatic, true);
+    else void mpVoiceLoad(automatic).then(loaded => { if (loaded) mpVoicePlay(automatic, true); });
+  } else if (worldChat.open) {
+    const next = notes.find(note => !note.url && !note.hint);
+    if (next) void mpVoiceLoad(next);
+  }
+}
+
+function mpChatSetOpen(open) {
+  worldChat.open = open && worldVoice.available;
+  ui.worldChatPanel.classList.toggle('hidden', !worldChat.open);
+  ui.hud.classList.toggle('world-chat-open', worldChat.open);
+  ui.btnWorldChat.setAttribute('aria-expanded', String(worldChat.open));
+  if (worldChat.open) worldChat.signature = '';
+  mpChatRender();
+  if (worldChat.open) mpVoicePump();
+}
+
+async function mpChatSend(event) {
+  event.preventDefault();
+  const text = ui.worldChatText.value.trim();
+  if (!text || !worldVoice.available || !MP.ready || worldChat.sending) return;
+  worldChat.sending = true;
+  ui.worldChatSend.disabled = true;
+  try {
+    const result = await mpCommsRequest('/chat', { text }, new AbortController());
+    if (result.count > 0) {
+      if (ui.worldChatText.value.trim() === text) ui.worldChatText.value = '';
+    } else {
+      toast('Aucun joueur à portée du chat.');
+    }
+  } catch (error) {
+    toast('Message non envoyé. ' + error.message, 'bad');
+  } finally {
+    worldChat.sending = false;
+    ui.worldChatSend.disabled = false;
+  }
+}
+
+function mpChatRender() {
+  const count = worldVoice.notes.size;
+  ui.worldChatBadge.textContent = String(count);
+  ui.worldChatBadge.classList.toggle('hidden', !count || worldChat.open);
+  ui.btnWorldChat.toggleAttribute('data-playing', Boolean(worldVoice.playback));
+  if (!worldChat.open) return;
+  worldChat.sent = worldChat.sent.filter(note => note.expires > nowMs());
+  const notes = Array.from(worldVoice.notes.values());
+  const playing = worldVoice.playback?.note;
+  const blocked = Boolean(worldVoice.capture);
+  const signature = JSON.stringify([worldChat.messages, worldChat.sent, playing?.id, blocked,
+    notes.map(note => [note.id, note.name, note.ms, Boolean(note.url), Boolean(note.controller), note.hint])]);
+  if (worldChat.signature === signature) return;
+  worldChat.signature = signature;
+  const rows = [
+    ...worldChat.messages.map(message => ({ ...message, kind: 'text' })),
+    ...notes.map(note => ({ ...note, kind: 'voice', note })),
+    ...worldChat.sent.map(note => ({ ...note, kind: 'sent', mine: true }))
+  ].sort((a, b) => a.at - b.at);
+  const feed = ui.worldChatFeed;
+  const follow = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 14;
+  const fragment = document.createDocumentFragment();
+  if (!rows.length) {
+    const empty = document.createElement('p');
+    empty.className = 'world-chat-empty';
+    empty.textContent = 'Aucun échange à proximité.';
+    fragment.append(empty);
+  }
+  for (const item of rows) {
+    const row = document.createElement('div');
+    row.className = 'world-chat-line';
+    const copy = document.createElement('div');
+    copy.className = 'world-chat-copy';
+    const author = document.createElement('strong');
+    author.textContent = (item.mine ? 'Toi' : item.name || 'Joueur') + ' · ';
+    copy.append(author);
+    if (item.kind === 'voice') {
+      const note = item.note;
+      const active = playing === note;
+      const play = document.createElement('button');
+      play.className = 'world-chat-action';
+      play.type = 'button';
+      play.textContent = active ? 'Ⅱ' : note.controller ? '…' : '▶';
+      play.title = active ? 'Mettre en pause' : note.url ? 'Écouter le vocal' : 'Charger le vocal';
+      play.setAttribute('aria-label', play.title + ' de ' + (note.name || 'Joueur'));
+      play.disabled = blocked || Boolean(note.controller) || Boolean(playing && !active);
+      play.onclick = () => {
+        if (active) { mpVoicePause(); mpChatRender(); }
+        else if (note.url) mpVoicePlay(note, false);
+        else { note.autoTried = true; void mpVoiceLoad(note); }
+      };
+      const close = document.createElement('button');
+      close.className = 'world-chat-action';
+      close.type = 'button';
+      close.textContent = '×';
+      close.title = 'Fermer le vocal';
+      close.setAttribute('aria-label', 'Fermer le vocal de ' + (note.name || 'Joueur'));
+      close.onclick = () => mpVoiceFinish(note);
+      row.append(play, close);
+      copy.append(note.hint || 'Vocal ' + Math.max(1, Math.round(note.ms / 1000)) + ' s');
+    } else if (item.kind === 'sent') {
+      copy.append('Vocal envoyé à ' + item.count + (item.count === 1 ? ' joueur' : ' joueurs'));
+    } else {
+      copy.append(item.text);
+    }
+    row.append(copy);
+    fragment.append(row);
+  }
+  feed.replaceChildren(fragment);
+  if (follow) feed.scrollTop = feed.scrollHeight;
 }
 
 function mpBindStatuses() {
