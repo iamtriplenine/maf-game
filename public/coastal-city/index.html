@@ -1086,6 +1086,17 @@ const VILLA = {
 };
 // Position de chaque assise dans le modèle de la villa (x, hauteur, z, angle en degrés).
 // Les identifiants sont stables : le serveur transmet le numéro de la place dans /presence.
+// MAF-LOFT16-V1 : ajout lateral a l'est de la villa, cote ouvert vers le salon.
+// Toutes les coordonnees LOFT sont dans le repere local de la villa.
+// Le modele du loft mesure ~14.93 x 14.93 ; son plancher est a y=0.677.
+const LOFT = {
+  x: 29.365, y: -0.677, z: 6.35, half: 7.466,
+  // Le modele pivote de 180 degres : sa face ouverte est vers la villa.
+  floorMinX: 29.365 - 7.466, floorMaxX: 29.365 + 7.466,
+  floorMinZ: 6.35 - 7.466, floorMaxZ: 6.35 + 7.466
+};
+const loftExtension = { model: null, loading: false, retryAt: 0, lights: [] };
+
 const VILLA_SEATS = [
   // Fauteuils de la terrasse, par paire autour de chaque table.
   [-1.50, 0.68, 6.91, 90], [1.82, 0.68, 6.91, -90],
@@ -1105,6 +1116,22 @@ const VILLA_SEATS = [
   z: VILLA.z + z * VILLA.scale, yaw: degrees * Math.PI / 180
 }));
 
+// Le sofa en L du loft accueille sept joueurs, avec identifiants fixes 33-39.
+// Coordonnees du modele source : x, y d'assise, z, angle avant rotation.
+const LOFT_SEATS = [
+  [-5.22, 1.12, 1.75, 90], [-5.22, 1.12, 0.16, 90],
+  [-5.22, 1.12, -1.42, 90], [-5.22, 1.12, -3.00, 90],
+  [-2.75, 1.12, -6.28, 0], [-1.20, 1.12, -6.28, 0],
+  [0.38, 1.12, -6.28, 0]
+].map(([x, y, z, degrees], index) => ({
+  id: 33 + index,
+  x: VILLA.x + (LOFT.x - x) * VILLA.scale,
+  y: VILLA.y + (LOFT.y + y) * VILLA.scale,
+  z: VILLA.z + (LOFT.z - z) * VILLA.scale,
+  yaw: degrees * Math.PI / 180 + Math.PI
+}));
+VILLA_SEATS.push(...LOFT_SEATS);
+
 const VILLA_PATH = [-2.2, (BEACH_Z - 0.68 - VILLA.z) / VILLA.scale, 2.2, -11.90,
   (CURB_H + 0.017 - VILLA.y) / VILLA.scale];
 const WORLD_MAP_PLACES = [{ label: 'Villa', x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale }];
@@ -1114,6 +1141,9 @@ const villaLighting = { rig: null, loading: false, retryAt: 0 };
 function villaGroundY(x, z, terrain) {
   if (!villa.model) return terrain;
   const u = (x - VILLA.x) / VILLA.scale, v = (z - VILLA.z) / VILLA.scale;
+  // Plancher du loft aligne sur le rez-de-chaussee de la villa, meme au-dessus du sable.
+  if (loftExtension.model && u >= LOFT.floorMinX && u <= LOFT.floorMaxX &&
+      v >= LOFT.floorMinZ && v <= LOFT.floorMaxZ) return VILLA.y;
   if (u < -24.2 || u > 23.2 || v < VILLA_PATH[1] || v > 19) return terrain;
   for (const [x0, z0, x1, z1, y] of VILLA.floors) {
     if (u >= x0 && u <= x1 && v >= z0 && v <= z1) return VILLA.y + y * VILLA.scale;
@@ -1391,6 +1421,28 @@ const laneNodePos = [];
 const nodeIdx = (i, j) => j * NX + i;
 const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
 
+function addLoftColliders() {
+  if (!loftExtension.model) return;
+  // La face x=+7.466 du modele est OUVERTE. Apres rotation elle jouxte la villa :
+  // pas de collision a cet endroit, le passage reste libre.
+  const parts = [
+    [-7.46, -7.50, 7.35, -7.40, 8.83],  // mur sud du modele (apres rotation)
+    [-7.04, 6.46, 7.19, 6.60, 8.83],    // baie du fond
+    [-7.22, -7.42, -7.04, 6.57, 8.83], // retour lateral
+    [-6.91, -7.68, -3.80, 3.57, 1.25],// grand cote du canape en L
+    [-3.80, -7.68, 1.84, -4.86, 1.25],// retour du canape
+    [-2.82, -2.90, 0.52, 1.90, 1.10]  // table centrale
+  ];
+  for (const [x0, z0, x1, z1, top] of parts) {
+    // Rotation PI : x'=LOFT.x-x, z'=LOFT.z-z.
+    addCollider(VILLA.x + (LOFT.x - x1) * VILLA.scale,
+      VILLA.z + (LOFT.z - z1) * VILLA.scale,
+      VILLA.x + (LOFT.x - x0) * VILLA.scale,
+      VILLA.z + (LOFT.z - z0) * VILLA.scale,
+      VILLA.y + (LOFT.y + top) * VILLA.scale, 1);
+  }
+}
+
 function addVillaColliders() {
   // Separate wall segments leave the city entrance, the inner door and the
   // new opening in the seafront glass clear for the player capsule.
@@ -1422,6 +1474,7 @@ function addVillaColliders() {
   for (const [x0, z0, x1, z1, top] of boxes) {
     addCollider(x + x0 * scale, z + z0 * scale, x + x1 * scale, z + z1 * scale, y + top * scale, 1);
   }
+  addLoftColliders();
 }
 
 async function loadVilla() {
@@ -1456,11 +1509,59 @@ async function loadVilla() {
     addVillaColliders();
     buildColliderHash();
     villa.model = model; // Independent of the generated city so a reset doesn't reload it.
+    loadLoft(); // Le loft est un objet supplementaire, jamais un remplacement de la villa.
   } catch (err) {
     villa.retryAt = nowMs() + 15000;
     console.warn('Villa World : chargement indisponible.', err);
   } finally {
     villa.loading = false;
+  }
+}
+
+async function loadLoft() {
+  if (!villa.model || loftExtension.model || loftExtension.loading) return;
+  loftExtension.loading = true;
+  try {
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const url = new URL('./loft-16-interior.glb', document.baseURI);
+    const { scene: model } = await new GLTFLoader().loadAsync(url.href);
+    // Herite de l'echelle 0.8 de la villa. Le dessus du plancher arrive a y=0.19.
+    model.position.set(LOFT.x, LOFT.y, LOFT.z);
+    model.rotation.y = Math.PI;
+    model.traverse(object => {
+      if (!object.isMesh) return;
+      object.castShadow = true;
+      object.receiveShadow = true;
+    });
+    // Deux sources chaudes discretes, visibles uniquement a proximite ;
+    // elles utilisent le gradateur deja applique aux luminaires de la villa.
+    const sources = [
+      [-1.9, 5.25, -1.65, 4.2], [3.6, 5.25, 3.25, 3.6]
+    ];
+    loftExtension.lights = sources.map(([x, y, z, intensity]) => {
+      const light = new THREE.PointLight(0xffdfb0, intensity, 13, 1.7);
+      light.position.set(x, y, z);
+      light.visible = false;
+      model.add(light);
+      return [light, intensity];
+    });
+    villa.model.add(model);
+    // Le plancher passe au-dessus du sable : soubassement continu sous le loft.
+    const support = new Geo();
+    support.box(LOFT.floorMinX, -1.1, LOFT.floorMinZ,
+      LOFT.floorMaxX, 0, LOFT.floorMaxZ, 2, true);
+    const foundation = new THREE.Mesh(support.build(), MATS.walk);
+    foundation.receiveShadow = true;
+    villa.model.add(foundation);
+    loftExtension.model = model;
+    if (villaLighting.rig) villaLighting.rig.sources.push(...loftExtension.lights);
+    addLoftColliders();
+    buildColliderHash();
+  } catch (err) {
+    loftExtension.retryAt = nowMs() + 15000;
+    console.warn('Villa World : chargement du loft indisponible.', err);
+  } finally {
+    loftExtension.loading = false;
   }
 }
 
@@ -1494,6 +1595,7 @@ async function loadVillaLighting() {
       bounce.add(material);
     });
     villa.model.add(fixtures);
+    if (loftExtension.model) sources.push(...loftExtension.lights);
     villaLighting.rig = { sources, emitters, bounce };
   } catch (err) {
     villaLighting.retryAt = nowMs() + 15000;
@@ -2367,7 +2469,11 @@ function updateSeatedCamera(input) {
 
 function drawVillaSeatButtons() {
   villaSeatUI.focused = null;
-  const nearVilla = villa.model && Math.hypot(player.x - VILLA.x, player.z - VILLA.z) < 24;
+  const nearVilla = villa.model && (
+    Math.hypot(player.x - VILLA.x, player.z - VILLA.z) < 24 ||
+    (loftExtension.model && Math.hypot(
+      player.x - (VILLA.x + LOFT.x * VILLA.scale),
+      player.z - (VILLA.z + LOFT.z * VILLA.scale)) < 16));
   if (!nearVilla || player.seating || player.mode !== 'walk' || menuOpen() ||
       ui.worldMapDialog.open || ui.worldStatusDialog.open) {
     ui.worldSeatLayer.hidden = true;
@@ -3097,6 +3203,10 @@ function buildMinimapBase() {
     g.fillRect(w2s(VILLA.x + x0 * VILLA.scale), w2s(VILLA.z + z0 * VILLA.scale),
       (x1 - x0) * VILLA.scale * mm.scale, (z1 - z0) * VILLA.scale * mm.scale);
   }
+  g.fillRect(w2s(VILLA.x + LOFT.floorMinX * VILLA.scale),
+    w2s(VILLA.z + LOFT.floorMinZ * VILLA.scale),
+    (LOFT.floorMaxX - LOFT.floorMinX) * VILLA.scale * mm.scale,
+    (LOFT.floorMaxZ - LOFT.floorMinZ) * VILLA.scale * mm.scale);
   mm.base = c;
   if (mm.destination) clearWorldMapRoute();
 }
@@ -4312,6 +4422,8 @@ function frame() {
   mpTick(simDt);
   if (!villa.model && !villa.loading && now >= villa.retryAt &&
       Math.hypot(playerX() - VILLA.x, playerZ() - VILLA.z) <= 175) loadVilla();
+  if (villa.model && !loftExtension.model && !loftExtension.loading && now >= loftExtension.retryAt &&
+      Math.hypot(playerX() - VILLA.x, playerZ() - VILLA.z) <= 175) loadLoft();
   if (player.mode === 'walk') animateCharacter(simDt);
   applyTrafficMeshes();
   applyPedMeshes();
