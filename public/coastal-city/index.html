@@ -1875,7 +1875,6 @@ const cam = {
   shake: 0, pos: null, look: null, userLook: 0, walkInputYaw: null
 };
 const CAM_MODES = [0.72, 1.0, 1.42];
-const WALK_FOLLOW_MAX_ZOOM = 1.6;
 
 function shake(a) { cam.shake = Math.min(1.2, cam.shake + a); }
 
@@ -1887,7 +1886,7 @@ function stepPlayer(dt, input) {
   const mag = Math.hypot(mx, mz);
   if (mag > 1) { mx /= mag; mz /= mag; }
   // Hold the movement axes steady while the camera turns to follow this input.
-  if (mag <= 0.05 || cam.userLook > 0 || cam.zoomU > WALK_FOLLOW_MAX_ZOOM) {
+  if (mag <= 0.05 || cam.userLook > 0) {
     cam.walkInputYaw = null;
   } else if (cam.walkInputYaw === null) {
     cam.walkInputYaw = cam.yaw;
@@ -2003,7 +2002,7 @@ function updateCamera(dt, input) {
   } else {
     tx = player.x; ty = player.y + 1.45; tz = player.z;
     baseDist = 5.0;
-    if (cam.walkInputYaw !== null && cam.userLook <= 0 && cam.zoomU <= WALK_FOLLOW_MAX_ZOOM &&
+    if (cam.walkInputYaw !== null && cam.userLook <= 0 &&
         Math.hypot(player.vx, player.vz) > 0.12) {
       const behind = Math.atan2(player.vx, player.vz) + Math.PI;
       cam.yaw += angDelta(cam.yaw, behind) * (1 - Math.pow(0.03, dt));
