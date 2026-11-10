@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { IconGlobe } from "../components/Icons";
+import { currentToken } from "../api/accounts";
+import { API_URL } from "../api/config";
+import { SKINS } from "../characters/skins";
 import "../styles/nav.css";
 import "../styles/world.css";
 
@@ -31,6 +34,25 @@ const leaveFullscreen = () => {
   }
 };
 
+// Les autres joueurs du monde apparaissent avec le skin de leur profil : le jeu (iframe) a besoin
+// de savoir quel fichier 3D correspond a chaque skin.
+const buildSkinTable = () => {
+  const out = {};
+  for (const s of SKINS) {
+    out[s.id] = {
+      file: s.file,
+      format: s.format,
+      rotation: s.rotation || 0,
+      movementType: s.movementType,
+      walkFile: s.walkFile || null,
+      runFile: s.runFile || null,
+    };
+  }
+  out["mutant-run"] = out["mutant-swipe"];
+  out["mutant-attack"] = out["mutant-swipe"];
+  return out;
+};
+
 export default function WorldPage() {
   const [playing, setPlaying] = useState(false);
   const frameRef = useRef(null);
@@ -56,7 +78,19 @@ export default function WorldPage() {
     const onPop = () => setPlaying(false);
     // Le bouton de sortie est maintenant dans le menu du jeu (iframe) : il nous previent par message.
     const onMsg = (e) => {
-      if (e.origin === window.location.origin && e.data && e.data.mafWorldExit) leave();
+      if (e.origin !== window.location.origin || !e.data) return;
+      if (e.data.mafWorldExit) {
+        leave();
+        return;
+      }
+      if (e.data.mafWorldHello && frameRef.current && e.source === frameRef.current.contentWindow) {
+        const token = currentToken();
+        if (!token) return; // visiteur non connecte : pas de multijoueur
+        e.source.postMessage(
+          { mafWorldInit: { api: API_URL, token, base: import.meta.env.BASE_URL, skins: buildSkinTable() } },
+          window.location.origin
+        );
+      }
     };
     window.addEventListener("popstate", onPop);
     window.addEventListener("message", onMsg);

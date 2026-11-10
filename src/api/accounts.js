@@ -73,6 +73,7 @@ async function request(path, { method = "GET", body, token, headers = {}, respon
       const data = await res.json().catch(() => ({}));
       const error = new Error(data.error || `Erreur serveur (${res.status}).`);
       error.status = res.status;
+      error.needsPhone = data.needs_phone === true;
       throw error;
     }
     return responseType === "blob" ? res.blob() : res.json().catch(() => ({}));
@@ -88,17 +89,25 @@ export function currentSession() {
   return readStored()?.user ?? null;
 }
 
-async function authenticate(path, pseudo, code, referralProof) {
+// Jeton de session (le monde 3D l'utilise pour montrer les vrais joueurs).
+export function currentToken() {
+  return readStored()?.token ?? null;
+}
+
+async function authenticate(path, pseudo, code, phone, referralProof) {
   if (!isValidPseudo(pseudo)) throw new Error("Le pseudo doit faire entre 3 et 20 caracteres.");
   if (!isValidCode(code)) throw new Error("Le code doit contenir exactement 10 chiffres.");
-  const { token, user } = await request(path, { method: "POST", body: { pseudo, code, ...(referralProof !== undefined ? {referral_proof:referralProof} : {}) } });
+  const { token, user } = await request(path, {
+    method: "POST",
+    body: { pseudo, code, ...(phone ? { phone } : {}), ...(referralProof !== undefined ? {referral_proof:referralProof} : {}) },
+  });
   clearAdminAccess();
   writeStored({ token, user });
   return user;
 }
 
-export const register = (pseudo, code, referralProof) => authenticate(referralProof === undefined ? "/api/register" : "/api/register-referred", pseudo, code, referralProof);
-export const login = (pseudo, code) => authenticate("/api/login", pseudo, code);
+export const register = (pseudo, code, referralProof) => authenticate(referralProof === undefined ? "/api/register" : "/api/register-referred", pseudo, code, undefined, referralProof);
+export const login = (pseudo, code, phone) => authenticate("/api/login", pseudo, code, phone);
 
 // Met a jour le solde ; deconnecte si la session a expire. Hors ligne : on garde la session.
 export async function refreshSession() {

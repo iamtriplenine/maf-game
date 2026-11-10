@@ -10,7 +10,8 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
   }
 }
 </script>
@@ -3329,6 +3330,7 @@ function frame() {
   stepMission(simDt);
   updateEnvironment(simDt);
   updateCamera(simDt, inp);
+  mpTick(simDt);
   if (player.mode === 'walk') animateCharacter(simDt);
   applyTrafficMeshes();
   applyPedMeshes();
@@ -3453,6 +3455,7 @@ function main() {
   _mark('actors');
   buildMinimapBase();
   bindInput();
+  mpInit();
   _mark('minimapInput');
   if (saved && validSave(saved)) applySave(saved, { allowRebuild: false });
   else { setQuality('auto', true); toast('Welcome to the coast — press M for your first delivery'); }
@@ -3581,6 +3584,219 @@ window.__gameDebug = {
 };
 
 /* -------------------------------------------------------------- boot */
+/* ---------------------------------------------------------------- MAF-WORLD-MP-V1
+   Vrais joueurs : chacun apparait avec le skin de son profil (donne par le serveur).
+   Les pietons fictifs de la ville ne changent pas. */
+const MP = { ready: false, api: '', token: '', base: '/', skins: {}, remotes: new Map(), cache: new Map(), loaders: null,
+  lastSend: 0, busy: false, gap: 400, fails: 0 };
+const MP_H = 1.75;
+const WALK_RX = /walk|marche|defile|catwalk|strut/i;
+
+function mpInit() {
+  if (window.parent === window) return;               // jeu ouvert seul : pas de multijoueur
+  addEventListener('message', e => {
+    if (e.origin !== window.location.origin || e.source !== window.parent) return;
+    const d = e.data && e.data.mafWorldInit;
+    if (!d || !d.token || !d.api) return;
+    MP.api = String(d.api).replace(/\/+$/, ''); MP.token = d.token; MP.base = d.base || '/';
+    MP.skins = d.skins || {}; MP.ready = true;
+  });
+  try { window.parent.postMessage({ mafWorldHello: true }, window.location.origin); } catch (err) {}
+  addEventListener('pagehide', () => {
+    if (!MP.ready) return;
+    try { fetch(MP.api + '/api/world/leave', { method: 'POST', keepalive: true, headers: { Authorization: 'Bearer ' + MP.token } }); } catch (err) {}
+  });
+}
+
+function mpSend() {
+  MP.busy = true;
+  const veh = player.mode === 'drive' && player.veh;
+  const body = {
+    x: playerX(), z: playerZ(), yaw: veh ? player.veh.yaw : player.yaw,
+    mv: (veh ? Math.abs(player.veh.speed) : player.speed) > 0.5 ? 1 : 0, veh: veh ? 1 : 0
+  };
+  fetch(MP.api + '/api/world/presence', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + MP.token },
+    body: JSON.stringify(body)
+  })
+    .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
+    .then(j => { MP.fails = 0; MP.gap = 400; mpApply(j.players || []); })
+    .catch(st => { MP.fails++; MP.gap = Math.min(5000, 400 * Math.pow(2, MP.fails)); if (st === 401) MP.ready = false; })
+    .then(() => { MP.busy = false; });
+}
+
+function mpTag(name) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(6,16,26,0.72)'; g.fillRect(6, 8, 244, 48);
+  g.font = '700 30px "Segoe UI", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#ffd166'; g.fillText(String(name).slice(0, 16), 128, 33);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false }));
+  sp.renderOrder = 998;
+  return sp;
+}
+
+function mpLoaders() {
+  if (!MP.loaders) {
+    MP.loaders = Promise.all([
+      import('three/addons/loaders/GLTFLoader.js'),
+      import('three/addons/loaders/FBXLoader.js'),
+      import('three/addons/utils/SkeletonUtils.js')
+    ]).then(m => ({ gltf: new m[0].GLTFLoader(), fbx: new m[1].FBXLoader(), clone: m[2].clone }));
+  }
+  return MP.loaders;
+}
+
+function mpPrepExtra(clip) {          // marche empruntee : on retire la translation des hanches
+  const k = clip.clone();
+  k.tracks = k.tracks.filter(t => !/mixamorigHips\.position$/i.test(t.name));
+  return k;
+}
+function mpFlatten(clip) {            // course sur place : on garde le personnage au meme endroit
+  const k = clip.clone();
+  for (const t of k.tracks) {
+    if (!/mixamorigHips\.position$/i.test(t.name)) continue;
+    const x = t.values[0], z = t.values[2];
+    for (let i = 0; i < t.values.length; i += 3) { t.values[i] = x; t.values[i + 2] = z; }
+  }
+  return k;
+}
+
+function mpSource(id) {
+  if (MP.cache.has(id)) return MP.cache.get(id);
+  const pr = (async () => {
+    const meta = MP.skins[id] || MP.skins.loki;
+    if (!meta || !meta.file) throw new Error('skin inconnu');
+    const L = await mpLoaders();
+    const load = file => new Promise((ok, ko) => (/\.fbx$/i.test(file) ? L.fbx : L.gltf).load(MP.base + file, ok, undefined, ko));
+    const main = await load(meta.file);
+    const root = /\.fbx$/i.test(meta.file) ? main : main.scene;
+    const own = (main.animations || []).filter(c => c.duration > 0 && c.tracks.length > 0);
+    let exWalk = null;
+    for (const f of [meta.walkFile, meta.runFile]) {
+      if (!f || exWalk) continue;
+      try {
+        const o = await load(f);
+        const c = (o.animations || []).find(k => k.duration > 0 && k.tracks.length > 0);
+        if (c) exWalk = mpPrepExtra(c);
+      } catch (err) { /* animation de marche absente : on garde le mouvement du profil */ }
+    }
+    const type = meta.movementType || 'walk';
+    let plan = { mode: 'none' };
+    if (type !== 'none') {
+      let m = null;
+      if (type === 'dance') m = own.find(c => /danc|samba|danse/i.test(c.name)) || null;
+      else if (type === 'walk') m = own.find(c => WALK_RX.test(c.name)) || null;
+      if (!m && own.length) m = own.reduce((b, c) => (c.tracks.length > b.tracks.length ? c : b));
+      if (m && (type === 'run' || type === 'swipe' || type === 'attack')) m = mpFlatten(m);
+      const idle = own.find(c => /idle|repos|stand/i.test(c.name)) || null;
+      const walk = exWalk || (type === 'walk' ? (own.find(c => WALK_RX.test(c.name)) || m) : null);
+      if (m || walk) plan = { mode: 'anim', main: m, idle, walk, hasExtra: !!exWalk, type };
+    }
+    return { L, root, meta, plan };
+  })();
+  MP.cache.set(id, pr);
+  pr.catch(() => {});
+  return pr;
+}
+
+function mpLoadSkin(r) {
+  mpSource(r.skin).then(src => {
+    if (MP.remotes.get(r.id) !== r) return;           // le joueur est parti pendant le chargement
+    const model = src.L.clone(src.root);
+    model.traverse(o => { if (o.isMesh) o.frustumCulled = false; });
+    const p0 = model.position.clone();
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3()), ctr = box.getCenter(new THREE.Vector3());
+    const s = MP_H / Math.max(size.y, 0.01);
+    model.scale.multiplyScalar(s);
+    model.position.set(-(ctr.x - p0.x) * s, -(box.min.y - p0.y) * s, -(ctr.z - p0.z) * s);
+    const spin = new THREE.Group(); spin.rotation.y = src.meta.rotation || 0; spin.add(model);
+    r.group.remove(r.ph); r.group.add(spin); r.model = model;
+    if (src.plan.mode === 'anim') { r.mixer = new THREE.AnimationMixer(model); r.plan = src.plan; }
+  }).catch(() => { /* on garde la silhouette bleue + le pseudo */ });
+}
+
+function mpCreate(p) {
+  const group = new THREE.Group();
+  const ph = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 1.0, 4, 8), new THREE.MeshStandardMaterial({ color: 0x4aa3ff }));
+  ph.position.y = 0.78; group.add(ph);
+  const tag = mpTag(p.name);
+  scene.add(group); scene.add(tag);
+  const r = { id: p.id, skin: p.skin, name: p.name, group, tag, ph, model: null, mixer: null, plan: null, acts: new Map(), cur: null,
+    x: p.x, z: p.z, yaw: p.yaw, tx: p.x, tz: p.z, tyaw: p.yaw, mv: false, veh: false };
+  mpLoadSkin(r);
+  return r;
+}
+
+function mpRemove(id) {
+  const r = MP.remotes.get(id);
+  if (!r) return;
+  MP.remotes.delete(id);
+  try {
+    scene.remove(r.group); scene.remove(r.tag);
+    if (r.mixer) { r.mixer.stopAllAction(); if (r.model) r.mixer.uncacheRoot(r.model); }
+    if (r.tag.material.map) r.tag.material.map.dispose();
+    r.tag.material.dispose();
+  } catch (err) {}
+}
+
+function mpApply(list) {
+  const seen = new Set();
+  for (const p of list) {
+    seen.add(p.id);
+    let r = MP.remotes.get(p.id);
+    if (r && r.skin !== p.skin) { mpRemove(p.id); r = null; }     // il a change de skin
+    if (!r) { r = mpCreate(p); MP.remotes.set(p.id, r); }
+    if (r.name !== p.name) {
+      scene.remove(r.tag); r.tag.material.map.dispose(); r.tag.material.dispose();
+      r.tag = mpTag(p.name); scene.add(r.tag); r.name = p.name;
+    }
+    r.tx = p.x; r.tz = p.z; r.tyaw = p.yaw; r.mv = !!p.mv; r.veh = !!p.veh;
+  }
+  for (const id of Array.from(MP.remotes.keys())) if (!seen.has(id)) mpRemove(id);
+}
+
+function mpPlay(r, moving) {
+  const pl = r.plan;
+  if (!r.mixer || !pl) return;
+  let clip, paused = false;
+  if (moving) clip = pl.walk || pl.main;
+  else if (pl.idle) clip = pl.idle;
+  else if (pl.walk && !pl.hasExtra && pl.type === 'walk') { clip = pl.walk; paused = true; }
+  else clip = pl.main || pl.walk;
+  if (!clip) return;
+  let act = r.acts.get(clip);
+  if (!act) { act = r.mixer.clipAction(clip); r.acts.set(clip, act); }
+  if (r.cur !== act) { if (r.cur) r.cur.fadeOut(0.2); act.reset().fadeIn(0.2).play(); r.cur = act; }
+  act.timeScale = paused ? 0 : 1;
+}
+
+function mpTick(dt) {
+  if (!MP.ready) return;
+  const now = nowMs();
+  if (!MP.busy && !document.hidden && now - MP.lastSend >= MP.gap) { MP.lastSend = now; mpSend(); }
+  const k = 1 - Math.exp(-dt * 9);
+  for (const r of MP.remotes.values()) {
+    if (Math.hypot(r.tx - r.x, r.tz - r.z) > 60) { r.x = r.tx; r.z = r.tz; }     // respawn : on ne glisse pas dans la ville
+    const moving = r.mv || Math.hypot(r.tx - r.x, r.tz - r.z) > 0.3;
+    r.x += (r.tx - r.x) * k; r.z += (r.tz - r.z) * k;
+    r.yaw += angDelta(r.yaw, r.tyaw) * k;
+    const gy = groundY(r.x, r.z);
+    r.group.position.set(r.x, gy, r.z);
+    r.group.rotation.y = r.yaw;
+    r.group.visible = !r.veh;                                // en voiture : on ne voit que son pseudo
+    const d = Math.hypot(camera.position.x - r.x, camera.position.y - gy, camera.position.z - r.z);
+    const sk = clamp(d / 16, 1, 40);
+    r.tag.scale.set(1.6 * sk, 0.4 * sk, 1);
+    r.tag.position.set(r.x, gy + 2.1 + 0.25 * sk, r.z);
+    if (r.mixer && r.group.visible && d < 140) { mpPlay(r, moving); r.mixer.update(dt); }
+  }
+}
+
 async function boot() {
   try {
     THREE = await import('three');
