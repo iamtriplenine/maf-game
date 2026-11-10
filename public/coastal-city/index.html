@@ -1605,6 +1605,7 @@ async function loadVillaLighting() {
   }
 }
 
+let villaLightSelectAt = 0, villaLightChoices = new Set();
 function updateVillaLighting(night, x, z) {
   if (!villa.model) return;
   const distance = Math.hypot(x - VILLA.x, z - VILLA.z);
@@ -1617,10 +1618,22 @@ function updateVillaLighting(night, x, z) {
   // local sources only near the villa. The source count stays fixed there.
   const brightness = lerp(0.38, 1, night);
   const proximity = 1 - smoothstep(60, 86, distance);
-  for (const [light, intensity] of rig.sources) {
-    light.visible = proximity > 0;
-    light.intensity = intensity * brightness * proximity;
+  // 9 luminaires dans la villa + 2 dans le loft : n'en calculer que quatre
+  // autour du joueur. Les surfaces emissives conservent l'ambiance generale.
+  if (proximity > 0 && (nowMs() - villaLightSelectAt > 250 || villaLightChoices.size === 0)) {
+    villaLightSelectAt = nowMs();
+    const ranked = rig.sources.map(([light], i) => {
+      light.getWorldPosition(_v3a);
+      const dx = _v3a.x - x, dz = _v3a.z - z, dy = _v3a.y - (player.y + 1.5);
+      return { i, d2: dx * dx + dz * dz + dy * dy * 0.5 };
+    });
+    ranked.sort((a, b) => a.d2 - b.d2);
+    villaLightChoices = new Set(ranked.slice(0, 4).map(item => item.i));
   }
+  rig.sources.forEach(([light, intensity], i) => {
+    light.visible = proximity > 0 && villaLightChoices.has(i);
+    light.intensity = light.visible ? intensity * brightness * proximity : 0;
+  });
   for (const [material, intensity] of rig.emitters) {
     material.emissiveIntensity = intensity * brightness;
   }
@@ -1629,6 +1642,7 @@ function updateVillaLighting(night, x, z) {
 
 // A fixed light budget keeps street lighting affordable on mobile.
 const streetLighting = { positions: [], sources: [] };
+let lastStreetLightingAt = 0;
 function buildStreetLighting(group, lamps) {
   streetLighting.positions = lamps.map(p => new THREE.Vector3(
     p.x + Math.sin(p.ry) * 1.75, CURB_H + 6.15,
@@ -1641,11 +1655,18 @@ function buildStreetLighting(group, lamps) {
   });
 }
 function updateStreetLighting(night, x, z) {
-  const nearby = streetLighting.positions
-    .map(position => ({ position, distance: Math.hypot(position.x - x, position.z - z) }))
-    .filter(p => p.distance < 36)
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, streetLighting.sources.length);
+  // Conserver uniquement les quatre lampadaires proches sans trier toute la ville.
+  const nearby = [];
+  for (const position of streetLighting.positions) {
+    const dx = position.x - x, dz = position.z - z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 >= 1296) continue;
+    let i = 0;
+    while (i < nearby.length && nearby[i].d2 <= d2) i++;
+    if (i >= streetLighting.sources.length) continue;
+    nearby.splice(i, 0, { position, d2, distance: Math.sqrt(d2) });
+    if (nearby.length > streetLighting.sources.length) nearby.pop();
+  }
   streetLighting.sources.forEach((light, i) => {
     const lamp = nearby[i];
     // Keep the source count stable, including in daylight, to avoid shader recompiles.
@@ -4200,11 +4221,12 @@ function importSaveText(txt) {
 }
 
 /* --------------------------------------------------------- quality */
-const QUAL = { mode: 'auto', level: 2, lowStreak: 0, highStreak: 0 };
+/* MAF-WORLD-PERF-20261110 : demarrage equilibre pour eviter les a-coups GPU. */
+const QUAL = { mode: 'auto', level: 1, lowStreak: 0, highStreak: 0 };
 const QL = [
   { pr: 1.0, shadow: 0, fog: 430, name: 'Low' },
-  { pr: 1.25, shadow: 512, fog: 640, name: 'Medium' },
-  { pr: 1.75, shadow: 1024, fog: 900, name: 'High' }
+  { pr: 1.1, shadow: 512, fog: 640, name: 'Medium' },
+  { pr: 1.5, shadow: 768, fog: 900, name: 'High' }
 ];
 function applyLevel(l) {
   QUAL.level = clamp(l, 0, 2);
@@ -4278,7 +4300,10 @@ function updateEnvironment(dt) {
   // night dressing: window lights, lamp heads, ground pools, headlights
   const n = env.night;
   updateVillaLighting(n, px, pz);
-  updateStreetLighting(n, px, pz);
+  if (nowMs() - lastStreetLightingAt > 125) {
+    lastStreetLightingAt = nowMs();
+    updateStreetLighting(n, px, pz);
+  }
   for (const m of MATS.facades) m.emissiveIntensity = n * 0.95;
   for (const m of MATS.podiums) m.emissiveIntensity = n * 0.9;
   MATS.lamp.emissiveIntensity = n;
@@ -4372,13 +4397,15 @@ function rebuildCity(seed) {
 let lastT = 0, accum = 0, fpsAcc = 0, fpsCount = 0, fpsShown = 60, lastFpsT = 0;
 let frameNo = 0, lastSteps = 0, lastReal = 0;
 const clockLog = []; let lastClockLog = 0;
-const FIXED = 1 / 60, MAX_SUB = 12;
+const FIXED = 1 / 60, MAX_SUB = 5; // evite la spirale de calculs apres une image lente
 const frameTimes = [];
 let perfOn = false;
 
 function frame() {
   requestAnimationFrame(frame);
   const now = nowMs();
+  // Un onglet masque ne doit pas accumuler des calculs inutiles.
+  if (document.hidden) { lastT = now; accum = 0; return; }
   let real = (now - lastT) / 1000;
   lastT = now;
   if (real <= 0) real = 0.0001;
@@ -4438,12 +4465,12 @@ function frame() {
   hudAccum += real;
   if (hudAccum > 0.12 || hudDirty) { hudAccum = 0; hudDirty = false; updateHUD(); updatePrompt(); }
   mmAccum += real;
-  if (mmAccum > 0.09) { mmAccum = 0; drawMinimap(); }
+  if (mmAccum > 0.20) { mmAccum = 0; drawMinimap(); }
   updateObjArrow();
 
   renderer.render(scene, camera);
-  drawVillaSeatButtons();
-  mpDrawStatuses();
+  // Projections et tests de visibilite DOM a ~20 Hz au lieu de chaque image.
+  if (frameNo % 3 === 0) { drawVillaSeatButtons(); mpDrawStatuses(); }
 }
 
 function governQuality() {
@@ -4452,7 +4479,8 @@ function governQuality() {
   if (fpsShown < 38) { QUAL.lowStreak++; QUAL.highStreak = 0; } else if (fpsShown > 55) { QUAL.highStreak++; QUAL.lowStreak = 0; }
   else { QUAL.lowStreak = 0; QUAL.highStreak = 0; }
   if (QUAL.lowStreak >= 4 && QUAL.level > 0) { applyLevel(QUAL.level - 1); QUAL.lowStreak = 0; }
-  if (QUAL.highStreak >= 12 && QUAL.level < 2) { applyLevel(QUAL.level + 1); QUAL.highStreak = 0; }
+  // La qualite automatique ne monte pas en Ultra/High sur les PC modestes.
+  if (QUAL.highStreak >= 16 && QUAL.level < 1) { applyLevel(1); QUAL.highStreak = 0; }
 }
 function drawPerf() {
   const info = renderer.info.render;
@@ -4495,9 +4523,9 @@ function main() {
   cam.pos = new THREE.Vector3(0, 8, 20);
   cam.look = new THREE.Vector3(0, 1, 0);
 
-  renderer = new THREE.WebGLRenderer({ canvas: ui.gl, antialias: window.devicePixelRatio < 1.6, powerPreference: 'high-performance' });
+  renderer = new THREE.WebGLRenderer({ canvas: ui.gl, antialias: (window.devicePixelRatio || 1) <= 1.25, powerPreference: 'high-performance' });
   renderer.setSize(window.innerWidth, window.innerHeight, false);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.1));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -4525,7 +4553,7 @@ function main() {
 
   sun = new THREE.DirectionalLight(0xfff0cf, 1.7);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.mapSize.set(512, 512);
   const sc = sun.shadow.camera;
   sc.left = -78; sc.right = 78; sc.top = 78; sc.bottom = -78; sc.near = 1; sc.far = 340;
   sun.shadow.bias = -0.0016; sun.shadow.normalBias = 0.05;
