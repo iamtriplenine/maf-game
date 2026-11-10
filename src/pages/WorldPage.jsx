@@ -6,7 +6,7 @@ import "../styles/world.css";
 // Page "World" : on arrive sur un ecran calme avec un bouton "Acceder au monde".
 // Le jeu (Viva City 3D, dans public/viva-city) ne s'ouvre qu'apres l'appui sur ce bouton,
 // en plein ecran, pour ne jamais le lancer par erreur en touchant l'onglet World.
-const GAME_URL = `${import.meta.env.BASE_URL}viva-city/index.html`;
+const GAME_URL = `${import.meta.env.BASE_URL}coastal-city/index.html`;
 
 const tryFullscreen = () => {
   try {
