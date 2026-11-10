@@ -1,21 +1,23 @@
 import { useRef, useState } from "react";
-import { IconGamepad, IconUser } from "./Icons";
+import { IconGamepad, IconGlobe, IconUser } from "./Icons";
 
-// Barre de navigation du bas : Game (gauche) | Profil (droite).
-// On peut APPUYER sur un cote, ou GLISSER le doigt / la souris d'un cote a l'autre.
+// Barre de navigation du bas : Game (gauche) | World (milieu) | Profil (droite).
+// On peut APPUYER sur un bouton, ou GLISSER le doigt / la souris d'un bouton a l'autre.
 const ITEMS = [
   { id: "game", label: "Game", Icon: IconGamepad },
+  { id: "world", label: "World", Icon: IconGlobe },
   { id: "profile", label: "Profil", Icon: IconUser },
 ];
+const COUNT = ITEMS.length;
 const PAD = 5; // doit rester egal a --nav-pad dans nav.css
 const DRAG_START = 5; // pixels avant de considerer que c'est un glissement
 
-const clamp = (n) => Math.min(1, Math.max(0, n));
+const clamp = (n) => Math.min(COUNT - 1, Math.max(0, n));
 
 export default function BottomNav({ value, onChange }) {
   const rootRef = useRef(null);
   const gesture = useRef(null);
-  const [dragPos, setDragPos] = useState(null); // 0 (Game) .. 1 (Profil) pendant le glissement
+  const [dragPos, setDragPos] = useState(null); // 0 (Game) .. 2 (Profil) pendant le glissement
 
   const index = Math.max(0, ITEMS.findIndex((item) => item.id === value));
   const pos = dragPos ?? index;
@@ -31,7 +33,7 @@ export default function BottomNav({ value, onChange }) {
     gesture.current = {
       startX: event.clientX,
       startPos: index,
-      track: (rect.width - PAD * 2) / 2, // largeur d'une moitie
+      track: (rect.width - PAD * 2) / COUNT, // largeur d'un bouton
       rect,
       moved: false,
       pos: index,
@@ -62,15 +64,17 @@ export default function BottomNav({ value, onChange }) {
     setDragPos(null);
     if (cancelled) return;
     if (g.moved) {
-      choose(g.pos >= 0.5 ? 1 : 0); // on lache : on va du cote le plus proche
+      choose(Math.round(g.pos)); // on lache : on va vers le bouton le plus proche
     } else {
-      choose(event.clientX - g.rect.left < g.rect.width / 2 ? 0 : 1); // simple appui
+      // simple appui : on trouve le bouton touche
+      const x = event.clientX - g.rect.left - PAD;
+      choose(clamp(Math.floor(x / g.track)));
     }
   };
 
   const onKeyDown = (event) => {
-    if (event.key === "ArrowLeft") choose(0);
-    if (event.key === "ArrowRight") choose(1);
+    if (event.key === "ArrowLeft") choose(clamp(index - 1));
+    if (event.key === "ArrowRight") choose(clamp(index + 1));
   };
 
   return (
@@ -97,7 +101,7 @@ export default function BottomNav({ value, onChange }) {
             if (event.detail === 0) choose(i);
           }}
         >
-          <Icon size={26} />
+          <Icon size={24} />
           <span>{label}</span>
         </button>
       ))}

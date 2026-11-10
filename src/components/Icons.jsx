@@ -110,3 +110,11 @@ export const IconWithdraw = (props) => (
 export const IconHistory = (props) => (
   <Svg {...props}><path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7M12 7v5l3 2" /></Svg>
 );
+
+export const IconGlobe = (props) => (
+  <Svg {...props}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18" />
+    <path d="M12 3c2.6 2.6 4 5.7 4 9s-1.4 6.4-4 9c-2.6-2.6-4-5.7-4-9s1.4-6.4 4-9z" />
+  </Svg>
+);

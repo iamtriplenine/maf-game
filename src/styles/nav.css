@@ -22,8 +22,8 @@
 .bottom-nav {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  width: min(300px, 100%);
+  grid-template-columns: repeat(3, 1fr);
+  width: min(360px, 100%);
   height: var(--nav-h);
   padding: var(--nav-pad);
   border: 1px solid var(--border);
@@ -45,7 +45,7 @@
   top: var(--nav-pad);
   bottom: var(--nav-pad);
   left: var(--nav-pad);
-  width: calc(50% - var(--nav-pad));
+  width: calc((100% - var(--nav-pad) * 2) / 3);
   border: 1px solid var(--accent);
   border-radius: var(--r-pill);
   background: linear-gradient(180deg, var(--glass-strong), var(--accent-soft));

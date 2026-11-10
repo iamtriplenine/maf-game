@@ -12,15 +12,17 @@ import PenaltyDuelAlert from "./components/PenaltyDuelAlert";
 import DepositReminder from "./components/DepositReminder"; // MAF_RAPPELS_V1
 import AdminPanel from "./components/AdminPanel";
 import Studio from "./pages/Studio";
+import WorldPage from "./pages/WorldPage";
 
-const HASHES = { studio: "#studio", game: "#game", profile: "#profil" };
+const HASHES = { studio: "#studio", game: "#game", world: "#world", profile: "#profil" };
 // Ordre de gauche a droite dans la barre du bas (sert au sens du slide)
-const ORDER = { game: 0, profile: 1 };
+const ORDER = { game: 0, world: 1, profile: 2 };
 
 const readView = () => {
   const hash = window.location.hash;
   if (hash === HASHES.studio) return "studio";
   if (hash === HASHES.game) return "game";
+  if (hash === HASHES.world) return "world";
   return "profile";
 };
 
@@ -55,7 +57,7 @@ export default function App() {
     direction = ORDER[view] > ORDER[previous.current] ? "right" : "left";
   }
 
-  const showNav = view === "game" || view === "profile";
+  const showNav = view === "game" || view === "world" || view === "profile";
 
   return (
     <>
@@ -69,6 +71,7 @@ export default function App() {
       <div key={view} className={`page page--${direction}`}>
         {view === "studio" && <Studio onBack={() => go("profile")} />}
         {view === "game" && <GamePage />}
+        {view === "world" && <WorldPage />}
         {view === "profile" && <ProfilePage onOpenStudio={() => go("studio")} />}
       </div>
       {ownerPanel && <AdminPanel key={ownerPanel.transaction?.id || ownerPanel.tab} initialTab={ownerPanel.tab || 'deposits'} initialTransaction={ownerPanel.transaction || null} onClose={()=>setOwnerPanel(null)} />}
