@@ -1500,6 +1500,72 @@ function addFastFoodColliders() {
     FASTFOOD.y+h*FASTFOOD.scale, 1);
 }
 
+// MAF-PERF-V1 : optimise le fast-food SANS changer son apparence.
+// - verre "transmission" (qui force un 2e rendu de toute la scene) -> verre transparent classique (le GLB l'est deja a 25 %)
+// - pieces fusionnees par materiau et par zone (770 appels de dessin -> quelques dizaines)
+// - ombres retirees sur les tout petits objets ; matrices figees (plus de recalcul a chaque image)
+// Tout ou rien : si la moindre etape echoue, le modele d'origine est garde tel quel.
+async function optimizeFastfood(model) {
+  try {
+    const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js');
+    model.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(model.matrixWorld).invert();
+    const rel = new THREE.Matrix4(), bb = new THREE.Box3(), size = new THREE.Vector3(), ctr = new THREE.Vector3();
+    const CELL = 24;
+    const groups = new Map(), dropped = [], glass = new Set();
+    model.traverse(obj => {
+      if (!obj.isMesh) return;
+      let vis = true;
+      for (let o = obj; o && o !== model; o = o.parent) if (!o.visible) { vis = false; break; }
+      if (!vis) { dropped.push(obj); return; }                      // elements deja masques (portes, decors lointains)
+      const mat = obj.material, geo = obj.geometry;
+      if (!mat || Array.isArray(mat) || obj.isSkinnedMesh || obj.isInstancedMesh || !geo.attributes.position ||
+          (geo.groups && geo.groups.length > 1) || (geo.morphAttributes && Object.keys(geo.morphAttributes).length)) return;
+      if (mat.transmission > 0 && !glass.has(mat)) {
+        glass.add(mat);
+        mat.transmission = 0; mat.transparent = true; mat.depthWrite = false; mat.needsUpdate = true;
+      }
+      rel.multiplyMatrices(inv, obj.matrixWorld);
+      if (rel.determinant() < 0) return;                            // miroir : on ne touche pas
+      if (!geo.boundingBox) geo.computeBoundingBox();
+      bb.copy(geo.boundingBox).applyMatrix4(obj.matrixWorld);
+      bb.getSize(size);
+      const cast = !!obj.castShadow && Math.max(size.x, size.y, size.z) >= 0.5;
+      bb.getCenter(ctr).applyMatrix4(inv);
+      const attrs = Object.keys(geo.attributes).sort().map(n => n + geo.attributes[n].itemSize + (geo.attributes[n].normalized ? 'n' : '')).join(',');
+      const key = [mat.uuid, cast ? 1 : 0, obj.receiveShadow ? 1 : 0, Math.floor(ctr.x / CELL), Math.floor(ctr.z / CELL), geo.index ? 1 : 0, attrs].join('|');
+      let g = groups.get(key);
+      if (!g) { g = { mat, cast, recv: !!obj.receiveShadow, list: [] }; groups.set(key, g); }
+      g.list.push({ obj, m: rel.clone() });
+    });
+    const built = [], replaced = [];
+    for (const g of groups.values()) {
+      if (g.list.length < 2) continue;
+      const geos = g.list.map(e => e.obj.geometry.clone().applyMatrix4(e.m));
+      const merged = mergeGeometries(geos, false);
+      if (!merged) continue;
+      const mesh = new THREE.Mesh(merged, g.mat);
+      mesh.castShadow = g.cast; mesh.receiveShadow = g.recv; mesh.name = 'ff-merged';
+      built.push(mesh);
+      for (const e of g.list) replaced.push(e.obj);
+    }
+    for (const m of built) model.add(m);
+    for (const o of replaced.concat(dropped)) { if (o.parent) o.parent.remove(o); if (o.geometry) o.geometry.dispose(); }
+    // petits objets restants : pas d'ombre portee
+    model.traverse(o => {
+      if (!o.isMesh || o.name === 'ff-merged' || !o.castShadow || !o.geometry.boundingBox) return;
+      bb.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld).getSize(size);
+      if (Math.max(size.x, size.y, size.z) < 0.5) o.castShadow = false;
+    });
+    model.updateMatrixWorld(true);                                  // dernier calcul, puis tout est fige
+    model.matrixAutoUpdate = false;
+    model.matrixWorldAutoUpdate = false;
+    console.info('Fastfood optimise :', replaced.length, 'pieces ->', built.length, 'blocs ;', glass.size, 'verre(s) simplifie(s).');
+  } catch (error) {
+    console.warn('Fastfood : optimisation ignoree (modele d\'origine conserve).', error);
+  }
+}
+
 async function loadFastFood() {
   if (fastfood.model || fastfood.loading) return;
   fastfood.loading = true;
@@ -1542,6 +1608,7 @@ async function loadFastFood() {
       obj.castShadow = !tree;
     });
     console.info('Fastfood :', hiddenScenery, 'elements exterieurs masques (emprise reduite).');
+    await optimizeFastfood(model);
     scene.add(model);
     fastfood.model = model;
     buildFastfoodLights();
@@ -1581,11 +1648,7 @@ function updateFastfoodLights(night,x,z) {
   if (!fastfood.model || !fastfoodLights.sources.length) return;
   const d=Math.hypot(x-FASTFOOD.x,z-FASTFOOD.z);
   const near=1-smoothstep(85,115,d);
-  for (const {light,power,outside} of fastfoodLights.sources) {
-    const level=power*(outside ? night : (0.35+0.65*night))*near;
-    light.intensity=level;
-    light.visible=level>0.015;
-  }
+  // MAF-PERF-V1 : les lumieres du fast-food sont pilotees par le groupe fixe (updateStreetLighting).
   for (const {bulb,outside} of fastfoodLights.bulbs) {
     bulb.visible=night>(outside?0.06:0.25) && d<230;
   }
@@ -1765,41 +1828,90 @@ function updateVillaLighting(night, x, z) {
   // local sources only near the villa. The source count stays fixed there.
   const brightness = lerp(0.38, 1, night);
   const proximity = 1 - smoothstep(60, 86, distance);
-  for (const [light, intensity] of rig.sources) {
-    light.visible = proximity > 0;
-    light.intensity = intensity * brightness * proximity;
-  }
+  // MAF-PERF-V1 : les lumieres de la villa et du loft sont pilotees par le groupe fixe (updateStreetLighting).
   for (const [material, intensity] of rig.emitters) {
     material.emissiveIntensity = intensity * brightness;
   }
   for (const material of rig.bounce) material.emissiveIntensity = night * 0.17;
 }
 
-// A fixed light budget keeps street lighting affordable on mobile.
-const streetLighting = { positions: [], sources: [] };
+// MAF-PERF-V1 : groupe FIXE de lumieres partage par la ville, le fast-food, la villa et le loft.
+// Le nombre de lumieres ne change JAMAIS (changer ce nombre force la recompilation de tous les shaders
+// et fige le jeu). A chaque image, les LIGHT_POOL sources les plus utiles autour du joueur sont attribuees.
+const LIGHT_POOL = 8;
+const streetLighting = { positions: [], sources: [], col: null };
+const _lp = { n: 0, S: Array.from({ length: LIGHT_POOL }, () => ({ score: 0, i: 0, x: 0, y: 0, z: 0, color: null, dist: 18, dec: 1 })) };
 function buildStreetLighting(group, lamps) {
   streetLighting.positions = lamps.map(p => new THREE.Vector3(
     p.x + Math.sin(p.ry) * 1.75, CURB_H + 6.15,
     p.z + Math.cos(p.ry) * 1.75));
-  streetLighting.sources = Array.from({ length: 4 }, () => {
+  streetLighting.col = new THREE.Color(0xffd9a0);
+  streetLighting.sources = Array.from({ length: LIGHT_POOL }, () => {
     const light = new THREE.PointLight(0xffd9a0, 0, 18, 1);
     light.castShadow = false;
     group.add(light);
     return light;
   });
 }
+function lpOffer(i, x, y, z, color, dist, dec, px, pz) {
+  if (i < 0.01) return;
+  const score = i * (1 - Math.min(1, Math.hypot(x - px, z - pz) / (dist * 1.5)));
+  if (score <= 0.004) return;
+  const S = _lp.S;
+  let n = _lp.n;
+  if (n >= LIGHT_POOL) { if (score <= S[LIGHT_POOL - 1].score) return; n = LIGHT_POOL - 1; }
+  const slot = S[n];
+  let k = n;
+  while (k > 0 && S[k - 1].score < score) { S[k] = S[k - 1]; k--; }
+  S[k] = slot;
+  slot.score = score; slot.i = i; slot.x = x; slot.y = y; slot.z = z; slot.color = color; slot.dist = dist; slot.dec = dec;
+  if (_lp.n < LIGHT_POOL) _lp.n++;
+}
 function updateStreetLighting(night, x, z) {
-  const nearby = streetLighting.positions
-    .map(position => ({ position, distance: Math.hypot(position.x - x, position.z - z) }))
-    .filter(p => p.distance < 36)
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, streetLighting.sources.length);
-  streetLighting.sources.forEach((light, i) => {
-    const lamp = nearby[i];
-    // Keep the source count stable, including in daylight, to avoid shader recompiles.
-    light.intensity = lamp ? night * 1.8 * (1 - smoothstep(18, 36, lamp.distance)) : 0;
-    if (lamp) light.position.copy(lamp.position);
-  });
+  const pool = streetLighting.sources;
+  if (!pool.length) return;
+  _lp.n = 0;
+  if (night > 0.01) {                                   // lampadaires
+    const pos = streetLighting.positions, col = streetLighting.col;
+    for (let k = 0; k < pos.length; k++) {
+      const p = pos[k];
+      const dx = p.x - x, dz = p.z - z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= 1296) continue;                         // 36 m
+      lpOffer(night * 1.8 * (1 - smoothstep(18, 36, Math.sqrt(d2))), p.x, p.y, p.z, col, 18, 1, x, z);
+    }
+  }
+  if (fastfood.model && fastfoodLights.sources.length) {   // fast-food
+    const near = 1 - smoothstep(85, 115, Math.hypot(x - FASTFOOD.x, z - FASTFOOD.z));
+    if (near > 0) {
+      for (const s of fastfoodLights.sources) {
+        const L = s.light;
+        lpOffer(s.power * (s.outside ? night : 0.35 + 0.65 * night) * near, L.position.x, L.position.y, L.position.z, L.color, L.distance, L.decay, x, z);
+      }
+    }
+  }
+  const rig = villaLighting.rig;                        // villa + loft
+  if (rig && villa.model) {
+    const proximity = 1 - smoothstep(60, 86, Math.hypot(x - VILLA.x, z - VILLA.z));
+    if (proximity > 0) {
+      const brightness = lerp(0.38, 1, night);
+      for (const [light, intensity] of rig.sources) {
+        if (!light._wp) { light.updateWorldMatrix(true, false); light._wp = new THREE.Vector3().setFromMatrixPosition(light.matrixWorld); }
+        lpOffer(intensity * brightness * proximity, light._wp.x, light._wp.y, light._wp.z, light.color, light.distance, light.decay, x, z);
+      }
+    }
+  }
+  const S = _lp.S;
+  for (let k = 0; k < pool.length; k++) {
+    const light = pool[k];
+    if (k < _lp.n) {
+      const e = S[k];
+      light.position.set(e.x, e.y, e.z);
+      light.color.copy(e.color);
+      light.distance = e.dist; light.decay = e.dec;
+      light.intensity = e.i;
+    } else light.intensity = 0;
+  }
 }
 
 function generateWorld(seed) {
@@ -4922,7 +5034,7 @@ window.__gameDebug = {
    Vrais joueurs : chacun apparait avec le skin de son profil (donne par le serveur).
    Les pietons fictifs de la ville ne changent pas. */
 const MP = { ready: false, api: '', token: '', base: '/', skins: {}, remotes: new Map(), cache: new Map(), loaders: null,
-  lastSend: 0, busy: false, gap: 400, fails: 0, statusVersion: -1 };
+  lastSend: 0, busy: false, gap: 600, fails: 0, statusVersion: -1 };
 // Voitures partagees : un vehicule gare est visible mais non pilotable par autrui.
 const MP_PARKED_MAX_3D = 24;
 const mpParkedCars = new Map();
@@ -5034,7 +5146,7 @@ function mpSend() {
   })
     .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
     .then(j => {
-      MP.fails = 0; MP.gap = 400;
+      MP.fails = 0; MP.gap = 600;
       mpShowOnline(j.onlineCount);
       mpSyncParkedCars(j.parkedCars, j.me?.id);
       for (const id of voiceDone) worldVoice.done.delete(id);
@@ -5058,7 +5170,7 @@ function mpSend() {
       }
     })
     .catch(st => {
-      MP.fails++; MP.gap = Math.min(5000, 400 * Math.pow(2, MP.fails));
+      MP.fails++; MP.gap = Math.min(5000, 600 * Math.pow(2, MP.fails));
       mpShowOnline(null);
       if (st === 401) {
         MP.ready = false;
@@ -6105,7 +6217,7 @@ function mpTick(dt) {
   if (!MP.ready) return;
   const now = nowMs();
   if (!MP.busy && !document.hidden && now - MP.lastSend >= MP.gap) { MP.lastSend = now; mpSend(); }
-  const k = 1 - Math.exp(-dt * 9);
+  const k = 1 - Math.exp(-dt * 7);
   mpParkedTick();
   for (const r of MP.remotes.values()) {
     if (Math.hypot(r.tx - r.x, r.tz - r.z) > 60) { r.x = r.tx; r.z = r.tz; }     // respawn : on ne glisse pas dans la ville
@@ -6125,7 +6237,9 @@ function mpTick(dt) {
     const tagY = r.seat ? r.seat.y + 1.08 : gy + 2.1;
     r.tag.position.set(r.x, tagY + 0.25 * sk, r.z);
     mpSeatPose(r, !!r.seat);
-    if (!r.seat && r.mixer && r.group.visible && d < 140) { mpPlay(r, moving, r.spd); r.mixer.update(dt); }
+    const wantShadow = d < 45;                                          // MAF-PERF-V1 : pas d'ombre ni d'animation pour les joueurs lointains
+    if (r.shadowOn !== wantShadow) { r.shadowOn = wantShadow; r.group.traverse(o => { if (o.isMesh) o.castShadow = wantShadow; }); }
+    if (!r.seat && r.mixer && r.group.visible && d < 90) { mpPlay(r, moving, r.spd); r.mixer.update(dt); }
   }
 }
 
