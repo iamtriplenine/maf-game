@@ -493,6 +493,7 @@
     </div>
     <input type="file" id="fileIn" accept="application/json,.json" class="hidden">
     <p class="small" id="seedLine" style="margin-top:12px"></p>
+    <p class="small">Villa 3D adaptée du <a href="https://sketchfab.com/3d-models/interior-15-minimalist-panoramic-viem-5d25be96aca842f18b9cda266e20716b" target="_blank" rel="noopener noreferrer" style="color:inherit">modèle de dasy444</a> sous <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style="color:inherit">CC BY 4.0</a>.</p>
 
     <div class="rowbtns" style="margin-top:16px">
       <button class="btn primary" id="btnClose" style="flex:1">Back to the city</button>
@@ -1061,11 +1062,40 @@ const CITY_X0 = X0 - HALF_ROAD - WALK_W, CITY_X1 = X1 + HALF_ROAD + WALK_W;
 const CITY_Z0 = Z0 - HALF_ROAD - WALK_W, CITY_Z1 = Z1 + HALF_ROAD + WALK_W;
 const OUTER = 560;
 
+// The supplied model is Y-up. Its panoramic windows already face +Z (the sea).
+const VILLA = {
+  x: roadX(5), y: 0.19, z: BEACH_Z + 18.4, scale: 0.8,
+  // Model-local rectangles [west, north, east, south, floor height].
+  floors: [[-23.189, -11.922, 22.079, -0.327, 0.064], [-7.271, -0.979, 22.079, 9.955, 0]]
+};
+const VILLA_PATH = [-2.2, (BEACH_Z - 0.68 - VILLA.z) / VILLA.scale, 2.2, -11.90,
+  (CURB_H + 0.017 - VILLA.y) / VILLA.scale];
+const WORLD_MAP_PLACES = [{ label: 'Villa', x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale }];
+const villa = { model: null, loading: false, retryAt: 0, rocks: [], ray: null, hits: [] };
+
+function villaGroundY(x, z, terrain) {
+  if (!villa.model) return terrain;
+  const u = (x - VILLA.x) / VILLA.scale, v = (z - VILLA.z) / VILLA.scale;
+  if (u < -24.2 || u > 23.2 || v < VILLA_PATH[1] || v > 19) return terrain;
+  for (const [x0, z0, x1, z1, y] of VILLA.floors) {
+    if (u >= x0 && u <= x1 && v >= z0 && v <= z1) return VILLA.y + y * VILLA.scale;
+  }
+  const [x0, z0, x1, z1, y] = VILLA_PATH;
+  if (u >= x0 && u <= x1 && v >= z0 && v <= z1) return VILLA.y + y * VILLA.scale;
+  if (v < -1.82) return terrain;
+  // Only the two small rock surfaces are queried and only within the villa lot.
+  villa.ray.ray.origin.set(x, VILLA.y + 4, z);
+  villa.hits.length = 0;
+  villa.ray.intersectObjects(villa.rocks, false, villa.hits);
+  return villa.hits.length ? Math.max(terrain, villa.hits[0].point.y) : terrain;
+}
+
 function groundY(x, z) {
   if (z >= BEACH_Z) {
     const t = clamp((z - BEACH_Z) / (SHORE_Z - BEACH_Z), 0, 1);
-    return lerp(CURB_H, -0.62, t * t * 0.7 + t * 0.3);
+    return villaGroundY(x, z, lerp(CURB_H, -0.62, t * t * 0.7 + t * 0.3));
   }
+  if (z >= BEACH_Z - 1) return villaGroundY(x, z, CURB_H);
   if (x < CITY_X0 || x > CITY_X1 || z < CITY_Z0 || z > CITY_Z1) return CURB_H;
   const i = clamp(Math.round((x - X0) / PITCH), 0, NX - 1);
   const j = clamp(Math.round((z - Z0) / PITCH), 0, NZ - 1);
@@ -1322,6 +1352,73 @@ const inst = {};     // instanced meshes by name
 const laneNodePos = [];
 const nodeIdx = (i, j) => j * NX + i;
 const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+
+function addVillaColliders() {
+  // Separate wall segments leave the city entrance, the inner door and the
+  // new opening in the seafront glass clear for the player capsule.
+  const boxes = [
+    [-23.18, -22.31, -23.14, -0.38, 4.9], // west retaining wall
+    [-23.16, -11.88, -4.46, -11.85, 4.9], // north wall of the west room
+    [-23.19, -1.02, -4.38, -0.90, 4.85],  // west room windows
+    [-5.68, -12.89, -3.79, -7.04, 4.45],  // entry cabinet
+    [-4.12, -7.09, -4.07, -4.65, 4.16],   // glazing beside the inner door
+    [-4.12, -2.84, -4.07, -1.07, 4.16],
+    [-4.60, -1.11, -3.89, 6.10, 8.9],     // side columns and glazing
+    [-3.92, 6.02, 0.103, 6.15, 8.73],     // sea-facing window bays
+    [3.942, 6.02, 23.13, 6.15, 8.73],
+    [3.25, -9.34, 22.22, -8.74, 4.45],    // bar back wall and its return
+    [4, -8.81, 4.21, -5.36, 4.45],
+    [5.54, -7.34, 14.08, -6.08, 0.99],    // bar counter
+    [6.16, -6.15, 13.62, -5.63, 1.13],    // bar stools
+    [-15.32, -7.78, -7.74, -5.78, 1.05],  // dining table and benches
+    [-15.24, -8.57, -7.78, -8.05, 1.13],
+    [-15.24, -5.51, -7.78, -4.99, 1.13],
+    [-22.06, -7.10, -18.91, -2.62, 1.08], // sofas
+    [13.83, -0.46, 19.28, 2.30, 0.99],
+    [-2.09, 6.24, 2.41, 7.60, 1.18],      // terrace seats
+    [6.31, 6.24, 10.81, 7.60, 1.18],
+    [14.54, 6.24, 19.04, 7.60, 1.18],
+    [14.93, 1.69, 16.95, 3.71, 0.32]      // low table in the sea-facing room
+  ];
+  const { x, y, z, scale } = VILLA;
+  for (const [x0, z0, x1, z1, top] of boxes) {
+    addCollider(x + x0 * scale, z + z0 * scale, x + x1 * scale, z + z1 * scale, y + top * scale, 1);
+  }
+}
+
+async function loadVilla() {
+  villa.loading = true;
+  try {
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const url = new URL('./villa-beach.glb', document.baseURI);
+    const { scene: model } = await new GLTFLoader().loadAsync(url.href);
+    const { x, y, z, scale } = VILLA;
+    model.position.set(x, y, z);
+    model.scale.setScalar(scale);
+    model.traverse(object => {
+      if (object.isMesh && !object.material.transparent) object.castShadow = object.receiveShadow = true;
+    });
+    const foundation = new Geo();
+    for (const [x0, z0, x1, z1, top] of VILLA.floors) foundation.box(x0, -1.1, z0, x1, top, z1, 2, true);
+    const [x0, z0, x1, z1, top] = VILLA_PATH;
+    foundation.box(x0, -0.35, z0, x1, top, z1, 2);
+    const base = new THREE.Mesh(foundation.build(), MATS.walk);
+    base.receiveShadow = true;
+    model.add(base);
+    model.updateMatrixWorld(true);
+    villa.rocks = [model.getObjectByName('VillaRockWest'), model.getObjectByName('VillaRockSouth')].filter(Boolean);
+    villa.ray = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 8);
+    scene.add(model);
+    addVillaColliders();
+    buildColliderHash();
+    villa.model = model; // Independent of the generated city so a reset doesn't reload it.
+  } catch (err) {
+    villa.retryAt = nowMs() + 15000;
+    console.warn('Villa World : chargement indisponible.', err);
+  } finally {
+    villa.loading = false;
+  }
+}
 
 function generateWorld(seed) {
   world.seed = seed >>> 0;
@@ -1661,6 +1758,7 @@ function generateWorld(seed) {
     const m = new THREE.Mesh(g.build(), MATS.hill); m.frustumCulled = false; G.add(m);
   }
 
+  if (villa.model) addVillaColliders();
   buildColliderHash();
   return G;
 }
@@ -2738,6 +2836,11 @@ function buildMinimapBase() {
   });
   g.fillStyle = 'rgba(72,120,64,.85)';
   world.parks.forEach(p => g.fillRect(w2s(p.x - 20), w2s(p.z - 20), 40 * mm.scale, 40 * mm.scale));
+  g.fillStyle = '#6e5d56';
+  for (const [x0, z0, x1, z1] of VILLA.floors) {
+    g.fillRect(w2s(VILLA.x + x0 * VILLA.scale), w2s(VILLA.z + z0 * VILLA.scale),
+      (x1 - x0) * VILLA.scale * mm.scale, (z1 - z0) * VILLA.scale * mm.scale);
+  }
   mm.base = c;
   if (mm.destination) clearWorldMapRoute();
 }
@@ -2817,11 +2920,12 @@ function selectWorldMapDestination(point) {
     ui.worldMapHint.textContent = 'Choisis un lieu sur la terre ferme.';
     return;
   }
-  const blocked = insideAnyCollider(point.x, point.z, 0.5) || !mapRoadAccess(point).length;
+  const blocked = !point.label && (insideAnyCollider(point.x, point.z, 0.5) || !mapRoadAccess(point).length);
   mm.destination = blocked ? mapRoadAnchor(point) : point;
   mm.routeOrigin = null;
   ui.worldMapClear.disabled = false;
-  ui.worldMapHint.textContent = blocked ? 'Repère placé sur la rue la plus proche.' : 'Itinéraire tracé.';
+  ui.worldMapHint.textContent = point.label ? 'Itinéraire vers ' + point.label + '.' :
+    blocked ? 'Repère placé sur la rue la plus proche.' : 'Itinéraire tracé.';
   drawMinimap();
 }
 
@@ -2876,6 +2980,23 @@ function drawWorldMapRoute(ctx, toS) {
   const p = toS(mm.destination.x, mm.destination.z);
   ctx.beginPath(); ctx.arc(p[0], p[1], 4.5, 0, TAU);
   ctx.fillStyle = '#162935'; ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+function drawWorldMapPlaces(ctx, toS, w, h, round) {
+  ctx.save();
+  ctx.font = '700 11px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  for (const place of WORLD_MAP_PLACES) {
+    const point = toS(place.x, place.z);
+    const [x, y, visible] = mapEdgePoint(point, w, h, 17, round);
+    if (!visible) continue;
+    ctx.fillStyle = '#ffd28a'; ctx.strokeStyle = '#242732'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(x + 5, y);
+    ctx.lineTo(x, y + 5); ctx.lineTo(x - 5, y); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff5e1'; ctx.lineWidth = 3;
+    ctx.strokeText(place.label, x, y - 12); ctx.fillText(place.label, x, y - 12);
+  }
   ctx.restore();
 }
 
@@ -2935,6 +3056,7 @@ function paintWorldMap(cv, view, round) {
     });
     ctx.globalAlpha = 1;
   }
+  drawWorldMapPlaces(ctx, toS, W, H, round);
   // player arrow
   const yaw = player.mode === 'drive' && player.veh ? player.veh.yaw : player.yaw;
   ctx.translate(...toS(playerX(), playerZ())); ctx.rotate(-yaw + Math.PI + view.angle);
@@ -3008,7 +3130,11 @@ function bindWorldMap() {
   const choose = point => {
     const view = expandedWorldMapView();
     if (view && point.x >= 0 && point.x <= view.w && point.y >= 0 && point.y <= view.h) {
-      selectWorldMapDestination(screenToMap(view, point.x, point.y));
+      const place = WORLD_MAP_PLACES.find(place => {
+        const [x, y, visible] = mapEdgePoint(mapToScreen(view, place.x, place.z), view.w, view.h, 17, false);
+        return visible && Math.abs(point.x - x) <= 23 && point.y >= y - 22 && point.y <= y + 10;
+      });
+      selectWorldMapDestination(place || screenToMap(view, point.x, point.y));
     }
   };
 
@@ -3898,6 +4024,8 @@ function frame() {
   updateEnvironment(simDt);
   updateCamera(simDt, inp);
   mpTick(simDt);
+  if (!villa.model && !villa.loading && now >= villa.retryAt &&
+      Math.hypot(playerX() - VILLA.x, playerZ() - VILLA.z) <= 175) loadVilla();
   if (player.mode === 'walk') animateCharacter(simDt);
   applyTrafficMeshes();
   applyPedMeshes();
