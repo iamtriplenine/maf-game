@@ -54,9 +54,15 @@ export default function WorldPage() {
   useEffect(() => {
     if (!playing) return undefined;
     const onPop = () => setPlaying(false);
+    // Le bouton de sortie est maintenant dans le menu du jeu (iframe) : il nous previent par message.
+    const onMsg = (e) => {
+      if (e.origin === window.location.origin && e.data && e.data.mafWorldExit) leave();
+    };
     window.addEventListener("popstate", onPop);
+    window.addEventListener("message", onMsg);
     return () => {
       window.removeEventListener("popstate", onPop);
+      window.removeEventListener("message", onMsg);
       leaveFullscreen();
     };
   }, [playing]);
@@ -91,9 +97,6 @@ export default function WorldPage() {
               }
             }}
           />
-          <button type="button" className="world-exit" onClick={leave} aria-label="Quitter le monde">
-            &#10005;
-          </button>
         </div>
       )}
     </>

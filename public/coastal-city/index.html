@@ -52,7 +52,7 @@
 
   #topBtns{position:absolute;right:10px;top:calc(10px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:auto}
   #topDrop{display:flex;flex-direction:column;gap:8px;overflow:hidden;max-height:0;opacity:0;pointer-events:none;transition:max-height .22s ease,opacity .18s ease}
-  #topBtns.open #topDrop{max-height:260px;opacity:1;pointer-events:auto}
+  #topBtns.open #topDrop{max-height:380px;opacity:1;pointer-events:auto}
   #topBtns button{min-width:44px;min-height:44px;width:44px;height:44px;border-radius:12px;
     border:1px solid rgba(255,255,255,.2);background:rgba(6,16,26,.66);color:#eaf2fb;font-size:17px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;padding:0}
@@ -225,7 +225,9 @@
       <button id="btnMission" aria-label="Start or cancel delivery run" title="Delivery run (M)">📦</button>
       <button id="btnSound" aria-label="Toggle sound" aria-pressed="true" title="Sound (P)">🔊</button>
       <button id="btnCam" aria-label="Cycle camera" title="Camera (C)">🎥</button>
+      <button id="btnLocate" aria-label="Show my position" title="My position">📍</button>
       <button id="btnSettings" aria-label="Open settings" title="Settings (Esc)">⚙️</button>
+      <button id="btnExit" aria-label="Exit the world" title="Exit">🚪</button>
     </div>
   </div>
 
@@ -1561,7 +1563,7 @@ function buildOcean() {
       '  float band = uShore + sin(p.x*0.06 + uTime*1.4)*1.6 + sin(p.x*0.021 - uTime*0.8)*2.4;',
       '  float foam = smoothstep(4.2, 0.0, abs(vW.z - band)) * smoothstep(uShore+26.0, uShore-4.0, vW.z);',
       '  c = mix(c, vec3(0.93,0.97,0.99), foam*0.85);',
-      '  c *= mix(1.0, 0.26, uNight);',
+      '  c *= mix(1.0, 0.45, uNight);',
       '  gl_FragColor = vec4(c, 1.0);',
       '  #include <fog_fragment>',
       '}'
@@ -1588,8 +1590,8 @@ function buildClouds(seed) {
 }
 
 const SUN_KEYS = [
-  { y: -1.0, top: 0x050a18, bot: 0x0d1730, sun: 0x25406e, fog: 0x0e1a30, hemiS: 0x21324f, hemiG: 0x0d1420, dir: 0.10, amb: 0.30 },
-  { y: -0.10, top: 0x152547, bot: 0x3c3550, sun: 0x8a6c86, fog: 0x39364e, hemiS: 0x3d4a6e, hemiG: 0x231f2a, dir: 0.22, amb: 0.42 },
+  { y: -1.0, top: 0x0a1630, bot: 0x1a2c52, sun: 0x6f8fd0, fog: 0x1a2a4a, hemiS: 0x5878a8, hemiG: 0x26344e, dir: 0.55, amb: 1.0 },
+  { y: -0.10, top: 0x1d3160, bot: 0x4a4466, sun: 0x9a7c96, fog: 0x3d4466, hemiS: 0x6c80ac, hemiG: 0x2c2c3c, dir: 0.45, amb: 0.72 },
   { y: 0.06, top: 0x2f5a92, bot: 0xf2a366, sun: 0xffb070, fog: 0xe0a884, hemiS: 0x7f9ec4, hemiG: 0x5a4335, dir: 0.85, amb: 0.62 },
   { y: 0.26, top: 0x3f7ec9, bot: 0xd6e6f2, sun: 0xfff0cf, fog: 0xc9dff0, hemiS: 0x9fc4e6, hemiG: 0x77705f, dir: 1.55, amb: 0.82 },
   { y: 1.0, top: 0x3272cf, bot: 0xbfe2f5, sun: 0xfffbf0, fog: 0xcbe6f6, hemiS: 0xaed6f2, hemiG: 0x8a8270, dir: 1.85, amb: 0.92 }
@@ -1966,7 +1968,12 @@ function updateCamera(dt, input) {
   if (Math.abs(input.lookX) > 0.001 || Math.abs(input.lookY) > 0.001) cam.userLook = 1.2;
   cam.userLook = Math.max(0, cam.userLook - dt);
   cam.yaw -= input.lookX;
-  cam.pitch = clamp(cam.pitch - input.lookY, -1.05, 0.72);
+  cam.pitch = clamp(cam.pitch - input.lookY, -1.05 - clamp((cam.zoomU - 1) / 6, 0, 1) * 0.4, 0.72);
+  if (cam.recenter) {          // bouton position : retour doux sur le joueur
+    cam.zoomU = Math.max(1, cam.zoomU * Math.pow(0.03, dt));
+    cam.pitch += (-0.3 - cam.pitch) * (1 - Math.pow(0.03, dt));
+    if (cam.zoomU < 1.02) { cam.zoomU = 1; cam.recenter = 0; }
+  }
 
   let tx, ty, tz, baseDist;
   if (player.mode === 'drive' && player.veh) {
@@ -1984,15 +1991,21 @@ function updateCamera(dt, input) {
     baseDist = 5.0;
   }
   const zf = cam.zoomU;
+  if (!cam.beacon) {           // repere jaune au-dessus du joueur quand on est zoome loin
+    const bm = new THREE.Mesh(new THREE.ConeGeometry(1, 2.4, 16), new THREE.MeshBasicMaterial({ color: 0xffd166, fog: false, transparent: true, opacity: 0.95, depthTest: false }));
+    bm.rotation.x = Math.PI; bm.renderOrder = 999; bm.frustumCulled = false; bm.visible = false; scene.add(bm); cam.beacon = bm;
+  }
+  if (zf > 2.5) {
+    const bs = clamp(cam.dist * 0.03, 0.4, 40) * (1 + 0.15 * Math.sin(nowMs() * 0.006));
+    cam.beacon.scale.setScalar(bs); cam.beacon.position.set(tx, ty + 1 + bs * 1.4, tz); cam.beacon.visible = true;
+  } else cam.beacon.visible = false;
   cam.distGoal = baseDist * CAM_MODES[cam.mode] * zf;
   if (zf > 1.001) {            // zoom arriere : le centre glisse vers le milieu de la ville
     const kc = clamp((zf - 12) / 50, 0, 1);
     tx += (0 - tx) * kc; tz += (20 - tz) * kc;
   }
 
-  const kp = clamp((zf - 1.3) / 12, 0, 1);
-  const pEff = cam.pitch + (-1.3 - cam.pitch) * kp * kp * (3 - 2 * kp);
-  const cp = Math.cos(pEff), sp2 = Math.sin(pEff);
+  const cp = Math.cos(cam.pitch), sp2 = Math.sin(cam.pitch);
   const dirX = Math.sin(cam.yaw) * cp, dirY = -sp2, dirZ = Math.cos(cam.yaw) * cp;
   // pull the camera in if a wall is in the way (analytic AABB march, no scene raycast)
   const maxD = cam.distGoal;
@@ -2633,12 +2646,14 @@ function bindInput() {
   });
   document.addEventListener('pointerlockchange', () => { pointerLocked = document.pointerLockElement === ui.gl; });
 
-  // MAF-WORLD-CTRL-V1
-  // ---- touch : 1 doigt = deplacement (joystick flottant, n'importe ou), 2 doigts = zoom / rotation / inclinaison
+  // MAF-WORLD-CTRL-V2
+  // ---- touch : 1 doigt = deplacement (joystick flottant), 2 doigts = comme Google Maps
+  //      pincer = zoom, pivoter = tourner la vue, glisser haut/bas ensemble = incliner (vue 3D)
   const ZOOM_MAX = 120;
   const sz = ui.stickZone;
   const ptrs = new Map();
   let g = null;
+  const normAng = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
   const stickOff = () => {
     touchState.stickId = -1; touchState.vx = 0; touchState.vy = 0; touchState.btn.run = false;
     ui.stickBase.style.opacity = '0'; ui.stickKnob.style.opacity = '0';
@@ -2647,6 +2662,7 @@ function bindInput() {
     const it = ptrs.values(); const p = it.next().value, q = it.next().value;
     return { d: Math.max(20, Math.hypot(q.x - p.x, q.y - p.y)), a: Math.atan2(q.y - p.y, q.x - p.x), cy: (p.y + q.y) / 2 };
   };
+  const newG = () => { const t = twoInfo(); t.d0 = t.d; t.a0 = t.a; t.cy0 = t.cy; t.mode = null; return t; };
   sz.addEventListener('pointerdown', e => {
     audioResume();
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -2657,7 +2673,7 @@ function bindInput() {
       ui.stickKnob.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px)';
       ui.stickBase.style.opacity = '1'; ui.stickKnob.style.opacity = '1';
     } else if (ptrs.size === 2) {
-      stickOff(); g = twoInfo();
+      stickOff(); g = newG();
     }
     e.preventDefault();
   });
@@ -2666,21 +2682,33 @@ function bindInput() {
     if (!pt) return;
     pt.x = e.clientX; pt.y = e.clientY;
     if (ptrs.size >= 2) {
-      if (!g) { g = twoInfo(); return; }
+      if (!g) { g = newG(); return; }
       const n = twoInfo();
-      let da = n.a - g.a;
-      if (da > Math.PI) da -= 2 * Math.PI; else if (da < -Math.PI) da += 2 * Math.PI;
-      cam.zoomU = clamp(cam.zoomU * (g.d / n.d), 1, ZOOM_MAX);   // pincer = voir plus large
-      lookAccum.x -= da;                                         // pivoter les doigts = tourner la vue
-      lookAccum.y += (n.cy - g.cy) * TOUCH_SENS;                 // glisser a deux doigts = incliner
-      g = n;
+      if (!g.mode) {
+        // on attend un vrai geste (12 px) pour choisir : incliner OU zoomer/tourner, sans melanger
+        const pinch = Math.abs(n.d - g.d0);
+        const twist = Math.abs(normAng(n.a - g.a0)) * g.d0 * 0.5;
+        const tilt = Math.abs(n.cy - g.cy0);
+        if (Math.max(pinch, twist, tilt) > 12) g.mode = (tilt > pinch && tilt > twist) ? 'tilt' : 'zoom';
+        g.d = n.d; g.a = n.a; g.cy = n.cy;
+        e.preventDefault(); return;
+      }
+      if (g.mode === 'tilt') {
+        lookAccum.y += (n.cy - g.cy) * 0.009;
+      } else {
+        const dz = g.d / n.d;
+        cam.zoomU = clamp(cam.zoomU * dz, 1, ZOOM_MAX); cam.recenter = 0;
+        lookAccum.x -= normAng(n.a - g.a);
+        if (dz > 1 && cam.zoomU < 20 && cam.pitch > -0.95) cam.pitch = Math.max(-0.95, cam.pitch - Math.log(dz) * 0.35);
+      }
+      g.d = n.d; g.a = n.a; g.cy = n.cy;
     } else if (e.pointerId === touchState.stickId) {
       let dx = e.clientX - touchState.ox, dy = e.clientY - touchState.oy;
       const d = Math.hypot(dx, dy), max = 60;
       if (d > max) { dx = dx / d * max; dy = dy / d * max; }
       const live = d >= 6;
       touchState.vx = live ? dx / max : 0; touchState.vy = live ? dy / max : 0;
-      touchState.btn.run = d >= max * 0.9;                       // pousser a fond = courir
+      touchState.btn.run = d >= max * 0.9;
       ui.stickKnob.style.transform = 'translate(' + (touchState.ox + dx) + 'px,' + (touchState.oy + dy) + 'px)';
     }
     e.preventDefault();
@@ -2693,7 +2721,7 @@ function bindInput() {
   sz.addEventListener('pointerup', endPtr); sz.addEventListener('pointercancel', endPtr);
   ui.gl.addEventListener('wheel', e => {
     e.preventDefault();
-    cam.zoomU = clamp(cam.zoomU * Math.exp(e.deltaY * 0.0015), 1, ZOOM_MAX);
+    cam.zoomU = clamp(cam.zoomU * Math.exp(e.deltaY * 0.0015), 1, ZOOM_MAX); cam.recenter = 0;
   }, { passive: false });
 
   // top bar + menu
@@ -2701,6 +2729,8 @@ function bindInput() {
   const setDrop = o => { topBox.classList.toggle('open', o); ui.btnMenu.textContent = o ? '✕' : '☰'; ui.btnMenu.setAttribute('aria-expanded', o ? 'true' : 'false'); };
   ui.btnMenu.onclick = () => { audioResume(); setDrop(!topBox.classList.contains('open')); };
   qs('btnSettings').onclick = () => { audioResume(); toggleMenu(); };
+  qs('btnLocate').onclick = () => { audioResume(); cam.recenter = 1; toast('You are here'); };
+  qs('btnExit').onclick = () => { try { if (window.parent && window.parent !== window) window.parent.postMessage({ mafWorldExit: true }, window.location.origin); } catch (e) {} };
   qs('topDrop').addEventListener('click', () => setDrop(false));
   document.addEventListener('pointerdown', e => { if (topBox.classList.contains('open') && !topBox.contains(e.target)) setDrop(false); });
   ui.prompt.onclick = () => { audioResume(); tryEnterExit(); };
@@ -3122,7 +3152,9 @@ function setQuality(mode, quiet) {
 let sun = null, hemi = null, spot = null;
 let _sunDir;
 function updateEnvironment(dt) {
-  env.tod = (env.todMs / DAY_MS) % 1;
+  const _dl = new Date();      // heure locale reelle de l'appareil : nuit la nuit, jour le jour
+  env.tod = (_dl.getHours() * 3600 + _dl.getMinutes() * 60 + _dl.getSeconds()) / 86400;
+  env.todMs = env.tod * DAY_MS;
   const a = (env.tod - 0.25) * TAU;
   const sy = Math.sin(a);
   env.sunY = sy;
