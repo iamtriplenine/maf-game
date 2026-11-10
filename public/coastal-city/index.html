@@ -1489,6 +1489,33 @@ function updateVillaLighting(night, x, z) {
   for (const material of rig.bounce) material.emissiveIntensity = night * 0.17;
 }
 
+// A fixed light budget keeps street lighting affordable on mobile.
+const streetLighting = { positions: [], sources: [] };
+function buildStreetLighting(group, lamps) {
+  streetLighting.positions = lamps.map(p => new THREE.Vector3(
+    p.x + Math.sin(p.ry) * 1.75, CURB_H + 6.15,
+    p.z + Math.cos(p.ry) * 1.75));
+  streetLighting.sources = Array.from({ length: 4 }, () => {
+    const light = new THREE.PointLight(0xffd9a0, 0, 18, 1);
+    light.castShadow = false;
+    group.add(light);
+    return light;
+  });
+}
+function updateStreetLighting(night, x, z) {
+  const nearby = streetLighting.positions
+    .map(position => ({ position, distance: Math.hypot(position.x - x, position.z - z) }))
+    .filter(p => p.distance < 36)
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, streetLighting.sources.length);
+  streetLighting.sources.forEach((light, i) => {
+    const lamp = nearby[i];
+    // Keep the source count stable, including in daylight, to avoid shader recompiles.
+    light.intensity = lamp ? night * 1.8 * (1 - smoothstep(18, 36, lamp.distance)) : 0;
+    if (lamp) light.position.copy(lamp.position);
+  });
+}
+
 function generateWorld(seed) {
   world.seed = seed >>> 0;
   const R = mulberry32(world.seed);
@@ -1777,6 +1804,7 @@ function generateWorld(seed) {
   addSimple('hyd', hydrantGeo(), new THREE.MeshLambertMaterial({ color: 0xc4453c }), hydrants, (im, k, b) => setInst(im, k, b.x, CURB_H, b.z, 1, 1, 1, 0));
   addSimple('pole', lightPoleGeo(), MATS.metal, lights, (im, k, p) => setInst(im, k, p.x, CURB_H, p.z, 1, 1, 1, p.ry));
   addSimple('lampH', lampHeadGeo(), MATS.lamp, lights, (im, k, p) => setInst(im, k, p.x + Math.sin(p.ry) * 1.75, CURB_H + 6.3, p.z + Math.cos(p.ry) * 1.75, 1, 1, 1, p.ry), false);
+  buildStreetLighting(G, lights);
   {
     const plane = new THREE.PlaneGeometry(1, 1); plane.rotateX(-Math.PI / 2);
     const im = instanced(plane, MATS.pool, lights.length);
@@ -3954,6 +3982,7 @@ function updateEnvironment(dt) {
   // night dressing: window lights, lamp heads, ground pools, headlights
   const n = env.night;
   updateVillaLighting(n, px, pz);
+  updateStreetLighting(n, px, pz);
   for (const m of MATS.facades) m.emissiveIntensity = n * 0.95;
   for (const m of MATS.podiums) m.emissiveIntensity = n * 0.9;
   MATS.lamp.emissiveIntensity = n;
