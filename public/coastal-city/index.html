@@ -67,6 +67,19 @@
   #worldChatBadge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;
     background:#b36bf3;color:#160b23;font:800 10px/16px system-ui,sans-serif}
 
+  #worldSeatLayer{position:absolute;inset:0;pointer-events:none}
+  .world-seat-button{position:absolute;left:0;top:0;display:grid;place-items:center;width:40px;height:40px;
+    padding:0;border:0;background:none;color:#fff1d2;pointer-events:auto;cursor:pointer;touch-action:manipulation}
+  .world-seat-button[hidden]{display:none}
+  .world-seat-button::before{content:'';position:absolute;inset:9px;border-radius:50%;
+    background:rgba(8,20,32,.84);border:1px solid rgba(255,227,178,.62);pointer-events:none}
+  .world-seat-button svg{position:relative;pointer-events:none}
+  .world-seat-button:is(:hover,:focus-visible,[data-focused])::before{background:#34485b;border-color:#ffd166}
+  #worldStandButton{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    min-height:40px;padding:0 14px;border-radius:20px;border:1px solid rgba(255,227,178,.5);
+    background:rgba(8,20,32,.87);color:#fff1d2;font:600 13px/1 system-ui,sans-serif;cursor:pointer;
+    pointer-events:auto;touch-action:manipulation}
+  #touch.villa-seated :is(#stickBase,#stickKnob){visibility:hidden}
   #worldStatusLayer{position:absolute;inset:0;pointer-events:none}
   .world-status-bubble{position:absolute;left:0;top:0;pointer-events:auto;touch-action:manipulation;
     max-width:116px;min-height:24px;padding:3px 8px;border:1px solid rgba(255,209,102,.52);
@@ -300,6 +313,7 @@
 </div>
 
 <div id="hud" class="hidden">
+  <div id="worldSeatLayer" hidden></div>
   <div id="worldStatusLayer"></div>
   <div id="statusBar" class="panel">
     <div class="st"><span class="lbl">Time</span><span class="val" id="clockVal">08:00</span></div>
@@ -389,6 +403,7 @@
   </div>
 
   <div id="prompt" class="hidden"></div>
+  <button id="worldStandButton" type="button" title="Se lever (E)" hidden>Se lever</button>
   <div id="toastWrap" aria-live="polite"></div>
   <div id="objArrow" class="hidden">➤</div>
   <div id="objDist" class="hidden"></div>
@@ -1069,6 +1084,27 @@ const VILLA = {
   // Model-local rectangles [west, north, east, south, floor height].
   floors: [[-23.189, -11.922, 22.079, -0.327, 0.064], [-7.271, -0.979, 22.079, 9.955, 0]]
 };
+// Position de chaque assise dans le modèle de la villa (x, hauteur, z, angle en degrés).
+// Les identifiants sont stables : le serveur transmet le numéro de la place dans /presence.
+const VILLA_SEATS = [
+  // Fauteuils de la terrasse, par paire autour de chaque table.
+  [-1.50, 0.68, 6.91, 90], [1.82, 0.68, 6.91, -90],
+  [6.90, 0.68, 6.91, 90], [10.22, 0.68, 6.91, -90],
+  [15.13, 0.68, 6.91, 90], [18.45, 0.68, 6.91, -90],
+  // Tabourets du bar et deux rangées de chaises à la table.
+  ...[6.56, 7.89, 9.23, 10.56, 11.89, 13.23].map(x => [x, 0.81, -5.91, 180]),
+  ...[-14.84, -13.51, -12.17, -10.84, -9.51, -8.18].map(x => [x, 0.81, -5.25, 180]),
+  ...[-14.84, -13.51, -12.17, -10.84, -9.51, -8.18].map(x => [x, 0.81, -8.31, 0]),
+  // Canapés du salon ouest et du salon côté mer.
+  [-20.96, 0.54, -5.94, 52], [-21.03, 0.52, -4.86, 90],
+  [-20.68, 0.54, -3.74, 90], [-19.70, 0.53, -6.44, 8],
+  [15.11, 0.50, 0.86, 58], [16.23, 0.53, 0.31, 8],
+  [17.41, 0.53, 0.39, -12], [18.28, 0.56, 1.34, -62]
+].map(([x, y, z, degrees], index) => ({
+  id: index + 1, x: VILLA.x + x * VILLA.scale, y: VILLA.y + y * VILLA.scale,
+  z: VILLA.z + z * VILLA.scale, yaw: degrees * Math.PI / 180
+}));
+
 const VILLA_PATH = [-2.2, (BEACH_Z - 0.68 - VILLA.z) / VILLA.scale, 2.2, -11.90,
   (CURB_H + 0.017 - VILLA.y) / VILLA.scale];
 const WORLD_MAP_PLACES = [{ label: 'Villa', x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale }];
@@ -2248,13 +2284,135 @@ function applyVehicleMesh(v) {
 const player = {
   x: roadX(3) + HALF_ROAD + 2, z: roadZ(3) + 26, y: 0, vy: 0, vx: 0, vz: 0,
   yaw: Math.PI, speed: 0, onGround: true, mode: 'walk', veh: null,
-  mesh: null, phase: 0, jumpHold: 0, air: 0
+  mesh: null, phase: 0, jumpHold: 0, air: 0, seating: null
 };
 const cam = {
   yaw: Math.PI, pitch: -0.14, dist: 5.4, distGoal: 5.4, mode: 1, zoomU: 1, fogBase: null,
   shake: 0, pos: null, look: null, userLook: 0, walkInputYaw: null
 };
 const CAM_MODES = [0.72, 1.0, 1.42];
+
+const VILLA_SEAT_REACH = 2.15;
+const villaSeatUI = { buttons: [], focused: null };
+
+function villaSeatVisible(x, y, z, seat) {
+  const dx = seat.x - x, dy = seat.y + 0.53 - y, dz = seat.z - z;
+  const distance = Math.hypot(dx, dy, dz);
+  return distance < 0.01 ||
+    rayHitDist(x, y, z, dx / distance, dy / distance, dz / distance, distance) >= distance - 0.06;
+}
+
+function canUseVillaSeat(seat) {
+  if (!villa.model || player.seating || player.mode !== 'walk' || !player.onGround ||
+      menuOpen() || ui.worldMapDialog.open || ui.worldStatusDialog.open ||
+      Math.hypot(seat.x - player.x, seat.z - player.z) > VILLA_SEAT_REACH ||
+      insideAnyCollider(player.x, player.z, 0.3)) return false;
+  if (MP.ready) {
+    for (const r of MP.remotes.values()) if (r.seat === seat) return false;
+  }
+  return villaSeatVisible(player.x, player.y + 1.5, player.z, seat);
+}
+
+function sitOnVillaSeat(seat) {
+  if (!seat || !canUseVillaSeat(seat)) return false;
+  player.seating = {
+    seat, standing: { x: player.x, y: player.y, z: player.z, yaw: player.yaw },
+    camera: { yaw: cam.yaw, pitch: cam.pitch, recenter: cam.recenter }
+  };
+  player.x = seat.x; player.y = groundY(seat.x, seat.z); player.z = seat.z;
+  player.yaw = seat.yaw;
+  player.vx = player.vy = player.vz = player.speed = 0;
+  player.mesh.visible = false;
+  cam.yaw = seat.yaw + Math.PI; cam.pitch = -0.05;
+  cam.walkInputYaw = null;
+  lookAccum.x = lookAccum.y = 0;
+  ui.touch.classList.add('villa-seated');
+  ui.worldStandButton.hidden = false;
+  MP.lastSend = -Infinity;
+  hudDirty = true;
+  return true;
+}
+
+function leaveVillaSeat() {
+  const seating = player.seating;
+  if (!seating) return;
+  player.seating = null;
+  Object.assign(player, seating.standing);
+  Object.assign(cam, seating.camera);
+  cam.userLook = 0;
+  lookAccum.x = lookAccum.y = 0;
+  player.mesh.visible = true;
+  ui.touch.classList.remove('villa-seated');
+  ui.worldStandButton.hidden = true;
+  MP.lastSend = -Infinity;
+  hudDirty = true;
+}
+
+function updateSeatedCamera(input) {
+  const seat = player.seating.seat;
+  const center = seat.yaw + Math.PI;
+  cam.yaw = center + clamp(angDelta(center, cam.yaw - input.lookX), -2.02, 2.02);
+  cam.pitch = clamp(cam.pitch - input.lookY, -0.78, 0.72);
+  cam.pos.set(seat.x + Math.sin(seat.yaw) * 0.07, seat.y + 0.79, seat.z + Math.cos(seat.yaw) * 0.07);
+  const cp = Math.cos(cam.pitch);
+  cam.look.set(cam.pos.x - Math.sin(cam.yaw) * cp, cam.pos.y + Math.sin(cam.pitch),
+    cam.pos.z - Math.cos(cam.yaw) * cp);
+  camera.position.copy(cam.pos);
+  camera.lookAt(cam.look);
+  cam.beacon.visible = false;
+  if (cam.fogBase) {
+    scene.fog.near = cam.fogBase.n; scene.fog.far = cam.fogBase.f; cam.fogBase = null;
+  }
+}
+
+function drawVillaSeatButtons() {
+  villaSeatUI.focused = null;
+  const nearVilla = villa.model && Math.hypot(player.x - VILLA.x, player.z - VILLA.z) < 24;
+  if (!nearVilla || player.seating || player.mode !== 'walk' || menuOpen() ||
+      ui.worldMapDialog.open || ui.worldStatusDialog.open) {
+    ui.worldSeatLayer.hidden = true;
+    return;
+  }
+  if (!villaSeatUI.buttons.length) {
+    villaSeatUI.buttons = VILLA_SEATS.map(seat => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'world-seat-button';
+      button.hidden = true;
+      button.setAttribute('aria-label', 'S’asseoir, place ' + seat.id);
+      button.title = 'S’asseoir (E)';
+      button.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3v11h14v4H5v3m12-3v3M8 14V5H5"/></svg>';
+      button.onclick = () => { audioResume(); sitOnVillaSeat(seat); };
+      ui.worldSeatLayer.appendChild(button);
+      return button;
+    });
+  }
+  ui.worldSeatLayer.hidden = false;
+  let best = Infinity;
+  for (const [i, seat] of VILLA_SEATS.entries()) {
+    const button = villaSeatUI.buttons[i];
+    if (!canUseVillaSeat(seat) ||
+        !villaSeatVisible(camera.position.x, camera.position.y, camera.position.z, seat)) {
+      button.hidden = true;
+      continue;
+    }
+    const point = _proj.set(seat.x, seat.y + 0.53, seat.z).project(camera);
+    if (Math.abs(point.x) >= 0.98 || Math.abs(point.y) >= 0.98 || Math.abs(point.z) >= 1) {
+      button.hidden = true;
+      continue;
+    }
+    const left = (point.x + 1) * innerWidth / 2, top = (1 - point.y) * innerHeight / 2;
+    button.style.transform = 'translate3d(' + Math.round(left) + 'px,' + Math.round(top) + 'px,0) translate(-50%,-50%)';
+    button.hidden = false;
+    const distance = Math.hypot(left - innerWidth / 2, top - innerHeight / 2);
+    if (distance < best) { best = distance; villaSeatUI.focused = seat; }
+  }
+  if (!IS_TOUCH) {
+    for (const [i, button] of villaSeatUI.buttons.entries()) {
+      button.toggleAttribute('data-focused', VILLA_SEATS[i] === villaSeatUI.focused);
+    }
+  }
+}
 
 function shake(a) { cam.shake = Math.min(1.2, cam.shake + a); }
 
@@ -2355,6 +2513,7 @@ function animateCharacter(dt) {
 
 let _v3a, _v3b;
 function updateCamera(dt, input) {
+  if (player.seating) { updateSeatedCamera(input); return; }
   // look input
   if (Math.abs(input.lookX) > 0.001 || Math.abs(input.lookY) > 0.001) cam.userLook = 1.2;
   cam.userLook = Math.max(0, cam.userLook - dt);
@@ -2831,7 +2990,7 @@ function grabUI() {
     'lookZone', 'tbA', 'tbE', 'tbRun', 'tbHorn', 'tbFix', 'qualitySeg', 'btnPerf', 'perfHud', 'fadeVeil', 'gl',
     'missionCard', 'worldTools', 'worldOnline', 'worldOnlineCount', 'btnWorldMic', 'worldMicSeconds',
     'btnWorldVoiceMute', 'btnWorldChat', 'worldChatBadge', 'worldChatPanel', 'worldChatFeed', 'worldChatForm', 'worldChatText', 'worldChatSend',
-    'worldStatusLayer', 'btnWorldStatus', 'worldStatusDialog',
+    'worldSeatLayer', 'worldStandButton', 'worldStatusLayer', 'btnWorldStatus', 'worldStatusDialog',
     'worldStatusTitle', 'worldStatusClose',
     'worldStatusFull', 'worldStatusForm', 'worldStatusText', 'worldStatusSave', 'worldStatusErase',
     'worldStatusFeedback'].forEach(id => { ui[id] = qs(id); });
@@ -3366,7 +3525,9 @@ function bindInput() {
   addEventListener('keydown', e => {
     if (ui.worldStatusDialog.open || ui.worldMapDialog.open || e.target === ui.worldChatText || e.repeat) return;
     const k = e.code;
-    if (k === 'Space' && e.target === ui.minimapWrap) return;
+    if (k === 'Space' && (e.target === ui.minimapWrap || e.target === ui.worldStandButton ||
+        e.target.matches?.('.world-seat-button'))) return;
+    if (k === 'Tab' && !pointerLocked && (player.seating || villaSeatUI.focused)) return;
     if (!pointerLocked && (MP.statusVersion >= 0 || worldVoice.available) &&
         (k === 'Tab' || (k === 'Space' && e.target.matches?.('#btnWorldTools, #btnWorldStatus, .world-status-bubble, #btnWorldMic, #btnWorldVoiceMute, #btnWorldChat, #worldChatPanel button')))) return;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].indexOf(k) >= 0) e.preventDefault();
@@ -3391,8 +3552,8 @@ function bindInput() {
     audioResume();
     if (e.pointerType === 'mouse') {
       if (pointerLocked && e.button === 0) {
-        const status = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-        if (status?.classList.contains('world-status-bubble')) { status.click(); return; }
+        const target = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+        if (target?.matches('.world-status-bubble, .world-seat-button, #worldStandButton')) { target.click(); return; }
       }
       dragging = true; dragX = e.clientX; dragY = e.clientY;
       if (!pointerLocked && !IS_TOUCH) { try { ui.gl.requestPointerLock(); } catch (err) {} }
@@ -3427,6 +3588,14 @@ function bindInput() {
   const newG = () => { const t = twoInfo(); t.d0 = t.d; t.a0 = t.a; t.cy0 = t.cy; t.mode = null; return t; };
   sz.addEventListener('pointerdown', e => {
     audioResume();
+    if (player.seating) {
+      if (touchState.lookId < 0) {
+        touchState.lookId = e.pointerId; touchState.lx = e.clientX; touchState.ly = e.clientY;
+        sz.setPointerCapture(e.pointerId);
+      }
+      e.preventDefault();
+      return;
+    }
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     try { sz.setPointerCapture(e.pointerId); } catch (err) {}
     if (ptrs.size === 1) {
@@ -3440,6 +3609,15 @@ function bindInput() {
     e.preventDefault();
   });
   sz.addEventListener('pointermove', e => {
+    if (player.seating) {
+      if (e.pointerId === touchState.lookId) {
+        lookAccum.x += (e.clientX - touchState.lx) * TOUCH_SENS;
+        lookAccum.y += (e.clientY - touchState.ly) * TOUCH_SENS;
+        touchState.lx = e.clientX; touchState.ly = e.clientY;
+      }
+      e.preventDefault();
+      return;
+    }
     const pt = ptrs.get(e.pointerId);
     if (!pt) return;
     pt.x = e.clientX; pt.y = e.clientY;
@@ -3476,6 +3654,7 @@ function bindInput() {
     e.preventDefault();
   });
   const endPtr = e => {
+    if (e.pointerId === touchState.lookId) touchState.lookId = -1;
     ptrs.delete(e.pointerId);
     if (e.pointerId === touchState.stickId) stickOff();
     if (ptrs.size < 2) g = null;
@@ -3483,6 +3662,7 @@ function bindInput() {
   sz.addEventListener('pointerup', endPtr); sz.addEventListener('pointercancel', endPtr);
   ui.gl.addEventListener('wheel', e => {
     e.preventDefault();
+    if (player.seating) return;
     cam.zoomU = clamp(cam.zoomU * Math.exp(e.deltaY * 0.0015), 1, ZOOM_MAX); cam.recenter = 0;
   }, { passive: false });
 
@@ -3514,6 +3694,7 @@ function bindInput() {
   qs('btnLocate').onclick = () => { audioResume(); cam.recenter = 1; toast('You are here'); };
   qs('btnExit').onclick = () => { try { if (window.parent && window.parent !== window) window.parent.postMessage({ mafWorldExit: true }, window.location.origin); } catch (e) {} };
   ui.prompt.onclick = () => { audioResume(); tryEnterExit(); };
+  ui.worldStandButton.onclick = () => { audioResume(); leaveVillaSeat(); };
   ui.btnClose.onclick = () => toggleMenu(false);
   ui.btnSound.onclick = () => { audioResume(); toggleSound(); };
   ui.btnCam.onclick = () => cycleCam();
@@ -3585,6 +3766,8 @@ function toggleMenu(force) {
 /* ---------------------------------------------------- enter / exit / fix */
 let lastSwap = 0;
 function tryEnterExit() {
+  if (player.seating) { leaveVillaSeat(); return; }
+  if (sitOnVillaSeat(villaSeatUI.focused)) return;
   if (nowMs() - lastSwap < 260) return;
   lastSwap = nowMs();
   if (player.mode === 'walk') {
@@ -3632,6 +3815,7 @@ function hintStuck() {
   toast('Wedged in? Press R (or \u{1F6E0}) to get back on the road');
 }
 function unstick() {
+  leaveVillaSeat();
   const px = playerX(), pz = playerZ();
   const i = clamp(Math.round((px - X0) / PITCH), 0, NX - 1);
   const j = clamp(Math.round((pz - Z0) / PITCH), 0, NZ - 1);
@@ -3798,10 +3982,11 @@ function updateAudio(dt) {
 const SAVE_KEY = 'coastalCitySandbox.v1';
 const SAVE_VER = 1;
 function collectSave() {
+  const standing = player.seating?.standing || player;
   return {
     v: SAVE_VER, app: 'coastal-city-sandbox', saved: new Date().toISOString(),
     seed: world.seed, todMs: Math.round(env.todMs),
-    player: { x: +player.x.toFixed(2), z: +player.z.toFixed(2), y: +player.y.toFixed(2), yaw: +player.yaw.toFixed(3), mode: player.mode, veh: player.veh ? vehicles.indexOf(player.veh) : -1 },
+    player: { x: +standing.x.toFixed(2), z: +standing.z.toFixed(2), y: +standing.y.toFixed(2), yaw: +standing.yaw.toFixed(3), mode: player.mode, veh: player.veh ? vehicles.indexOf(player.veh) : -1 },
     vehicles: vehicles.map(v => ({ t: v.t.id, x: +v.x.toFixed(2), z: +v.z.toFixed(2), yaw: +v.yaw.toFixed(3) })),
     progress: { cash: mission.cash, runs: mission.runs, streak: mission.streak, best: mission.best },
     job: mission.state === 'idle' ? null : {
@@ -3827,6 +4012,7 @@ function validSave(o) {
 }
 function applySave(o, opts) {
   if (!validSave(o)) return false;
+  leaveVillaSeat();
   opts = opts || {};
   if ((o.seed >>> 0) !== world.seed && opts.allowRebuild !== false) rebuildCity(o.seed >>> 0);
   if (isFinite(o.todMs)) { env.todMs = o.todMs; }
@@ -4041,6 +4227,7 @@ function updateEnvironment(dt) {
 /* ---------------------------------------------- rebuild (new / imported) */
 const KEEP_MATS = new Set();
 function rebuildCity(seed) {
+  leaveVillaSeat();
   if (world.group) {
     scene.remove(world.group);
     world.group.traverse(o => {
@@ -4111,7 +4298,7 @@ function frame() {
       player.x = player.veh.x; player.z = player.veh.z; player.y = player.veh.y;
       player.yaw = player.veh.yaw;
       player.speed = Math.abs(player.veh.speed);
-    } else {
+    } else if (!player.seating) {
       stepPlayer(FIXED, inp);
     }
   }
@@ -4143,6 +4330,7 @@ function frame() {
   updateObjArrow();
 
   renderer.render(scene, camera);
+  drawVillaSeatButtons();
   mpDrawStatuses();
 }
 
@@ -4164,7 +4352,7 @@ function drawPerf() {
     'quality ' + QL[QUAL.level].name + (QUAL.mode === 'auto' ? ' (auto)' : '') + '   ' + fmtClock(env.tod);
 }
 function updatePrompt() {
-  if (menuOpen()) { setPrompt(''); return; }
+  if (menuOpen() || player.seating || villaSeatUI.focused) { setPrompt(''); return; }
   const tapE = IS_TOUCH ? 'Tap <kbd>ENTER</kbd>' : 'Press <kbd>E</kbd>';
   if (player.mode === 'drive') {
     if (mission.state !== 'idle') {
@@ -4274,6 +4462,7 @@ function main() {
     saveNow(); toggleMenu(false); banner('NEW CITY', 'seed ' + s);
   };
   ui.btnReset.onclick = () => {
+    leaveVillaSeat();
     mission.cash = 0; mission.runs = 0; mission.streak = 0; mission.best = 0;
     cancelMission(null); env.todMs = 0.34 * DAY_MS;
     player.x = roadX(3) + HALF_ROAD + 2; player.z = roadZ(3) + 26; player.y = groundY(player.x, player.z);
@@ -4360,6 +4549,7 @@ window.__gameDebug = {
     else if (name === 'cam') cycleCam();
   },
   teleport(x, z) {
+    leaveVillaSeat();
     if (player.mode === 'drive') { player.veh.x = x; player.veh.z = z; player.veh.vx = 0; player.veh.vz = 0; player.veh.y = groundY(x, z); }
     player.x = x; player.z = z; player.y = groundY(x, z); player.vx = 0; player.vz = 0; player.vy = 0;
     cam.pos.set(x, 8, z + 8);
@@ -4421,11 +4611,13 @@ function mpInit() {
 
 function mpSend() {
   MP.busy = true;
+  const seating = player.seating;
   const veh = player.mode === 'drive' && player.veh;
   const voiceDone = Array.from(worldVoice.done).slice(0, 16);
   const body = {
     x: playerX(), z: playerZ(), yaw: veh ? player.veh.yaw : player.yaw,
     mv: (veh ? Math.abs(player.veh.speed) : player.speed) > 0.5 ? 1 : 0, veh: veh ? 1 : 0,
+    seat: seating?.seat.id ?? null,
     voice: true, voiceClient: worldChat.client, voiceDone
   };
   fetch(MP.api + '/api/world/presence', {
@@ -4442,6 +4634,10 @@ function mpSend() {
       if (j.me && j.me.skin) mpSetLocal(j.me.skin);
       mpSyncOwnStatus(j.me);
       mpApply(j.players || []);
+      if (seating && seating === player.seating && j.me && 'seat' in j.me && j.me.seat !== seating.seat.id) {
+        leaveVillaSeat();
+        toast('Cette place est déjà occupée.', 'bad');
+      }
     })
     .catch(st => {
       MP.fails++; MP.gap = Math.min(5000, 400 * Math.pow(2, MP.fails));
@@ -5250,6 +5446,7 @@ function mpApply(list) {
     const status = typeof p.status === 'string' ? p.status : '';
     if (r.statusBubble.textContent !== status) r.statusBubble.textContent = status;
     r.tx = p.x; r.tz = p.z; r.tyaw = p.yaw; r.mv = !!p.mv; r.veh = !!p.veh;
+    r.seat = !r.veh && Number.isInteger(p.seat) ? VILLA_SEATS[p.seat - 1] || null : null;
   }
   for (const id of Array.from(MP.remotes.keys())) {
     if (seen.has(id)) continue;
@@ -5282,6 +5479,102 @@ function mpDefaultWalk(load, root) {
     })).then(list => { if (!list.some(Boolean)) MP.dwalks = null; return list; });
   }
   return MP.dwalks.then(list => list.find(c => c && mpWalkFits(c, root)) || null);
+}
+
+// Point the hips-to-knee and knee-to-foot segments in seat space regardless of
+// the bone axes or the import rotation of the profile model.
+function mpAimSeatJoint(joint, next, actorRotation, x, y, z) {
+  const here = joint.getWorldPosition(new THREE.Vector3());
+  const rest = next.getWorldPosition(new THREE.Vector3()).sub(here).normalize();
+  const aim = new THREE.Vector3(x, y, z).normalize().applyQuaternion(actorRotation);
+  const delta = new THREE.Quaternion().setFromUnitVectors(rest, aim);
+  const parent = joint.parent.getWorldQuaternion(new THREE.Quaternion());
+  joint.quaternion.premultiply(parent.clone().invert().multiply(delta).multiply(parent));
+}
+
+function mpBendForSeat(r) {
+  const bones = new Map();
+  r.model.traverse(o => {
+    if (o.isBone) bones.set(o.name.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^mixamorig\d*/, ''), o);
+  });
+  const sides = ['left', 'right'].map(side => ({
+    thigh: bones.get(side + 'upleg'), shin: bones.get(side + 'leg'), foot: bones.get(side + 'foot'),
+    arm: bones.get(side + 'arm'), elbow: bones.get(side + 'forearm'), hand: bones.get(side + 'hand')
+  }));
+  if (!sides.every(({ thigh, shin, foot }) => thigh && shin && foot)) return null;
+
+  const before = [], standingY = r.model.position.y;
+  const rotation = r.group.getWorldQuaternion(new THREE.Quaternion());
+  const rootY = r.group.getWorldPosition(new THREE.Vector3()).y;
+  const hipY = sides.reduce((sum, limb) => sum + limb.thigh.getWorldPosition(new THREE.Vector3()).y, 0) / 2;
+  r.model.position.y += rootY + 0.10 - hipY;
+  const aim = (joint, next, x, y, z) => {
+    before.push([joint, joint.quaternion.clone()]);
+    mpAimSeatJoint(joint, next, rotation, x, y, z);
+  };
+  for (const { thigh, shin, foot, arm, elbow, hand } of sides) {
+    aim(thigh, shin, 0, -0.08, 1);
+    aim(shin, foot, 0, -1, -0.10);
+    if (arm && elbow && hand) {
+      aim(arm, elbow, 0, -1, 0.19);
+      aim(elbow, hand, 0, -0.4, 1);
+    }
+  }
+  return () => {
+    r.model.position.y = standingY;
+    for (const [bone, quaternion] of before) bone.quaternion.copy(quaternion);
+  };
+}
+
+let mpSeatedFallbackAssets;
+function mpSeatedFallback() {
+  if (!mpSeatedFallbackAssets) {
+    // Un seul petit modèle réutilisé pour les profils statiques ou en cours de chargement.
+    const geo = new Geo();
+    geo.setColor(0.18, 0.22, 0.26);
+    for (const x of [-0.11, 0.11]) {
+      geo.box(x - 0.085, 0, -0.12, x + 0.085, 0.16, 0.42, 1);
+      geo.box(x - 0.075, -0.37, 0.27, x + 0.075, 0.12, 0.42, 1);
+      geo.box(x - 0.082, -0.44, 0.26, x + 0.082, -0.33, 0.48, 1);
+    }
+    geo.setColor(0.18, 0.50, 0.84);
+    geo.box(-0.20, 0.08, -0.12, 0.20, 0.62, 0.12, 1);
+    for (const x of [-0.25, 0.25]) {
+      geo.box(x - 0.055, 0.23, -0.08, x + 0.055, 0.57, 0.08, 1);
+      geo.box(x - 0.055, 0.18, 0, x + 0.055, 0.28, 0.30, 1);
+    }
+    geo.setColor(0.82, 0.63, 0.47);
+    geo.box(-0.12, 0.62, -0.12, 0.12, 0.90, 0.12, 1);
+    geo.setColor(0.23, 0.17, 0.12);
+    geo.box(-0.13, 0.86, -0.13, 0.13, 0.95, 0.13, 1);
+    mpSeatedFallbackAssets = [geo.build(), new THREE.MeshLambertMaterial({ vertexColors: true })];
+  }
+  const mesh = new THREE.Mesh(...mpSeatedFallbackAssets);
+  mesh.castShadow = true;
+  return mesh;
+}
+
+function mpSeatPose(r, seated) {
+  if (r.poseSeated === seated && r.poseModel === r.model) return;
+  if (r.restoreSeatPose) { r.restoreSeatPose(); r.restoreSeatPose = null; }
+  r.poseSeated = seated; r.poseModel = r.model;
+  if (r.seatedFallback) r.seatedFallback.visible = false;
+  if (!seated) {
+    if (r.model) r.model.visible = true;
+    else r.ph.visible = true;
+    return;
+  }
+  if (r.mixer) { r.mixer.stopAllAction(); r.cur = null; }
+  if (r.model) {
+    r.restoreSeatPose = mpBendForSeat(r);
+    r.model.visible = !!r.restoreSeatPose;
+    if (r.restoreSeatPose) return;
+  } else r.ph.visible = false;
+  if (!r.seatedFallback) {
+    r.seatedFallback = mpSeatedFallback();
+    r.group.add(r.seatedFallback);
+  }
+  r.seatedFallback.visible = true;
 }
 
 function mpPlay(r, moving, speed) {
@@ -5402,15 +5695,18 @@ function mpTick(dt) {
     r.x += (r.tx - r.x) * k; r.z += (r.tz - r.z) * k;
     r.spd = (r.spd || 0) + (Math.hypot(r.x - ox, r.z - oz) / Math.max(dt, 0.001) - (r.spd || 0)) * 0.15;
     r.yaw += angDelta(r.yaw, r.tyaw) * k;
+    if (r.seat) { r.x = r.seat.x; r.z = r.seat.z; r.yaw = r.seat.yaw; }
     const gy = groundY(r.x, r.z);
-    r.group.position.set(r.x, gy, r.z);
+    r.group.position.set(r.x, r.seat ? r.seat.y : gy, r.z);
     r.group.rotation.y = r.yaw;
     r.group.visible = !r.veh; mpRemoteCar(r, gy);                                // en voiture : on ne voit que son pseudo
     const d = Math.hypot(camera.position.x - r.x, camera.position.y - gy, camera.position.z - r.z);
     const sk = clamp(d / 16, 1, 40);
     r.tag.scale.set(1.6 * sk, 0.4 * sk, 1);
-    r.tag.position.set(r.x, gy + 2.1 + 0.25 * sk, r.z);
-    if (r.mixer && r.group.visible && d < 140) { mpPlay(r, moving, r.spd); r.mixer.update(dt); }
+    const tagY = r.seat ? r.seat.y + 1.08 : gy + 2.1;
+    r.tag.position.set(r.x, tagY + 0.25 * sk, r.z);
+    mpSeatPose(r, !!r.seat);
+    if (!r.seat && r.mixer && r.group.visible && d < 140) { mpPlay(r, moving, r.spd); r.mixer.update(dt); }
   }
 }
 
