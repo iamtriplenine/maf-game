@@ -243,9 +243,9 @@
     <span id="gearVal" class="hidden"></span>
   </div>
 
-  <div id="missionCard" class="panel">
-    <div class="mtitle" id="mTitle">Free roam</div>
-    <div class="msub" id="mSub">Press <b>M</b> to start a delivery run</div>
+  <div id="missionCard" class="panel hidden">
+    <div class="mtitle" id="mTitle"></div>
+    <div class="msub" id="mSub"></div>
     <div class="mtimerWrap hidden" id="mTimerWrap"><div class="mtimer" id="mTimer"></div></div>
   </div>
 
@@ -2564,12 +2564,9 @@ function updateHUD() {
     ui.spdUnit.textContent = 'km/h';
     ui.gearVal.textContent = 'ON FOOT';
   }
-  if (mission.state === 'idle') {
-    ui.mTitle.textContent = 'Free roam';
-    ui.mSub.innerHTML = 'Press <b>M</b> (or 📦) for a delivery run';
-    ui.mTimerWrap.classList.add('hidden');
-    ui.missionCard.classList.remove('urgent');
-  } else {
+  const deliveryActive = mission.state !== 'idle';
+  ui.missionCard.classList.toggle('hidden', !deliveryActive);
+  if (deliveryActive) {
     const dist = Math.hypot(mission.tx - playerX(), mission.tz - playerZ());
     ui.mTitle.textContent = mission.state === 'toPickup' ? 'Collect the parcel' : 'Deliver the parcel';
     ui.mSub.textContent = mission.name + ' · ' + (dist > 999 ? (dist / 1000).toFixed(1) + ' km' : Math.round(dist) + ' m');
