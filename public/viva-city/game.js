@@ -100,9 +100,17 @@
  window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();touchAxis={x:0,y:0}});
  // Souris / rotation de caméra (aussi mobile avec le doigt sur la zone 3D).
  let drag=false,prevX=0,prevY=0,dragId;
- canvas.addEventListener('pointerdown',e=>{if(state.active||!state.running)return;drag=true;dragId=e.pointerId;prevX=e.clientX;prevY=e.clientY;canvas.setPointerCapture(e.pointerId)});
- canvas.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==dragId)return;let dx=e.clientX-prevX,dy=e.clientY-prevY;prevX=e.clientX;prevY=e.clientY;camera.yaw-=dx*.006;camera.pitch=limit(camera.pitch+dy*.003,-.05,.89)});
- const stopDrag=e=>{if(e.pointerId===dragId)drag=false};canvas.addEventListener('pointerup',stopDrag);canvas.addEventListener('pointercancel',stopDrag);
+ // MAF_TOUCH_V1 : au doigt, n'importe ou sur l'ecran = joystick invisible (l'origine est ou le doigt se pose).
+ let joyPtr=null,joyOx=0,joyOy=0;const JOY_R=55,JOY_DEAD=.12,JOY_FOLLOW=1.6;
+ canvas.addEventListener('pointerdown',e=>{if(state.active||!state.running)return;
+  if(e.pointerType==='touch'){if(joyPtr!==null)return;joyPtr=e.pointerId;joyOx=e.clientX;joyOy=e.clientY;touchAxis={x:0,y:0};try{canvas.setPointerCapture(e.pointerId)}catch{}return}
+  drag=true;dragId=e.pointerId;prevX=e.clientX;prevY=e.clientY;canvas.setPointerCapture(e.pointerId)});
+ canvas.addEventListener('pointermove',e=>{
+  if(e.pointerId===joyPtr){let dx=e.clientX-joyOx,dy=e.clientY-joyOy,mag=Math.hypot(dx,dy);
+   if(mag>JOY_R*JOY_FOLLOW){const over=mag-JOY_R*JOY_FOLLOW;joyOx+=dx/mag*over;joyOy+=dy/mag*over;dx=e.clientX-joyOx;dy=e.clientY-joyOy;mag=Math.hypot(dx,dy)}
+   const k=Math.min(mag,JOY_R)/JOY_R;touchAxis=k<JOY_DEAD?{x:0,y:0}:{x:dx/mag*k,y:dy/mag*k};return}
+  if(!drag||e.pointerId!==dragId)return;let dx=e.clientX-prevX,dy=e.clientY-prevY;prevX=e.clientX;prevY=e.clientY;camera.yaw-=dx*.006;camera.pitch=limit(camera.pitch+dy*.003,-.05,.89)});
+ const stopDrag=e=>{if(e.pointerId===joyPtr){joyPtr=null;touchAxis={x:0,y:0};return}if(e.pointerId===dragId)drag=false};canvas.addEventListener('pointerup',stopDrag);canvas.addEventListener('pointercancel',stopDrag);
  canvas.addEventListener('wheel',e=>{e.preventDefault();camera.distance=limit(camera.distance+Math.sign(e.deltaY)*1.6,7,34)},{passive:false});
  // Joystick tactile, accessible sans moteur externe.
  const joy=$('joyZone'),knob=$('joyKnob');let joyId=null;const resetJoy=()=>{touchAxis={x:0,y:0};knob.style.transform='translate(0px,0px)';joyId=null};
