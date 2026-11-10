@@ -6,13 +6,24 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import ProfileBackground from "./ProfileBackground";
 
+// Affiche la vraie raison de l'erreur (utile pour comprendre un probleme sur un appareil) + bouton Reessayer.
 class CarError extends Component {
-  state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
+  state = { failed: false, msg: "" };
+  static getDerivedStateFromError(error) {
+    return { failed: true, msg: String((error && error.message) || error || "") };
+  }
   render() {
-    return this.state.failed
-      ? <div className="notice" role="alert">Impossible de charger cette voiture. Verifie le fichier dans public/cars, puis recharge la page.</div>
-      : this.props.children;
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div className="notice" role="alert">
+        Impossible de charger cette voiture.
+        <br /><small>{this.state.msg}</small>
+        <br />
+        <button type="button" onClick={() => { this.props.onRetry?.(); this.setState({ failed: false, msg: "" }); }}>
+          Reessayer
+        </button>
+      </div>
+    );
   }
 }
 
@@ -48,7 +59,9 @@ function CarModel({ url }) {
 export default function CarViewer({ car, backgroundId }) {
   const [autoRotate, setAutoRotate] = useState(true);
   const [viewKey, setViewKey] = useState(0);
+  const [tryKey, setTryKey] = useState(0);
   const url = `${import.meta.env.BASE_URL}${car.file}`;
+  const retry = () => { try { useLoader.clear(GLTFLoader, url); } catch { /* pas grave */ } setTryKey((v) => v + 1); };
 
   return (
     <section className="viewer-panel">
@@ -62,7 +75,7 @@ export default function CarViewer({ car, backgroundId }) {
 
       <div className="stage">
         <ProfileBackground id={backgroundId} />
-        <CarError>
+        <CarError key={tryKey} onRetry={retry}>
           <Canvas
             gl={{ alpha: true, antialias: true }}
             dpr={[1, 1.5]}

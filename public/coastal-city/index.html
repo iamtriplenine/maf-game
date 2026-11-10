@@ -2555,7 +2555,7 @@ function drawMinimap() {
   // parked drivable vehicles
   ctx.fillStyle = '#7ee0a0';
   vehicles.forEach(v => {
-    if (v === player.veh) return;
+    if (v === player.veh || v.mine) return;
     const p = toS(v.x, v.z);
     if (p[0] < -6 || p[0] > W + 6 || p[1] < -6 || p[1] > H + 6) return;
     ctx.beginPath(); ctx.arc(p[0], p[1], 3, 0, TAU); ctx.fill();
@@ -2568,6 +2568,7 @@ function drawMinimap() {
     ctx.beginPath(); ctx.arc(cx, cy, 5, 0, TAU); ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 1.4; ctx.stroke();
   }
+  mmPorscheIcon(ctx, toS, W, H);
   // MAF-WORLD-ONLINE-V1 : vrais joueurs en violet (au bord de la carte s'ils sont hors de vue)
   if (typeof MP !== 'undefined' && MP.remotes.size) {
     MP.remotes.forEach(r => {
@@ -3287,6 +3288,7 @@ function rebuildCity(seed) {
     [0, BEACH_Z - 20, Math.PI / 2]
   ];
   vehicles.forEach((v, i) => {
+    if (v.mine) { MP.replace = true; return; }
     const s = spots[i % spots.length];
     v.x = s[0]; v.z = s[1]; v.yaw = s[2]; v.vx = 0; v.vz = 0; v.y = groundY(v.x, v.z); v.occupied = false;
   });
@@ -3806,7 +3808,7 @@ function mpRemove(id) {
   if (!r) return;
   MP.remotes.delete(id);
   try {
-    scene.remove(r.group); scene.remove(r.tag);
+    scene.remove(r.group); scene.remove(r.tag); if (r.car) scene.remove(r.car);
     if (r.mixer) { r.mixer.stopAllAction(); if (r.model) r.mixer.uncacheRoot(r.model); }
     if (r.tag.material.map) r.tag.material.map.dispose();
     r.tag.material.dispose();
@@ -3887,7 +3889,96 @@ function mpPlay(r, moving, speed) {
   act.timeScale = paused ? 0 : rate;
 }
 
+/* MAF-WORLD-PORSCHE-V1 : chaque vrai joueur connecte a sa Porsche (icone sur la carte, il peut la conduire).
+   Les voitures normales de la ville ne changent pas. Le modele 3D est charge UNE seule fois (partage). */
+const PORSCHE_T = { id: 'porsche', name: 'Porsche 911 GT3 RS', color: 0x2b2f36,
+  w: 1.95, l: 4.5, ride: 0.12, bodyH: 0.62, cabH: 0.5, cabW: 0.86, cabF: 0.28, cabB: 0.72, wheelR: 0.36,
+  accel: 19, top: 56, grip: 7.6, steer: 2.2, mass: 1.05, hp: 'Ta voiture : rapide et precise' };
+
+function mpCarSource() {
+  if ((MP.carFail || 0) >= 2) return Promise.resolve(null);
+  if (!MP.carP) {
+    MP.carP = (async () => {
+      const L = await mpLoaders();
+      const g = await new Promise((ok, ko) => L.gltf.load(MP.base + 'cars/porsche-911-gt3-rs.glb', ok, undefined, ko));
+      const root = g.scene;
+      root.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(root);
+      const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+      root.position.set(-c.x, -box.min.y, -c.z);
+      const inner = new THREE.Group();
+      inner.add(root);
+      inner.scale.setScalar(PORSCHE_T.l / Math.max(size.x, size.z, 0.01));
+      inner.rotation.y = Math.PI;                      // l'avant du modele est vers -Z : on le retourne
+      const wrap = new THREE.Group();
+      wrap.add(inner);
+      return wrap;
+    })().catch(err => { MP.carP = null; MP.carFail = (MP.carFail || 0) + 1; return null; });
+  }
+  return MP.carP;
+}
+
+function mpPlacePorsche() {
+  const v = MP.porsche;
+  if (!v) return;
+  const n = nearestRoadPoint(playerX() + 5, playerZ() + 3);
+  v.x = n.x; v.z = n.z; v.yaw = 0; v.y = groundY(v.x, v.z);
+  v.vx = 0; v.vz = 0; v.spin = 0; v.occupied = false;
+}
+
+function mpPorscheInit() {
+  if (MP.porsche || !scene || !THREE) return;
+  const v = makeVehicle(PORSCHE_T, 0, 0, 0);
+  v.mine = true;
+  MP.porsche = v;
+  vehicles.push(v);
+  scene.add(v.mesh);
+  mpPlacePorsche();
+  mpCarSource().then(w => {
+    if (!w || MP.porsche !== v) return;
+    v.mesh.children.slice().forEach(ch => { ch.visible = false; });   // on cache la voiture simple, la vraie Porsche la remplace
+    v.mesh.add(w.clone(true));
+  });
+}
+
+// Icone voiture sur la mini-carte : au bord de la carte si elle est hors de vue.
+function mmPorscheIcon(ctx, toS, W, H) {
+  const v = MP.porsche;
+  if (!v || v === player.veh) return;
+  const p = toS(v.x, v.z);
+  const inside = p[0] >= 10 && p[0] <= W - 10 && p[1] >= 10 && p[1] <= H - 10;
+  const cx = clamp(p[0], 10, W - 10), cy = clamp(p[1], 10, H - 10);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.globalAlpha = inside ? 1 : 0.8;
+  ctx.lineWidth = 1.3; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.fillStyle = '#ffb020';
+  ctx.beginPath(); ctx.rect(-7, -1, 14, 4.5); ctx.fill(); ctx.stroke();      // caisse
+  ctx.beginPath(); ctx.moveTo(-4, -1); ctx.lineTo(-2.5, -4); ctx.lineTo(3, -4); ctx.lineTo(5, -1); ctx.closePath(); ctx.fill(); ctx.stroke();   // toit
+  ctx.fillStyle = '#10171e';
+  ctx.beginPath(); ctx.arc(-4, 3.5, 2, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(4, 3.5, 2, 0, TAU); ctx.fill();                   // roues
+  ctx.restore();
+}
+
+// Un autre joueur au volant : on voit une Porsche (le modele partage, jamais recharge).
+function mpRemoteCar(r, gy) {
+  const near = Math.hypot(r.x - camera.position.x, r.z - camera.position.z) < 120;
+  if (!(r.veh && near)) { if (r.car) r.car.visible = false; return; }
+  if (!r.car && !r.carLoading) {
+    r.carLoading = true;
+    mpCarSource().then(w => {
+      r.carLoading = false;
+      if (!w || MP.remotes.get(r.id) !== r) return;
+      r.car = w.clone(true);
+      scene.add(r.car);
+    });
+  }
+  if (r.car) { r.car.visible = true; r.car.position.set(r.x, gy, r.z); r.car.rotation.y = r.yaw; }
+}
+
 function mpTick(dt) {
+  if (MP.ready && !MP.porsche) mpPorscheInit();
+  if (MP.replace) { MP.replace = false; mpPlacePorsche(); }
   if (!MP.ready) return;
   const now = nowMs();
   if (!MP.busy && !document.hidden && now - MP.lastSend >= MP.gap) { MP.lastSend = now; mpSend(); }
@@ -3902,7 +3993,7 @@ function mpTick(dt) {
     const gy = groundY(r.x, r.z);
     r.group.position.set(r.x, gy, r.z);
     r.group.rotation.y = r.yaw;
-    r.group.visible = !r.veh;                                // en voiture : on ne voit que son pseudo
+    r.group.visible = !r.veh; mpRemoteCar(r, gy);                                // en voiture : on ne voit que son pseudo
     const d = Math.hypot(camera.position.x - r.x, camera.position.y - gy, camera.position.z - r.z);
     const sk = clamp(d / 16, 1, 40);
     r.tag.scale.set(1.6 * sk, 0.4 * sk, 1);
