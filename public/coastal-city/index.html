@@ -60,6 +60,21 @@
   #topBtns button:active{background:rgba(255,255,255,.24)}
   #topBtns button[aria-pressed="false"]{opacity:.55}
 
+  #worldStatusLayer{position:absolute;inset:0;pointer-events:none}
+  .world-status-bubble{position:absolute;left:0;top:0;pointer-events:auto;touch-action:manipulation;
+    max-width:116px;min-height:24px;padding:3px 8px;border:1px solid rgba(255,209,102,.52);
+    border-radius:8px;background:rgba(6,16,26,.9);color:#eaf2fb;font:600 11px/1.25 system-ui,sans-serif;
+    text-overflow:ellipsis;white-space:nowrap;overflow:hidden;cursor:pointer}
+  #worldStatusDialog{width:min(92vw,420px);color:#eaf2fb}
+  #worldStatusDialog::backdrop{background:rgba(4,10,18,.76)}
+  .world-status-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+  #worldStatusFull{white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;-webkit-user-select:text}
+  #worldStatusText{display:block;width:100%;margin-top:6px;padding:9px 11px;resize:vertical;
+    color:#eaf2fb;background:#08111c;border:1px solid rgba(255,255,255,.24);border-radius:8px;
+    font:16px/1.4 system-ui,sans-serif;user-select:text;-webkit-user-select:text}
+  #worldStatusFeedback:empty{display:none}
+  #worldStatusDialog button:disabled{opacity:.55;cursor:wait}
+
   #missionCard{left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%);padding:9px 15px;
     text-align:center;min-width:216px;max-width:min(94vw,430px)}
   #missionCard .mtitle{font:700 13px/1.3 'Segoe UI',system-ui;letter-spacing:.4px}
@@ -208,6 +223,7 @@
 </div>
 
 <div id="hud" class="hidden">
+  <div id="worldStatusLayer"></div>
   <div id="statusBar" class="panel">
     <div class="st"><span class="lbl">Time</span><span class="val" id="clockVal">08:00</span></div>
     <div class="st"><span class="lbl">Cash</span><span class="val" id="cashVal">$0</span></div>
@@ -232,6 +248,11 @@
       <button id="btnSettings" aria-label="Open settings" title="Settings (Esc)">⚙️</button>
       <button id="btnExit" aria-label="Exit the world" title="Exit">🚪</button>
     </div>
+    <button id="btnWorldStatus" class="hidden" type="button" aria-label="Mon statut" title="Mon statut (T)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <path d="M20 15a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2zM8 9h8m-8 4h5"/>
+      </svg>
+    </button>
   </div>
 
 
@@ -253,6 +274,24 @@
 
 <div id="banner" class="hidden"><div class="b1" id="bTitle"></div><div class="b2" id="bSub"></div></div>
 <div id="fadeVeil"></div>
+
+<dialog id="worldStatusDialog" class="sheet" aria-labelledby="worldStatusTitle">
+  <div class="world-status-head">
+    <h2 id="worldStatusTitle"></h2>
+    <button id="worldStatusClose" class="btn ghost" type="button" aria-label="Fermer">×</button>
+  </div>
+  <p id="worldStatusFull" class="hidden"></p>
+  <form id="worldStatusForm" class="hidden">
+    <label for="worldStatusText">Ton message</label>
+    <textarea id="worldStatusText" maxlength="180" rows="3" placeholder="Je cherche quelqu’un pour une course…"></textarea>
+    <p class="small">Visible dans World · 180 caractères maximum</p>
+    <p id="worldStatusFeedback" role="status"></p>
+    <div class="rowbtns">
+      <button id="worldStatusSave" class="btn primary" type="submit">Enregistrer</button>
+      <button id="worldStatusErase" class="btn ghost" type="button">Effacer</button>
+    </div>
+  </form>
+</dialog>
 
 <div id="menu" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
   <div class="sheet" id="menuSheet">
@@ -2447,7 +2486,9 @@ function grabUI() {
     'kbHelp', 'menuSheet', 'banner', 'bTitle', 'bSub', 'menu', 'btnMenu', 'btnClose', 'btnSound', 'btnCam', 'btnMission', 'btnExport',
     'btnImport', 'btnNew', 'btnReset', 'fileIn', 'seedLine', 'touch', 'stickZone', 'stickBase', 'stickKnob',
     'lookZone', 'tbA', 'tbE', 'tbRun', 'tbHorn', 'tbFix', 'qualitySeg', 'btnPerf', 'perfHud', 'fadeVeil', 'gl',
-    'missionCard'].forEach(id => { ui[id] = qs(id); });
+    'missionCard', 'worldStatusLayer', 'btnWorldStatus', 'worldStatusDialog', 'worldStatusTitle', 'worldStatusClose',
+    'worldStatusFull', 'worldStatusForm', 'worldStatusText', 'worldStatusSave', 'worldStatusErase',
+    'worldStatusFeedback'].forEach(id => { ui[id] = qs(id); });
 }
 let toastTimer = null;
 function toast(msg, kind) {
@@ -2642,8 +2683,10 @@ function bindInput() {
   if (IS_TOUCH) ui.touch.classList.remove('hidden');
 
   addEventListener('keydown', e => {
-    if (e.repeat) { return; }
+    if (ui.worldStatusDialog.open || e.repeat) return;
     const k = e.code;
+    if (!pointerLocked && MP.statusVersion >= 0 &&
+        (k === 'Tab' || (k === 'Space' && e.target.matches?.('#btnWorldStatus, .world-status-bubble')))) return;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].indexOf(k) >= 0) e.preventDefault();
     keys.add(k);
     audioResume();
@@ -2656,6 +2699,7 @@ function bindInput() {
     if (k === 'KeyR') unstick();
     if (k === 'KeyP') toggleSound();
     if (k === 'KeyH') sfxHorn();
+    if (k === 'KeyT') mpEditStatus();
   });
   addEventListener('keyup', e => keys.delete(e.code));
   addEventListener('blur', () => keys.clear());
@@ -2664,6 +2708,10 @@ function bindInput() {
   ui.gl.addEventListener('pointerdown', e => {
     audioResume();
     if (e.pointerType === 'mouse') {
+      if (pointerLocked && e.button === 0) {
+        const status = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+        if (status?.classList.contains('world-status-bubble')) { status.click(); return; }
+      }
       dragging = true; dragX = e.clientX; dragY = e.clientY;
       if (!pointerLocked && !IS_TOUCH) { try { ui.gl.requestPointerLock(); } catch (err) {} }
     }
@@ -2776,6 +2824,12 @@ function bindInput() {
 }
 
 function gatherInput(dt) {
+  if (ui.worldStatusDialog.open) {
+    input.moveX = input.moveZ = input.throttle = input.steer = input.hand = input.lookX = input.lookY = 0;
+    input.run = input.jump = false;
+    lookAccum.x = lookAccum.y = 0;
+    return input;
+  }
   let mx = 0, mz = 0;
   if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
   if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
@@ -3382,6 +3436,7 @@ function frame() {
   updateObjArrow();
 
   renderer.render(scene, camera);
+  mpDrawStatuses();
 }
 
 function governQuality() {
@@ -3621,18 +3676,20 @@ window.__gameDebug = {
    Vrais joueurs : chacun apparait avec le skin de son profil (donne par le serveur).
    Les pietons fictifs de la ville ne changent pas. */
 const MP = { ready: false, api: '', token: '', base: '/', skins: {}, remotes: new Map(), cache: new Map(), loaders: null,
-  lastSend: 0, busy: false, gap: 400, fails: 0 };
+  lastSend: 0, busy: false, gap: 400, fails: 0, statusVersion: -1 };
 const MP_H = 1.75;
 const WALK_RX = /walk|marche|defile|catwalk|strut/i;
 
 function mpInit() {
   if (window.parent === window) return;               // jeu ouvert seul : pas de multijoueur
+  mpBindStatuses();
   addEventListener('message', e => {
     if (e.origin !== window.location.origin || e.source !== window.parent) return;
     const d = e.data && e.data.mafWorldInit;
     if (!d || !d.token || !d.api) return;
     MP.api = String(d.api).replace(/\/+$/, ''); MP.token = d.token; MP.base = d.base || '/';
     MP.skins = d.skins || {}; MP.ready = true;
+    ui.worldStatusLayer.classList.remove('hidden');
     if (d.mySkin) mpSetLocal(d.mySkin);
   });
   try { window.parent.postMessage({ mafWorldHello: true }, window.location.origin); } catch (err) {}
@@ -3655,9 +3712,133 @@ function mpSend() {
     body: JSON.stringify(body)
   })
     .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
-    .then(j => { MP.fails = 0; MP.gap = 400; if (j.me && j.me.skin) mpSetLocal(j.me.skin); mpApply(j.players || []); })
-    .catch(st => { MP.fails++; MP.gap = Math.min(5000, 400 * Math.pow(2, MP.fails)); if (st === 401) MP.ready = false; })
+    .then(j => {
+      MP.fails = 0; MP.gap = 400;
+      if (j.me && j.me.skin) mpSetLocal(j.me.skin);
+      mpSyncOwnStatus(j.me);
+      mpApply(j.players || []);
+    })
+    .catch(st => {
+      MP.fails++; MP.gap = Math.min(5000, 400 * Math.pow(2, MP.fails));
+      if (st === 401) {
+        MP.ready = false;
+        ui.btnWorldStatus.classList.add('hidden');
+        ui.worldStatusLayer.classList.add('hidden');
+      }
+    })
     .then(() => { MP.busy = false; });
+}
+
+function mpBindStatuses() {
+  MP.statusPoint = new THREE.Vector3();
+  MP.statusBubble = mpStatusBubble('Modifier mon statut', mpEditStatus);
+  ui.btnWorldStatus.onclick = mpEditStatus;
+  ui.worldStatusClose.onclick = () => ui.worldStatusDialog.close();
+  ui.worldStatusForm.onsubmit = e => {
+    e.preventDefault();
+    mpSaveStatus(ui.worldStatusText.value);
+  };
+  ui.worldStatusErase.onclick = () => mpSaveStatus('');
+}
+
+function mpStatusBubble(label, onClick) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'world-status-bubble';
+  button.hidden = true;
+  button.setAttribute('aria-label', label);
+  button.onclick = onClick;
+  ui.worldStatusLayer.appendChild(button);
+  return button;
+}
+
+function mpSyncOwnStatus(data) {
+  if (!data || typeof data.status !== 'string' || !Number.isInteger(data.statusVersion) ||
+      data.statusVersion < MP.statusVersion) return;
+  MP.statusVersion = data.statusVersion;
+  if (MP.statusBubble.textContent !== data.status) MP.statusBubble.textContent = data.status;
+  ui.btnWorldStatus.classList.remove('hidden');
+}
+
+function mpOpenStatus(title, editing) {
+  keys.clear();
+  if (pointerLocked) { try { document.exitPointerLock(); } catch (e) {} }
+  ui.worldStatusTitle.textContent = title;
+  ui.worldStatusForm.classList.toggle('hidden', !editing);
+  ui.worldStatusFull.classList.toggle('hidden', editing);
+  ui.worldStatusDialog.showModal();
+}
+
+function mpEditStatus() {
+  if (!MP.ready || MP.statusVersion < 0 || ui.worldStatusDialog.open || ui.worldStatusSave.disabled) return;
+  ui.worldStatusText.value = MP.statusBubble.textContent;
+  ui.worldStatusFeedback.textContent = '';
+  mpOpenStatus('Mon statut', true);
+  ui.worldStatusText.focus();
+}
+
+function mpReadStatus(name, text) {
+  if (!text || ui.worldStatusDialog.open) return;
+  ui.worldStatusFull.textContent = text;
+  mpOpenStatus('Statut de ' + name, false);
+}
+
+async function mpSaveStatus(text) {
+  if (!MP.ready || ui.worldStatusSave.disabled) return;
+  ui.worldStatusSave.disabled = ui.worldStatusErase.disabled = ui.worldStatusText.readOnly = true;
+  ui.worldStatusFeedback.textContent = 'Enregistrement…';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(MP.api + '/api/world/status', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + MP.token },
+      body: JSON.stringify({ status: text }),
+      signal: controller.signal
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Impossible d’enregistrer le statut.');
+    mpSyncOwnStatus(data);
+    if (ui.worldStatusDialog.open && !ui.worldStatusForm.classList.contains('hidden')) ui.worldStatusDialog.close();
+    toast(data.status ? 'Statut enregistré.' : 'Statut effacé.', 'good');
+  } catch (error) {
+    const message = error.name === 'AbortError' ? 'Le serveur met trop de temps. Réessaie.' : error.message;
+    ui.worldStatusFeedback.textContent = message;
+    if (!ui.worldStatusDialog.open || ui.worldStatusForm.classList.contains('hidden')) toast(message, 'bad');
+  } finally {
+    clearTimeout(timer);
+    ui.worldStatusSave.disabled = ui.worldStatusErase.disabled = ui.worldStatusText.readOnly = false;
+  }
+}
+
+function mpPositionStatus(button, x, y, z, nearby) {
+  if (!nearby || !button.textContent) { button.hidden = true; return; }
+  const point = MP.statusPoint.set(x, y, z).project(camera);
+  if (Math.abs(point.x) >= 1 || Math.abs(point.y) >= 1 || Math.abs(point.z) >= 1) {
+    button.hidden = true;
+    return;
+  }
+  const dx = x - camera.position.x, dy = y - camera.position.y, dz = z - camera.position.z;
+  const distance = Math.hypot(dx, dy, dz);
+  if (distance > 0 && rayHitDist(camera.position.x, camera.position.y, camera.position.z,
+      dx / distance, dy / distance, dz / distance, distance) < distance - 0.15) {
+    button.hidden = true;
+    return;
+  }
+  const left = Math.round((point.x + 1) * innerWidth / 2);
+  const top = Math.round((1 - point.y) * innerHeight / 2) - 3;
+  button.style.transform = 'translate3d(' + left + 'px,' + top + 'px,0) translate(-50%,-100%)';
+  button.hidden = false;
+}
+
+function mpDrawStatuses() {
+  if (!MP.ready) return;
+  const x = playerX(), z = playerZ();
+  mpPositionStatus(MP.statusBubble, x, player.y + 2.25, z, player.mode === 'drive' || player.mesh?.visible);
+  for (const r of MP.remotes.values()) {
+    const at = r.tag.position;
+    mpPositionStatus(r.statusBubble, at.x, at.y + r.tag.scale.y / 2, at.z, Math.hypot(at.x - x, at.z - z) <= 32);
+  }
 }
 
 function mpTag(name) {
@@ -3778,6 +3959,7 @@ function mpCreate(p) {
   scene.add(group); scene.add(tag);
   const r = { id: p.id, skin: p.skin, name: p.name, group, tag, ph, model: null, mixer: null, plan: null, acts: new Map(), cur: null,
     x: p.x, z: p.z, yaw: p.yaw, tx: p.x, tz: p.z, tyaw: p.yaw, mv: false, veh: false };
+  r.statusBubble = mpStatusBubble('Lire le statut de ' + p.name, () => mpReadStatus(r.name, r.statusBubble.textContent));
   mpLoadSkin(r);
   return r;
 }
@@ -3820,6 +4002,7 @@ function mpRemove(id) {
   const r = MP.remotes.get(id);
   if (!r) return;
   MP.remotes.delete(id);
+  r.statusBubble.remove();
   try {
     scene.remove(r.group); scene.remove(r.tag); if (r.car) scene.remove(r.car);
     if (r.mixer) { r.mixer.stopAllAction(); if (r.model) r.mixer.uncacheRoot(r.model); }
@@ -3848,7 +4031,10 @@ function mpApply(list) {
     if (r.name !== p.name) {
       scene.remove(r.tag); r.tag.material.map.dispose(); r.tag.material.dispose();
       r.tag = mpTag(p.name); scene.add(r.tag); r.name = p.name;
+      r.statusBubble.setAttribute('aria-label', 'Lire le statut de ' + p.name);
     }
+    const status = typeof p.status === 'string' ? p.status : '';
+    if (r.statusBubble.textContent !== status) r.statusBubble.textContent = status;
     r.tx = p.x; r.tz = p.z; r.tyaw = p.yaw; r.mv = !!p.mv; r.veh = !!p.veh;
   }
   for (const id of Array.from(MP.remotes.keys())) {
