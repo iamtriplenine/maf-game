@@ -3962,7 +3962,8 @@ function updateObjArrow() {
 /* ------------------------------------------------------------- input */
 const keys = new Set();
 const input = { moveX: 0, moveZ: 0, lookX: 0, lookY: 0, run: false, jump: false, throttle: 0, steer: 0, hand: 0 };
-const touchState = { stickId: -1, ox: 0, oy: 0, vx: 0, vy: 0, lookId: -1, lx: 0, ly: 0, btn: {} };
+// MAF-TOUCH-V1 : sur iPhone les pointerId peuvent etre NEGATIFS ; on utilise null (et non -1) pour "aucun doigt".
+const touchState = { stickId: null, ox: 0, oy: 0, vx: 0, vy: 0, lookId: null, lx: 0, ly: 0, btn: {} };
 let lookAccum = { x: 0, y: 0 };
 let IS_TOUCH = false;
 let pointerLocked = false, dragging = false, dragX = 0, dragY = 0;
@@ -4028,7 +4029,7 @@ function bindInput() {
   let g = null;
   const normAng = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
   const stickOff = () => {
-    touchState.stickId = -1; touchState.vx = 0; touchState.vy = 0; touchState.btn.run = false;
+    touchState.stickId = null; touchState.vx = 0; touchState.vy = 0; touchState.btn.run = false;
     ui.stickBase.style.opacity = '0'; ui.stickKnob.style.opacity = '0';
   };
   const twoInfo = () => {
@@ -4039,7 +4040,7 @@ function bindInput() {
   sz.addEventListener('pointerdown', e => {
     audioResume();
     if (player.seating) {
-      if (touchState.lookId < 0) {
+      if (touchState.lookId === null) {
         touchState.lookId = e.pointerId; touchState.lx = e.clientX; touchState.ly = e.clientY;
         sz.setPointerCapture(e.pointerId);
       }
@@ -4104,7 +4105,7 @@ function bindInput() {
     e.preventDefault();
   });
   const endPtr = e => {
-    if (e.pointerId === touchState.lookId) touchState.lookId = -1;
+    if (e.pointerId === touchState.lookId) touchState.lookId = null;
     ptrs.delete(e.pointerId);
     if (e.pointerId === touchState.stickId) stickOff();
     if (ptrs.size < 2) g = null;
@@ -4166,7 +4167,7 @@ function gatherInput(dt) {
   if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
   if (keys.has('KeyW') || keys.has('ArrowUp')) mz += 1;
   if (keys.has('KeyS') || keys.has('ArrowDown')) mz -= 1;
-  if (touchState.stickId >= 0) { mx += touchState.vx; mz += -touchState.vy; }
+  if (touchState.stickId !== null) { mx += touchState.vx; mz += -touchState.vy; }
   // gamepad (Xbox pads are common on this site)
   try {
     const pads = navigator.getGamepads ? navigator.getGamepads() : null;
