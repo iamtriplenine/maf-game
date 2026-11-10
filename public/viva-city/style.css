@@ -2,3 +2,5 @@
 /* MAF_TOUCH_V1 : plus aucun bouton tactile, aucun geste du navigateur (defilement, zoom, selection) */
 html,body{touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #touchControls{display:none!important}
+/* MAF_EPURE_V1 : ecran propre, seulement la ville (plus de menus, cartes, textes ni bienvenue) */
+#topbar,#leftSidebar,#rightSidebar,#bottomBar,#hint,#toast,#drivingHud,#crosshair,#welcome{display:none!important}

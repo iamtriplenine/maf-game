@@ -124,5 +124,7 @@
  $('startBtn').onclick=()=>{state.running=true;$('welcome').classList.add('hidden');toast('Bienvenue ! Suis le point jaune et découvre la ville.');beep(640)};
  $('closeModal').onclick=hideModal;overlay.addEventListener('click',e=>{if(e.target===overlay)hideModal()});$('mapBtn').onclick=showMap;$('helpBtn').onclick=showHelp;$('settingsBtn').onclick=showSettings;
  $('soundBtn').onclick=()=>{state.sound=!state.sound;$('soundBtn').style.color=state.sound?'#51efbe':'white';if(state.sound)beep(550);toast(state.sound?'Son activé':'Son désactivé')};
+ // MAF_EPURE_V1 : on entre directement dans la ville, sans ecran de bienvenue.
+ $('startBtn').onclick();
  requestAnimationFrame(animate);
 })();
