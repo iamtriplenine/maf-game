@@ -529,7 +529,7 @@
   </div>
 </div>
 
-<div id="perfHud" class="hidden" style="position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom));
+<div id="perfHud" style="position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom));
   z-index:24;background:rgba(6,16,26,.7);border-radius:9px;padding:7px 10px;
   font:11px/1.5 ui-monospace,Menlo,Consolas,monospace;pointer-events:none;white-space:pre"></div>
 
@@ -4717,7 +4717,15 @@ let frameNo = 0, lastSteps = 0, lastReal = 0;
 const clockLog = []; let lastClockLog = 0;
 const FIXED = 1 / 60, MAX_SUB = 12;
 const frameTimes = [];
-let perfOn = false;
+// MAF-DIAG-V1 : compteur de performance visible par defaut + capture des erreurs (affichees a l'ecran).
+const DBG = { err: '', n: 0 };
+function dbgFail(name, e) {
+  DBG.n++;
+  if (!DBG.err) DBG.err = name + ' : ' + String((e && e.message) || e).slice(0, 80);
+}
+addEventListener('error', ev => dbgFail('js', ev.error || ev.message));
+addEventListener('unhandledrejection', ev => dbgFail('promesse', ev.reason));
+let perfOn = true;
 
 function frame() {
   requestAnimationFrame(frame);
@@ -4747,12 +4755,12 @@ function frame() {
   while (accum >= FIXED && steps < MAX_SUB) {
     accum -= FIXED; steps++;
     if (player.mode === 'drive' && player.veh) {
-      stepVehicle(player.veh, FIXED, inp);
+      try { stepVehicle(player.veh, FIXED, inp); } catch (e) { dbgFail('voiture', e); }
       player.x = player.veh.x; player.z = player.veh.z; player.y = player.veh.y;
       player.yaw = player.veh.yaw;
       player.speed = Math.abs(player.veh.speed);
     } else if (!player.seating) {
-      stepPlayer(FIXED, inp);
+      try { stepPlayer(FIXED, inp); } catch (e) { dbgFail('joueur', e); }
     }
   }
   lastSteps = steps;
@@ -4760,9 +4768,9 @@ function frame() {
   stepTraffic(simDt, world.clockMs);
   stepPeds(simDt);
   stepMission(simDt);
-  updateEnvironment(simDt);
-  updateCamera(simDt, inp);
-  mpTick(simDt);
+  try { updateEnvironment(simDt); } catch (e) { dbgFail('env', e); }
+  try { updateCamera(simDt, inp); } catch (e) { dbgFail('camera', e); }
+  try { mpTick(simDt); } catch (e) { dbgFail('multi', e); }
   if (!villa.model && !villa.loading && now >= villa.retryAt &&
       Math.hypot(playerX() - VILLA.x, playerZ() - VILLA.z) <= 175) loadVilla();
   if (villa.model && !loftExtension.model && !loftExtension.loading && now >= loftExtension.retryAt &&
@@ -4772,8 +4780,7 @@ function frame() {
   if (fastfood.model) fastfood.model.visible = foodDist < 260;
   if (MP.ready && Date.now() >= energy.nextRefresh) void refreshEnergy();
   if (player.mode === 'walk') animateCharacter(simDt);
-  applyTrafficMeshes();
-  applyPedMeshes();
+  try { applyTrafficMeshes(); applyPedMeshes(); } catch (e) { dbgFail('trafic', e); }
   for (const v of vehicles) {
     const d = Math.hypot(v.x - camera.position.x, v.z - camera.position.z);
     v.mesh.visible = d < 190;
@@ -4789,9 +4796,7 @@ function frame() {
   updateObjArrow();
 
   renderer.render(scene, camera);
-  drawVillaSeatButtons();
-  drawFoodButton();
-  mpDrawStatuses();
+  try { drawVillaSeatButtons(); drawFoodButton(); mpDrawStatuses(); } catch (e) { dbgFail('hud', e); }
 }
 
 function governQuality() {
@@ -4809,7 +4814,10 @@ function drawPerf() {
   ui.perfHud.textContent =
     fpsShown.toFixed(0) + ' fps   ' + (1000 / Math.max(fpsShown, 0.01)).toFixed(1) + ' ms  (p95 ' + p95.toFixed(1) + ')\n' +
     info.calls + ' draw calls   ' + (info.triangles / 1000).toFixed(1) + 'k tris\n' +
-    'quality ' + QL[QUAL.level].name + (QUAL.mode === 'auto' ? ' (auto)' : '') + '   ' + fmtClock(env.tod);
+    'quality ' + QL[QUAL.level].name + (QUAL.mode === 'auto' ? ' (auto)' : '') + '   ' + fmtClock(env.tod) + '\n' +
+    'geo ' + renderer.info.memory.geometries + '  tex ' + renderer.info.memory.textures + '  prog ' + (renderer.info.programs ? renderer.info.programs.length : '?') + '\n' +
+    'move ' + input.moveX.toFixed(1) + ',' + input.moveZ.toFixed(1) + '  stick ' + touchState.stickId + '  pos ' + playerX().toFixed(0) + ',' + playerZ().toFixed(0) +
+    (player.seating ? '  ASSIS' : '') + (DBG.err ? '\nERR x' + DBG.n + ' ' + DBG.err : '');
 }
 function updatePrompt() {
   if (menuOpen() || player.seating || villaSeatUI.focused) { setPrompt(''); return; }
@@ -4933,6 +4941,7 @@ function main() {
     saveNow(); toggleMenu(false); banner('PROGRESS RESET', 'Fresh start, same city');
   };
   Array.prototype.forEach.call(ui.qualitySeg.children, b => { b.onclick = () => setQuality(b.dataset.q); });
+  ui.btnPerf.textContent = 'On'; ui.btnPerf.setAttribute('aria-pressed', 'true');
   ui.btnPerf.onclick = () => {
     perfOn = !perfOn;
     ui.perfHud.classList.toggle('hidden', !perfOn);
