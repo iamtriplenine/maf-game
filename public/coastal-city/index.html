@@ -1149,7 +1149,8 @@ const VILLA_PATH = [-2.2, (BEACH_Z - 0.68 - VILLA.z) / VILLA.scale, 2.2, -11.90,
 // MAF-FOOD-FIX-V2 : on conserve la taille du restaurant et de son parking,
 // mais on ne rend plus l'immense quartier annexe du GLB (ni la haie cote route).
 // Le modele d'origine reste INTACT : aucun GLB modifie ou redimensionne.
-const FASTFOOD = { x: -100, z: -310, y: CURB_H, scale: 0.75 };
+// MAF-FOOD-ROAD : fastfood rapproche de la route pour etre plus visible et accessible.
+const FASTFOOD = { x: -86, z: -300, y: CURB_H, scale: 0.75 };
 const fastfood = { model: null, loading: false, retryAt: 0 };
 // Les 3 caisses sont sur le comptoir a z=9.2, cote CLIENT a z>9.7.
 // Centre d'action, en unites du GLB, x=-1.5 z=11.4.
