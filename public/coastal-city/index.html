@@ -5353,14 +5353,14 @@ async function bbSync() {
 
 /* ---------- mode "placer un panneau" ---------- */
 const bbInCity = (x, z) => x >= CITY_X0 && x <= CITY_X1 && z >= CITY_Z0 && z <= CITY_Z1;
-const bbPointOk = (x, z) => bbInCity(x, z) && !onRoad(x, z) && !insideAnyCollider(x, z, 0.2);
+const bbPointOk = (x, z) => Math.abs(x) <= 1500 && Math.abs(z) <= 1500; // MAF-BB-LIBRE-V1 : pose libre partout
 /* MAF-BB-PILIER-V1 : seul le PIED du panneau compte pour la pose (pas l'ecran large ni la hauteur).
    Mesures relevees dans les modeles 3D (demi-largeur, demi-profondeur au sol, en metres). */
 const BB_FOOT = { lowpoly: [0.5, 0.5], metal: [0.45, 0.45], busstop: [2.5, 1.36], column: [0.8, 0.8] };
 function bbFootprintOk(x, z, rot, type) {
   const [hw, hd] = BB_FOOT[type] || [0.6, 0.6], c = Math.cos(rot), s = Math.sin(rot);
   const reach = Math.max(hw, hd);
-  if (bb.boards.some(b => { const f = BB_FOOT[b.type] || [0.6, 0.6]; return Math.hypot(b.x - x, b.z - z) < reach + Math.max(f[0], f[1]) + 0.1; })) return false;
+  // MAF-BB-LIBRE-V1 : plus de limite entre panneaux.
   const pts = [[0, 0], [-hw, -hd], [-hw, hd], [hw, -hd], [hw, hd], [0, -hd], [0, hd], [-hw, 0], [hw, 0]];
   return pts.every(([lx, lz]) => bbPointOk(x + lx * c + lz * s, z - lx * s + lz * c));
 }
