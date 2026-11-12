@@ -3506,17 +3506,157 @@ function hubCanUse() {
     !ui.worldMapDialog.open && !ui.worldStatusDialog.open &&
     Math.hypot(player.x - HUB.x, player.z - HUB.z) < HUB.reach);
 }
-// Etape 2 remplacera le contenu de cette fonction (liste des salons, creation avec mise).
+/* MAF-HUB-TIR-AU-BUT-V2 (etape 2/3) : salons de Tir au but dans la villa.
+   Meme serveur, memes routes que l'onglet Game : GET /api/rooms, POST /api/rooms,
+   POST /api/rooms/:id/join. La mise n'est preleveee qu'a l'acceptation (regle du jeu, inchangee).
+   L'acceptation et l'entree dans la partie arrivent a l'etape 3. */
+const HUB_SHOTS = [3, 5, 10];
+const HUB2 = { shots: 5, stake: '500', timer: null, busy: false, body: null, styled: false, seq: 0 };
+const hubMoney = n => Number(n || 0).toLocaleString('fr-FR') + ' F CFA';
+function hubEl(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function hubBtn(text, cls, fn) {
+  const b = hubEl('button', cls, text); b.type = 'button';
+  b.addEventListener('click', e => { e.stopPropagation(); audioResume(); fn(b); });
+  return b;
+}
+function hubStyle() {
+  if (HUB2.styled) return; HUB2.styled = true;
+  const s = document.createElement('style');
+  s.textContent =
+    '#worldHubPanel .hub-body{margin:6px 0;max-height:34vh;overflow:auto}' +
+    '#worldHubPanel .hub-body .hub-shots{display:flex;gap:6px;margin-bottom:8px}' +
+    '#worldHubPanel .hub-body input{width:100%;box-sizing:border-box;min-height:42px;border-radius:10px;' +
+      'border:1px solid #5ee7ff;background:rgba(0,0,0,.35);color:#fff;padding:0 12px;font:700 16px system-ui,sans-serif;margin-bottom:8px}' +
+    '#worldHubPanel .hub-body label{display:block;font-size:12px;color:#9fd8e8;margin:2px 0 4px}' +
+    '#worldHubPanel .hub-room{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:6px;' +
+      'border:1px solid #5ee7ff55;border-radius:12px;background:rgba(94,231,255,.07)}' +
+    '#worldHubPanel .hub-room>div{flex:1;min-width:0}' +
+    '#worldHubPanel .hub-room b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+    '#worldHubPanel .hub-room small{color:#bcd3e2}' +
+    '#worldHubPanel .hub-room button{flex:0 0 auto;min-height:36px;padding:0 12px}' +
+    '#worldHubPanel .hub-tag{flex:0 0 auto;font-size:12px;color:#ffd166}' +
+    '#worldHubPanel .hub-empty{color:#bcd3e2;font-size:13px;padding:6px 0}' +
+    '#worldHubPanel button:disabled{opacity:.55;cursor:wait}';
+  document.head.appendChild(s);
+}
+function hubSay(text, bad) {
+  HUB.note.textContent = text || '';
+  HUB.note.style.color = bad ? '#ff8a8a' : '#ffd166';
+}
+async function hubApi(path, method, body) {
+  if (!MP.ready) throw new Error('Connecte-toi pour utiliser les salons.');
+  let r;
+  try {
+    r = await fetch(MP.api + '/api/rooms' + path, {
+      method: method || 'GET', cache: 'no-store',
+      headers: Object.assign({ Authorization: 'Bearer ' + MP.token }, body ? { 'Content-Type': 'application/json' } : {}),
+      body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(20000)
+    });
+  } catch (err) { throw new Error('Connexion aux salons impossible. Reessaie dans un instant.'); }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'Erreur des salons (' + r.status + ').');
+  return d;
+}
+function hubCreateForm() {
+  const body = HUB2.body;
+  body.appendChild(hubEl('label', '', 'Nombre de tirs par joueur'));
+  const row = hubEl('div', 'hub-shots');
+  const shotBtns = HUB_SHOTS.map(n => {
+    const b = hubBtn(n + ' tirs', HUB2.shots === n ? 'on' : '', () => {
+      HUB2.shots = n; shotBtns.forEach((x, i) => x.classList.toggle('on', HUB_SHOTS[i] === n));
+    });
+    row.appendChild(b); return b;
+  });
+  body.appendChild(row);
+  body.appendChild(hubEl('label', '', 'Mise par joueur (100 à 1 000 000 F CFA)'));
+  const input = hubEl('input'); input.type = 'text'; input.inputMode = 'numeric'; input.maxLength = 7;
+  input.value = HUB2.stake; input.autocomplete = 'off';
+  // Le clavier ne doit pas deplacer le personnage pendant la saisie.
+  for (const ev of ['keydown', 'keyup']) input.addEventListener(ev, e => e.stopPropagation());
+  input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, '').slice(0, 7); HUB2.stake = input.value; });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); void hubCreate(go); } });
+  body.appendChild(input);
+  const go = hubBtn('Créer mon salon', 'on', () => { void hubCreate(go); });
+  go.style.width = '100%'; go.style.marginBottom = '4px';
+  body.appendChild(go);
+}
+async function hubCreate(button) {
+  if (HUB2.busy) return;
+  const stake = Number(HUB2.stake);
+  if (!/^\d+$/.test(HUB2.stake) || !Number.isSafeInteger(stake) || stake < 100 || stake > 1000000) {
+    hubSay('Choisis une mise entière de 100 à 1 000 000 F CFA.', true); return;
+  }
+  HUB2.busy = true; button.disabled = true; hubSay('Création du salon…');
+  try {
+    const d = await hubApi('', 'POST', { game: 'penalty', shots: HUB2.shots, stake });
+    const code = d.room && d.room.code ? ' Code : ' + d.room.code + '.' : '';
+    hubRender('join');
+    hubSay('Ton salon est créé !' + code + ' Les joueurs le voient ici.');
+  } catch (err) { hubSay(err.message || 'Création impossible.', true); }
+  finally { HUB2.busy = false; button.disabled = false; }
+}
+async function hubJoin(room, button) {
+  if (HUB2.busy) return;
+  HUB2.busy = true; button.disabled = true;
+  try {
+    await hubApi('/' + room.id + '/join', 'POST');
+    hubSay('Demande envoyée à ' + (room.host && room.host.pseudo || 'ce joueur') + '. Ta mise (' + hubMoney(room.stake) + ') est prélevée s’il accepte.');
+  } catch (err) { hubSay(err.message || 'Impossible de rejoindre.', true); }
+  finally { HUB2.busy = false; button.disabled = false; void hubLoadRooms(); }
+}
+async function hubLoadRooms() {
+  const token = ++HUB2.seq;
+  let rooms;
+  try { rooms = ((await hubApi('')).rooms || []).filter(r => r.game === 'penalty'); }
+  catch (err) { if (token === HUB2.seq && HUB.mode === 'join') hubSay(err.message, true); return; }
+  if (token !== HUB2.seq || !HUB.open || HUB.mode !== 'join') return;
+  const body = HUB2.body; body.textContent = '';
+  if (!rooms.length) { body.appendChild(hubEl('div', 'hub-empty', 'Aucun salon ouvert pour le moment. Crée le premier !')); return; }
+  for (const r of rooms) {
+    const row = hubEl('div', 'hub-room');
+    const info = hubEl('div');
+    info.appendChild(hubEl('b', '', r.host && r.host.pseudo || 'Joueur'));
+    info.appendChild(hubEl('small', '', r.shots + ' tirs · mise ' + hubMoney(r.stake) + ' · gain ' + hubMoney(r.stake * 2)));
+    row.appendChild(info);
+    if (r.is_host) row.appendChild(hubEl('span', 'hub-tag', 'Ton salon'));
+    else if (r.is_guest) row.appendChild(hubEl('span', 'hub-tag', 'Demande envoyée'));
+    else if (r.status !== 'open') row.appendChild(hubEl('span', 'hub-tag', 'Demande en cours'));
+    else if (r.host_busy) row.appendChild(hubEl('span', 'hub-tag', 'En partie'));
+    else row.appendChild(hubBtn('Rejoindre', 'on', b => { void hubJoin(r, b); }));
+    body.appendChild(row);
+  }
+}
 function hubRender(mode) {
+  hubStyle();
   HUB.mode = mode;
+  if (!HUB2.body) { HUB2.body = hubEl('div', 'hub-body'); HUB.panel.insertBefore(HUB2.body, HUB.panel.querySelector('.hub-row')); }
+  // Souris verrouillee sur le jeu : on la libere pour pouvoir cliquer le panneau.
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (err) {}
   HUB.title.textContent = '🎯 Maison du Tir au but';
   HUB.btnCreate.classList.toggle('on', mode === 'create');
   HUB.btnJoin.classList.toggle('on', mode === 'join');
-  if (mode === 'create') HUB.text.textContent = 'Ici tu créeras un salon : nombre de tirs, mise prélevée sur ton solde, puis tu attends un adversaire en direct.';
-  else if (mode === 'join') HUB.text.textContent = 'Ici tu verras les salons ouverts, avec les joueurs qui attendent leur adversaire.';
-  else HUB.text.textContent = 'Bienvenue ! Cette maison réunit les joueurs de Tir au but. Choisis une action ou marche sur une pastille au sol.';
-  HUB.note.textContent = 'Les salons seront actifs à la prochaine mise à jour.';
+  HUB2.body.textContent = ''; hubSay('');
+  if (mode === 'create') {
+    HUB.text.textContent = 'Crée ton salon : les joueurs de la villa le voient et peuvent demander à jouer contre toi.';
+    hubCreateForm();
+  } else if (mode === 'join') {
+    HUB.text.textContent = 'Salons ouverts (mise prélevée sur ton solde à l’acceptation) :';
+    HUB2.body.appendChild(hubEl('div', 'hub-empty', 'Chargement…'));
+    void hubLoadRooms();
+    if (!HUB2.timer) HUB2.timer = setInterval(() => {
+      if (!HUB.open || HUB.mode !== 'join') { clearInterval(HUB2.timer); HUB2.timer = null; return; }
+      void hubLoadRooms();
+    }, 4000);
+  } else {
+    HUB.text.textContent = 'Bienvenue ! Cette maison réunit les joueurs de Tir au but. Choisis une action ou marche sur une pastille au sol.';
+  }
 }
+
 function hubOpen() {
   if (!hubCanUse()) return;
   const pad = hubPad();
