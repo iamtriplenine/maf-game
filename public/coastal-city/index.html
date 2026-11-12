@@ -5177,7 +5177,7 @@ const BB_TYPES = {
   column: { name: 'Colonne (3 affiches)', file: 'billboard-column.glb', scale: 1.2, yaw: 0, px: 1000, py: 1974,
     wM: 2 * Math.PI * 0.6048 * 1.2 / 3, hM: 2.5 * 1.2, half: [0.9, 0.9], screen: { kind: 'wrap', name: 'posters', repeat: 3 } }
 };
-const BB_CELL = 2, BB_RANGE = 5;      // cases de 2 m, grille 11 x 11 autour du joueur
+const BB_CELL = 0.5, BB_RANGE = 24;   // cases de 0,5 m, grille 49 x 49 autour du joueur
 const bb = { tpls: {}, loading: {}, boards: [], cur: null, place: null, ui: null, syncing: false, nextSync: 0 };
 const bbFmt = n => n.toFixed(2).replace('.', ',');
 
@@ -5354,10 +5354,14 @@ async function bbSync() {
 /* ---------- mode "placer un panneau" ---------- */
 const bbInCity = (x, z) => x >= CITY_X0 && x <= CITY_X1 && z >= CITY_Z0 && z <= CITY_Z1;
 const bbPointOk = (x, z) => bbInCity(x, z) && !onRoad(x, z) && !insideAnyCollider(x, z, 0.2);
+/* MAF-BB-PILIER-V1 : seul le PIED du panneau compte pour la pose (pas l'ecran large ni la hauteur).
+   Mesures relevees dans les modeles 3D (demi-largeur, demi-profondeur au sol, en metres). */
+const BB_FOOT = { lowpoly: [0.5, 0.5], metal: [0.45, 0.45], busstop: [2.5, 1.36], column: [0.8, 0.8] };
 function bbFootprintOk(x, z, rot, type) {
-  const [hw, hd] = BB_TYPES[type].half, c = Math.cos(rot), s = Math.sin(rot);
-  if (bb.boards.some(b => Math.hypot(b.x - x, b.z - z) < hw + BB_TYPES[b.type].half[0] + 0.5)) return false;
-  const pts = [[0, 0], [-hw / 2, 0], [hw / 2, 0], [-hw, 0], [hw, 0], [-hw, -hd], [-hw, hd], [hw, -hd], [hw, hd]];
+  const [hw, hd] = BB_FOOT[type] || [0.6, 0.6], c = Math.cos(rot), s = Math.sin(rot);
+  const reach = Math.max(hw, hd);
+  if (bb.boards.some(b => { const f = BB_FOOT[b.type] || [0.6, 0.6]; return Math.hypot(b.x - x, b.z - z) < reach + Math.max(f[0], f[1]) + 0.1; })) return false;
+  const pts = [[0, 0], [-hw, -hd], [-hw, hd], [hw, -hd], [hw, hd], [0, -hd], [0, hd], [-hw, 0], [hw, 0]];
   return pts.every(([lx, lz]) => bbPointOk(x + lx * c + lz * s, z - lx * s + lz * c));
 }
 
@@ -5374,12 +5378,13 @@ function bbStartPlace() {
   });
 }
 
+/* MAF-BB-PILIER-V1 : petites cases (0,5 m), apercu du vrai panneau, orientation libre sur 360 degres. */
 function bbEnterPlace(type) {
   const C = BB_CELL, R = BB_RANGE, n = R * 2 + 1;
   const cx = Math.round(playerX() / C) * C, cz = Math.round(playerZ() / C) * C;
   const baseY = groundY(cx, cz);
   const pos = new Float32Array(n * n * 12), col = new Float32Array(n * n * 12), idx = [], valid = [];
-  const h = C / 2 - 0.06;
+  const h = C / 2 - 0.03;
   for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
     const k = i * n + j, px = cx + (i - R) * C, pz = cz + (j - R) * C, y = groundY(px, pz) + 0.07;
     valid[k] = bbPointOk(px, pz);
@@ -5392,14 +5397,15 @@ function bbEnterPlace(type) {
   geo.setIndex(idx);
   const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
   mesh.renderOrder = 998; mesh.frustumCulled = false;
+  // Contour du pied du panneau + fleche qui montre vers ou regarde l'ecran.
   const og = new THREE.BufferGeometry();
-  og.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
-  const outline = new THREE.LineLoop(og, new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false }));
+  og.setAttribute('position', new THREE.BufferAttribute(new Float32Array(14 * 3), 3));
+  const outline = new THREE.LineSegments(og, new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false }));
   outline.renderOrder = 999; outline.frustumCulled = false; outline.visible = false;
   scene.add(mesh); scene.add(outline);
-  bb.place = { cx, cz, baseY, n, mesh, outline, valid, sel: null, rot: 0, ok: false, type };
-  bbPaintCells();
-  bb.ui.hint.textContent = 'Touche un carré au sol (vert = libre, rouge = bloqué).';
+  bb.place = { cx, cz, baseY, n, mesh, outline, valid, sel: null, rot: 0, ok: false, type, ghost: null, ghostType: '', manual: false };
+  bbPaintCells(); bbSyncRotUI();
+  bb.ui.hint.textContent = 'Touche une case au sol (vert = libre, rouge = bloqué). Seul le pied du panneau compte.';
   bb.ui.overlay.hidden = false; bb.ui.panel.hidden = false; bb.ui.btn.hidden = true;
 }
 
@@ -5415,18 +5421,26 @@ function bbPaintCells() {
 
 function bbUpdateSel() {
   const p = bb.place; if (!p) return;
-  if (!p.sel) { bb.ui.hint.textContent = 'Touche un carré au sol (vert = libre, rouge = bloqué).'; return; }
-  const { x, z } = p.sel, [hw, hd] = BB_TYPES[p.type].half, c = Math.cos(p.rot), s = Math.sin(p.rot), y = groundY(x, z) + 0.14;
+  if (!p.sel) { bb.ui.hint.textContent = 'Touche une case au sol (vert = libre, rouge = bloqué). Seul le pied du panneau compte.'; return; }
+  const { x, z } = p.sel, [hw, hd] = BB_FOOT[p.type] || [0.6, 0.6], c = Math.cos(p.rot), s = Math.sin(p.rot), y = groundY(x, z) + 0.14;
+  const W = (lx, lz) => [x + lx * c + lz * s, y, z - lx * s + lz * c];
+  const q0 = W(-hw, -hd), q1 = W(hw, -hd), q2 = W(hw, hd), q3 = W(-hw, hd);
+  const base = W(0, hd), tip = W(0, hd + 1.6), l = W(-0.35, hd + 1.15), r = W(0.35, hd + 1.15);
+  const segs = [q0, q1, q1, q2, q2, q3, q3, q0, base, tip, tip, l, tip, r];
   const a = p.outline.geometry.attributes.position;
-  [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach((d, q) => {
-    const lx = d[0] * hw, lz = d[1] * hd;
-    a.setXYZ(q, x + lx * c + lz * s, y, z - lx * s + lz * c);
-  });
+  segs.forEach((v, q) => a.setXYZ(q, v[0], v[1], v[2]));
   a.needsUpdate = true;
   p.ok = bbFootprintOk(x, z, p.rot, p.type);
   p.outline.material.color.set(p.ok ? 0x66ff99 : 0xff5555);
   p.outline.visible = true;
-  bb.ui.hint.textContent = p.ok ? 'Emplacement libre. Appuie sur « Placer ici ».' : 'Emplacement bloqué : choisis un autre carré ou tourne le panneau.';
+  // Apercu du vrai panneau, pour voir exactement ou il regarde.
+  const tpl = bb.tpls[p.type];
+  if (tpl && p.ghostType !== p.type) {
+    if (p.ghost) scene.remove(p.ghost);
+    p.ghost = tpl.clone(true); p.ghostType = p.type; scene.add(p.ghost);
+  }
+  if (p.ghost) { p.ghost.position.set(x, groundY(x, z), z); p.ghost.rotation.y = p.rot + BB_TYPES[p.type].yaw; }
+  bb.ui.hint.textContent = p.ok ? 'Emplacement libre. Règle l’orientation puis « Placer ici ».' : 'Pied bloqué (mur, route ou autre panneau) : choisis une autre case.';
 }
 
 function bbPick(clientX, clientY) {
@@ -5440,18 +5454,49 @@ function bbPick(clientX, clientY) {
   if (i < 0 || j < 0 || i >= p.n || j >= p.n) return;
   const x = p.cx + (i - BB_RANGE) * BB_CELL, z = p.cz + (j - BB_RANGE) * BB_CELL;
   if (p.sel && p.sel.k === i * p.n + j) return;
-  // Par defaut la face du panneau regarde le joueur ; le bouton Tourner permet de changer.
-  p.rot = Math.round(Math.atan2(playerX() - x, playerZ() - z) / (Math.PI / 2)) * (Math.PI / 2);
+  // Par defaut l'ecran regarde le joueur (angle exact) ; une orientation reglee a la main est conservee.
+  if (!p.manual) p.rot = Math.atan2(playerX() - x, playerZ() - z);
   p.sel = { k: i * p.n + j, x, z };
-  bbPaintCells(); bbUpdateSel();
+  bbPaintCells(); bbSyncRotUI(); bbUpdateSel();
 }
 
 function bbEndPlace() {
   const p = bb.place; if (!p) return;
-  scene.remove(p.mesh); scene.remove(p.outline);
+  scene.remove(p.mesh); scene.remove(p.outline); if (p.ghost) scene.remove(p.ghost);
   p.mesh.geometry.dispose(); p.mesh.material.dispose(); p.outline.geometry.dispose(); p.outline.material.dispose();
   bb.place = null;
   bb.ui.overlay.hidden = true; bb.ui.panel.hidden = true;
+}
+
+// Orientation sur 360 degres : curseur precis + boutons -15 / -1 / +1 / +15.
+function bbSyncRotUI() {
+  const p = bb.place, U = bb.ui;
+  if (!p || !U || !U.rotR) return;
+  const deg = Math.round(((p.rot * 180 / Math.PI) % 360 + 360) % 360) % 360;
+  U.rotR.value = String(deg); U.rotL.textContent = 'Orientation : ' + deg + '°';
+}
+function bbSetRot(deg) {
+  const p = bb.place; if (!p) return;
+  p.rot = (((deg % 360) + 360) % 360) * Math.PI / 180; p.manual = true;
+  bbSyncRotUI(); bbUpdateSel();
+}
+function bbRotBy(d) { const p = bb.place; if (p) bbSetRot(p.rot * 180 / Math.PI + d); }
+function bbRotInit() {
+  const U = bb.ui, panel = U.panel, row = panel.querySelector('.bb-row');
+  const st = document.createElement('style');
+  st.textContent = '.bb-rot{margin:0 0 8px}.bb-rotl{font-weight:700;margin-bottom:4px;color:#d9d3ee}' +
+    '.bb-panel .bb-rot .bb-row{align-items:center}.bb-panel .bb-rot button{flex:0 0 auto;padding:.55em .55em}' +
+    '.bb-rot input[type=range]{flex:1 1 auto;min-width:0;height:28px;touch-action:pan-x}';
+  document.head.appendChild(st);
+  const box = document.createElement('div'); box.className = 'bb-rot';
+  box.innerHTML = '<div class="bb-rotl">Orientation : 0°</div><div class="bb-row">' +
+    '<button type="button" data-r="-15">−15°</button><button type="button" data-r="-1">−1°</button>' +
+    '<input type="range" min="0" max="359" step="1" value="0" aria-label="Orientation du panneau">' +
+    '<button type="button" data-r="1">+1°</button><button type="button" data-r="15">+15°</button></div>';
+  panel.insertBefore(box, row);
+  U.rotL = box.querySelector('.bb-rotl'); U.rotR = box.querySelector('input');
+  U.rotR.addEventListener('input', () => bbSetRot(Number(U.rotR.value)));
+  box.addEventListener('click', e => { const r = e.target.dataset && e.target.dataset.r; if (r) bbRotBy(Number(r)); });
 }
 
 async function bbConfirmPlace() {
@@ -5556,7 +5601,7 @@ function bbBuildUI() {
   U.panel.addEventListener('click', e => {
     const a = e.target.dataset && e.target.dataset.a;
     if (a === 'ok') bbConfirmPlace();
-    else if (a === 'rot') { if (bb.place && bb.place.sel) { bb.place.rot += Math.PI / 2; bbUpdateSel(); } }
+    else if (a === 'rot') { bbRotBy(90); }
     else if (a === 'no') bbEndPlace();
   });
   U.sel.addEventListener('change', async () => {
@@ -5567,6 +5612,7 @@ function bbBuildUI() {
     else { U.sel.value = bb.place ? bb.place.type : 'lowpoly'; U.hint.textContent = 'Modèle indisponible, réessaie.'; }
   });
   document.body.appendChild(U.panel);
+  bbRotInit();
   const menuBtn = document.getElementById('btnWorldBillboard');
   if (menuBtn) menuBtn.onclick = bbStartPlace;
 }
