@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import CharacterViewer from "../components/CharacterViewer";
 import ThemeToggle from "../components/ThemeToggle";
 import { SKINS } from "../characters/skins";
-import { CARS } from "../characters/cars";
+import { CARS, getCar } from "../characters/cars";
 import CarViewer from "../components/CarViewer";
 import { useSession } from "../auth/useSession";
 import { saveProfileBackground, ownedProfileBackgrounds } from "../api/accounts";
@@ -12,7 +12,7 @@ import "../styles/studio-gallery.css";
 
 export default function Studio({ onBack }) {
   const { session, updateUser } = useSession();
-  const [section, setSection] = useState('skins');
+  const [section, setSection] = useState('skins'); const [carId, setCarId] = useState(CARS[0].id);
   const [selectedId, setSelectedId] = useState("samba");
   const [backgroundId, setBackgroundId] = useState(() => session ? validProfileBackground(session.profile_background_id) : readGuestProfileBackground());
   const [backgroundSaving, setBackgroundSaving] = useState(false);
@@ -52,7 +52,7 @@ export default function Studio({ onBack }) {
       setBackgroundSaving(false);
     }
   };
-  const selected = SKINS.find((item) => item.id === selectedId) || SKINS[0];
+  const selected = SKINS.find((item) => item.id === selectedId) || SKINS[0]; const selectedCar = getCar(carId);
 
   useEffect(() => {
     const closeOnEscape = (event) => {
@@ -93,7 +93,7 @@ export default function Studio({ onBack }) {
         <span className="studio__count">{section === 'skins' ? `${SKINS.length} SKINS` : `${PROFILE_BACKGROUNDS.length} FONDS`}</span>
       </section>}
 
-      {section === 'cars' ? null : section === 'skins' ? (
+      {section === 'cars' ? (<nav className="studio__roster" aria-label="Choisir une voiture du Studio 3D">{CARS.map((c) => (<button type="button" key={c.id} className={`studio__skin-button${c.id === selectedCar.id ? ' is-selected' : ''}`} aria-pressed={c.id === selectedCar.id} onClick={() => setCarId(c.id)}><strong>{c.name}</strong><small>{c.access === 'public' ? 'Public' : c.access === 'npc' ? 'Police' : 'Exclusif'}</small></button>))}</nav>) : section === 'skins' ? (
         <nav className="studio__roster" aria-label="Choisir un skin du Studio 3D">
           {SKINS.map((skin) => (
             <button type="button" key={skin.id}
@@ -120,7 +120,7 @@ export default function Studio({ onBack }) {
       )}
 
       <section className="studio__showcase" aria-label={`Presentation 3D de ${selected.name}`}>
-        {section === 'cars' ? <CarViewer key="car" car={CARS[0]} backgroundId={backgroundId} /> : <CharacterViewer key={selected.id} character={selected} backgroundId={backgroundId} />}
+        {section === 'cars' ? <CarViewer key={selectedCar.id} car={selectedCar} backgroundId={backgroundId} /> : <CharacterViewer key={selected.id} character={selected} backgroundId={backgroundId} />}
       </section>
 
       {section === 'backgrounds' && (
@@ -136,7 +136,7 @@ export default function Studio({ onBack }) {
         <button type="button" onClick={onBack} aria-label="Retourner au profil depuis le Studio 3D">
           <span aria-hidden="true">←</span> Retour au profil
         </button>
-        <span>{section === 'cars' ? 'VOITURE PUBLIQUE \u00B7 ' + CARS[0].name : (selected.access === "exclusive" ? "SKIN EXCLUSIF" : "COLLECTION PUBLIQUE") + ' \u00B7 ' + selected.name}</span>
+        <span>{section === 'cars' ? selectedCar.badge + ' \u00B7 ' + selectedCar.name : (selected.access === "exclusive" ? "SKIN EXCLUSIF" : "COLLECTION PUBLIQUE") + ' \u00B7 ' + selected.name}</span>
       </footer>
     </main>
   );

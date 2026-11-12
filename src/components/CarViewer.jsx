@@ -67,7 +67,7 @@ export default function CarViewer({ car, backgroundId }) {
     <section className="viewer-panel">
       <header className="viewer-header">
         <div>
-          <span className="eyebrow">VOITURE · DISPONIBLE POUR TOUS</span>
+          <span className="eyebrow">VOITURE · {car.eyebrow || "DISPONIBLE POUR TOUS"}</span>
           <h2>{car.name}</h2>
         </div>
         <span className="local-badge">Fichier local</span>
