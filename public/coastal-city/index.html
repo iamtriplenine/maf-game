@@ -75,7 +75,28 @@
     border-radius:24px;border:1px solid #ffd166;background:rgba(8,20,32,.95);
     color:#fff;font:700 14px/1.2 'Segoe UI',system-ui,sans-serif;
     box-shadow:0 3px 16px #0009;cursor:pointer;pointer-events:auto;touch-action:manipulation}
-  #worldEatButton:disabled{opacity:.65;cursor:wait}
+  #worldHubButton{position:absolute;left:50%;top:auto;bottom:calc(88px + env(safe-area-inset-bottom));
+    z-index:25;transform:translateX(-50%);min-width:190px;min-height:46px;padding:8px 16px;
+    border-radius:24px;border:1px solid #5ee7ff;background:rgba(6,20,34,.95);
+    color:#fff;font:700 14px/1.2 'Segoe UI',system-ui,sans-serif;
+    box-shadow:0 0 18px #5ee7ff66,0 3px 16px #0009;cursor:pointer;pointer-events:auto;touch-action:manipulation}
+  #worldHubButton[hidden]{display:none}
+  #worldHubPanel{position:absolute;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));z-index:26;
+    transform:translateX(-50%);width:min(92vw,380px);padding:14px 16px;border-radius:18px;
+    border:1px solid #5ee7ff;background:rgba(6,18,30,.94);color:#fff;
+    font:14px/1.4 'Segoe UI',system-ui,sans-serif;box-shadow:0 0 26px #5ee7ff55,0 6px 24px #000a;
+    pointer-events:auto;touch-action:manipulation}
+  #worldHubPanel[hidden]{display:none}
+  #worldHubPanel h3{margin:0 0 6px;font-size:17px;color:#5ee7ff}
+  #worldHubPanel p{margin:0 0 10px;color:#dbe9f5}
+  #worldHubPanel .hub-note{font-size:12px;color:#ffd166}
+  #worldHubPanel .hub-row{display:flex;gap:8px;margin-top:8px}
+  #worldHubPanel button{flex:1;min-height:42px;border-radius:12px;border:1px solid #5ee7ff;
+    background:rgba(94,231,255,.12);color:#fff;font:700 13px 'Segoe UI',system-ui,sans-serif;cursor:pointer}
+  #worldHubPanel button.on{background:#5ee7ff;color:#06141f}
+  #worldHubPanel button.hub-close{flex:0 0 auto;padding:0 14px;border-color:#ffffff55;background:transparent}
+  
+#worldEatButton:disabled{opacity:.65;cursor:wait}
   #worldEatButton[hidden]{display:none}
   #energyVal{color:#ffd166}
   #worldSeatLayer{position:absolute;inset:0;pointer-events:none}
@@ -324,7 +345,9 @@
 </div>
 
 <div id="hud" class="hidden">
-  <button id="worldEatButton" hidden type="button" aria-label="Manger au fastfood" title="Manger : +50 energie">🍔 Manger (+50 ⚡)</button>
+  <button id="worldHubButton" hidden type="button" aria-label="Salons Tir au but">Salons Tir au but</button>
+  
+<button id="worldEatButton" hidden type="button" aria-label="Manger au fastfood" title="Manger : +50 energie">🍔 Manger (+50 ⚡)</button>
   <div id="worldSeatLayer" hidden></div>
   <div id="worldStatusLayer"></div>
   <div id="statusBar" class="panel">
@@ -1169,7 +1192,7 @@ const FOOD_SEATS = [
   yaw: yaw*Math.PI/180 }));
 VILLA_SEATS.push(...FOOD_SEATS);
 const WORLD_MAP_PLACES = [
-  { label: 'Villa', x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale },
+  { label: 'Villa \u{1F3AF} Tir au but', x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale },
   { label: 'Fastfood 🍔', x: FASTFOOD.x, z: FASTFOOD.z+8*FASTFOOD.scale }
 ];
 const villa = { model: null, loading: false, retryAt: 0, rocks: [], ray: null, hits: [] };
@@ -3368,6 +3391,160 @@ async function refreshEnergy() {
   } catch (error) { energy.nextRefresh = Date.now() + 15000; }
   finally { energy.fetching = false; }
 }
+/* MAF-HUB-TIR-AU-BUT-V1 (etape 1/3) : la villa devient la "Maison du Tir au but".
+   Enseigne 3D, repere sur la carte, pastilles holographiques au sol (Creer / Rejoindre)
+   et panneau. Les salons (etape 2) et l'acceptation + entree dans le jeu (etape 3)
+   reutiliseront les routes /api/rooms existantes : le jeu n'est jamais reecrit. */
+const HUB = {
+  x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale - 3.4,
+  group: null, sign: null, signY: 0, pads: [], panel: null, title: null, text: null,
+  btnCreate: null, btnJoin: null, mode: 'menu', open: false, label: '',
+  reach: 4.5, padReach: 1.15
+};
+const HUB_PAD_DEFS = [
+  { id: 'create', dx: -1.3, icon: '➕', title: 'CRÉER', sub: 'un salon', button: '➕ Créer un salon' },
+  { id: 'join', dx: 1.3, icon: '👥', title: 'REJOINDRE', sub: 'un salon', button: '👥 Rejoindre un salon' }
+];
+function hubTex(canvas) {
+  const t = new THREE.CanvasTexture(canvas);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+function hubSignTexture() {
+  const c = document.createElement('canvas'); c.width = 768; c.height = 288;
+  const g = c.getContext('2d');
+  g.beginPath();
+  g.moveTo(50, 10); g.arcTo(758, 10, 758, 278, 40); g.arcTo(758, 278, 10, 278, 40);
+  g.arcTo(10, 278, 10, 10, 40); g.arcTo(10, 10, 758, 10, 40); g.closePath();
+  g.fillStyle = 'rgba(5,18,32,.84)'; g.fill();
+  g.lineWidth = 8; g.strokeStyle = '#5ee7ff'; g.shadowColor = '#5ee7ff'; g.shadowBlur = 22; g.stroke(); g.shadowBlur = 0;
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffffff';
+  g.font = '700 120px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+  g.fillText('🎯', 130, 134);
+  g.font = '800 92px "Segoe UI",system-ui,sans-serif'; g.fillText('TIR AU BUT', 470, 112);
+  g.fillStyle = '#ffd166'; g.font = '600 42px "Segoe UI",system-ui,sans-serif';
+  g.fillText('Salons · Mises · Joueurs', 450, 208);
+  return hubTex(c);
+}
+function hubPadTexture(def) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(128, 128, 10, 128, 128, 122);
+  grad.addColorStop(0, 'rgba(8,30,48,.80)'); grad.addColorStop(1, 'rgba(8,30,48,.55)');
+  g.fillStyle = grad; g.beginPath(); g.arc(128, 128, 118, 0, TAU); g.fill();
+  g.strokeStyle = '#5ee7ff'; g.shadowColor = '#5ee7ff'; g.shadowBlur = 16; g.lineWidth = 8;
+  g.beginPath(); g.arc(128, 128, 112, 0, TAU); g.stroke(); g.shadowBlur = 0;
+  g.lineWidth = 3; g.setLineDash([10, 9]); g.beginPath(); g.arc(128, 128, 92, 0, TAU); g.stroke(); g.setLineDash([]);
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffffff';
+  g.font = '700 78px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+  g.fillText(def.icon, 128, 98);
+  g.font = '800 32px "Segoe UI",system-ui,sans-serif'; g.fillText(def.title, 128, 160);
+  g.fillStyle = '#ffd166'; g.font = '600 24px "Segoe UI",system-ui,sans-serif'; g.fillText(def.sub, 128, 192);
+  return hubTex(c);
+}
+function buildPenaltyHub() {
+  if (HUB.group) return;
+  const G = new THREE.Group(); G.name = 'penalty-hub'; G.visible = false;
+  HUB.group = G;
+  const gy = groundY(HUB.x, HUB.z);
+  HUB.signY = gy + 11.5;
+  const sign = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: hubSignTexture(), transparent: true, depthWrite: false, fog: false, toneMapped: false }));
+  sign.scale.set(10.5, 3.94, 1); sign.position.set(HUB.x, HUB.signY, HUB.z); sign.renderOrder = 10;
+  HUB.sign = sign; G.add(sign);
+  // Deux faisceaux de chaque cote de l'enseigne : repere visible de loin.
+  const beamGeo = new THREE.CylinderGeometry(0.11, 0.11, 11.5, 8, 1, true);
+  const beamMat = new THREE.MeshBasicMaterial({ color: 0x5ee7ff, transparent: true, opacity: 0.38,
+    blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  for (const sx of [-5.5, 5.5]) {
+    const beam = new THREE.Mesh(beamGeo, beamMat);
+    beam.position.set(HUB.x + sx, gy + 5.75, HUB.z); G.add(beam);
+  }
+  for (const def of HUB_PAD_DEFS) {
+    const px = HUB.x + def.dx, pz = HUB.z;
+    const mat = new THREE.MeshBasicMaterial({ map: hubPadTexture(def), transparent: true, depthWrite: false,
+      fog: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 2.1), mat);
+    // Le haut du dessin pointe vers la villa : le texte se lit bien en arrivant de la rue.
+    mesh.rotation.set(-Math.PI / 2, 0, Math.PI);
+    mesh.position.set(px, groundY(px, pz) + 0.06, pz); mesh.renderOrder = 5;
+    G.add(mesh);
+    HUB.pads.push({ def, mesh, x: px, z: pz });
+  }
+  scene.add(G);
+
+  const panel = document.createElement('div');
+  panel.id = 'worldHubPanel'; panel.hidden = true;
+  panel.innerHTML = '<h3></h3><p></p><p class="hub-note"></p>' +
+    '<div class="hub-row"><button type="button" data-hub="create"></button>' +
+    '<button type="button" data-hub="join"></button>' +
+    '<button type="button" class="hub-close" data-hub="close">✕</button></div>';
+  document.body.appendChild(panel);
+  HUB.panel = panel;
+  const q = s => panel.querySelector(s);
+  HUB.title = q('h3'); HUB.text = q('p'); HUB.note = q('.hub-note');
+  HUB.btnCreate = q('[data-hub="create"]'); HUB.btnJoin = q('[data-hub="join"]');
+  HUB.btnCreate.textContent = HUB_PAD_DEFS[0].button; HUB.btnJoin.textContent = HUB_PAD_DEFS[1].button;
+  panel.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    audioResume();
+    const k = b.getAttribute('data-hub');
+    if (k === 'close') hubClose(); else hubRender(k);
+  });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && HUB.open) hubClose(); });
+}
+function hubPad() {
+  let best = null, bd = HUB.padReach;
+  for (const p of HUB.pads) {
+    const d = Math.hypot(player.x - p.x, player.z - p.z);
+    if (d < bd) { bd = d; best = p; }
+  }
+  return best;
+}
+function hubCanUse() {
+  return !!(HUB.group && player.mode === 'walk' && !player.seating && !menuOpen() &&
+    !ui.worldMapDialog.open && !ui.worldStatusDialog.open &&
+    Math.hypot(player.x - HUB.x, player.z - HUB.z) < HUB.reach);
+}
+// Etape 2 remplacera le contenu de cette fonction (liste des salons, creation avec mise).
+function hubRender(mode) {
+  HUB.mode = mode;
+  HUB.title.textContent = '🎯 Maison du Tir au but';
+  HUB.btnCreate.classList.toggle('on', mode === 'create');
+  HUB.btnJoin.classList.toggle('on', mode === 'join');
+  if (mode === 'create') HUB.text.textContent = 'Ici tu créeras un salon : nombre de tirs, mise prélevée sur ton solde, puis tu attends un adversaire en direct.';
+  else if (mode === 'join') HUB.text.textContent = 'Ici tu verras les salons ouverts, avec les joueurs qui attendent leur adversaire.';
+  else HUB.text.textContent = 'Bienvenue ! Cette maison réunit les joueurs de Tir au but. Choisis une action ou marche sur une pastille au sol.';
+  HUB.note.textContent = 'Les salons seront actifs à la prochaine mise à jour.';
+}
+function hubOpen() {
+  if (!hubCanUse()) return;
+  const pad = hubPad();
+  HUB.open = true; HUB.panel.hidden = false;
+  hubRender(pad ? pad.def.id : 'menu');
+}
+function hubClose() {
+  HUB.open = false; if (HUB.panel) HUB.panel.hidden = true;
+}
+function hubDraw(now) {
+  if (!HUB.group) return;
+  const d = Math.hypot(player.x - HUB.x, player.z - HUB.z);
+  HUB.group.visible = d < 300;
+  if (!HUB.group.visible) { ui.worldHubButton.hidden = true; if (HUB.open) hubClose(); return; }
+  const t = now / 1000, pad = hubPad(), usable = hubCanUse();
+  HUB.sign.position.y = HUB.signY + Math.sin(t * 1.4) * 0.18;
+  HUB.pads.forEach((p, i) => {
+    const on = p === pad;
+    const s = 1 + Math.sin(t * 3 + i * 1.7) * 0.035 + (on ? 0.14 : 0);
+    p.mesh.scale.set(s, s, 1);
+    p.mesh.material.opacity = on ? 1 : (usable ? 0.92 : 0.75);
+  });
+  if (HUB.open && (d > 8 || !usable)) hubClose();
+  const label = pad ? pad.def.button : '🎯 Salons Tir au but';
+  if (HUB.label !== label) { HUB.label = label; ui.worldHubButton.textContent = label; }
+  ui.worldHubButton.hidden = !usable || HUB.open;
+}
+
 function canEatAtFastFood() {
   const lx = (player.x - FASTFOOD.x) / FASTFOOD.scale;
   const lz = (player.z - FASTFOOD.z) / FASTFOOD.scale;
@@ -3410,7 +3587,7 @@ const ui = {};
 let hudDirty = true, hudAccum = 0, mmAccum = 0;
 function qs(id) { return document.getElementById(id); }
 function grabUI() {
-  ['loading', 'bootMsg', 'spinner', 'hud', 'clockVal', 'cashVal', 'energyVal', 'worldEatButton', 'mTitle', 'mSub', 'mTimerWrap', 'mTimer',
+  ['loading', 'bootMsg', 'spinner', 'hud', 'clockVal', 'cashVal', 'energyVal', 'worldEatButton', 'worldHubButton', 'mTitle', 'mSub', 'mTimerWrap', 'mTimer',
     'spdVal', 'spdUnit', 'gearVal', 'minimap', 'minimapWrap', 'prompt', 'toastWrap', 'objArrow', 'objDist',
     'worldMapDialog', 'worldMapHint', 'worldMapClose', 'worldMapCanvas', 'worldMapNorth', 'worldMapMinus', 'worldMapPlus',
     'worldMapLeft', 'worldMapRight', 'worldMapOverview', 'worldMapClear',
@@ -4005,7 +4182,7 @@ function bindInput() {
     if (e.pointerType === 'mouse') {
       if (pointerLocked && e.button === 0) {
         const target = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-        if (target?.matches('.world-status-bubble, .world-seat-button, #worldStandButton, #worldEatButton')) { target.click(); return; }
+        if (target?.matches('.world-status-bubble, .world-seat-button, #worldStandButton, #worldEatButton, #worldHubButton, #worldHubPanel button')) { target.click(); return; }
       }
       dragging = true; dragX = e.clientX; dragY = e.clientY;
       if (!pointerLocked && !IS_TOUCH) { try { ui.gl.requestPointerLock(); } catch (err) {} }
@@ -4147,6 +4324,7 @@ function bindInput() {
   qs('btnExit').onclick = () => { try { if (window.parent && window.parent !== window) window.parent.postMessage({ mafWorldExit: true }, window.location.origin); } catch (e) {} };
   ui.prompt.onclick = () => { audioResume(); if (!tryEatAtFastFood()) tryEnterExit(); };
   ui.worldEatButton.onclick = () => { audioResume(); void eatAtFastFood(); };
+  ui.worldHubButton.onclick = () => { audioResume(); hubOpen(); };
   ui.worldStandButton.onclick = () => { audioResume(); leaveVillaSeat(); };
   ui.btnClose.onclick = () => toggleMenu(false);
   ui.btnSound.onclick = () => { audioResume(); toggleSound(); };
@@ -4221,6 +4399,7 @@ let lastSwap = 0;
 function tryEnterExit() {
   if (player.seating) { leaveVillaSeat(); return; }
   if (sitOnVillaSeat(villaSeatUI.focused)) return;
+  if (hubCanUse()) { hubOpen(); return; }
   if (nowMs() - lastSwap < 260) return;
   lastSwap = nowMs();
   if (player.mode === 'walk') {
@@ -5221,7 +5400,7 @@ function frame() {
   updateObjArrow();
 
   renderer.render(scene, camera);
-  try { drawVillaSeatButtons(); drawFoodButton(); mpDrawStatuses(); } catch (e) { dbgFail('hud', e); }
+  try { drawVillaSeatButtons(); drawFoodButton(); hubDraw(now); mpDrawStatuses(); } catch (e) { dbgFail('hud', e); }
 }
 
 function governQuality() {
@@ -5255,6 +5434,7 @@ function updatePrompt() {
     setPrompt((IS_TOUCH ? 'Tap <kbd>ENTER</kbd>' : 'Press <kbd>F</kbd>') + ' to step out');
     return;
   }
+  if (hubCanUse()) { setPrompt(tapE + ' pour les salons Tir au but'); return; }
   if (canEatAtFastFood()) { setPrompt(tapE + ' pour manger (+50 ⚡)'); return; }
   let best = null, bd = 5.2;
   for (const v of vehicles) { if (v.occupied) continue; const d = Math.hypot(v.x - player.x, v.z - player.z); if (d < bd) { bd = d; best = v; } }
@@ -5328,6 +5508,7 @@ function main() {
   initPeds(heavy ? 46 : 22, seed);
   scene.add(peds.body); scene.add(peds.parts);
   scene.add(buildMarker());
+  try { buildPenaltyHub(); } catch (e) { dbgFail('hub', e); }
 
   _mark('actors');
   buildMinimapBase();
