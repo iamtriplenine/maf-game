@@ -3657,6 +3657,122 @@ function hubRender(mode) {
   }
 }
 
+/* MAF-HUB-TIR-AU-BUT-V3 (etape 3/3) : acceptation dans la ville + entree dans le jeu normal.
+   Un petit formulaire discret (coin de l'ecran) : le createur voit "X veut jouer contre toi" avec
+   Accepter / Refuser ; le demandeur voit "Demande envoyee". Des que la demande est acceptee,
+   les deux joueurs quittent la ville et arrivent sur le salon du jeu (meme page, meme jeu).
+   Aucune regle de jeu, de solde ou de salon n'est reecrite : memes routes /api/rooms. */
+const HUB3 = { box: null, prev: new Map(), skip: new Set(), err: {}, rooms: [], sig: '',
+  polling: false, working: false, entering: false, styled: false };
+function hub3Style() {
+  if (HUB3.styled) return; HUB3.styled = true;
+  const s = document.createElement('style');
+  s.textContent =
+    '#worldHubAlerts{position:absolute;top:calc(64px + env(safe-area-inset-top));right:10px;z-index:27;' +
+      'display:flex;flex-direction:column;gap:8px;width:min(88vw,300px);pointer-events:none}' +
+    '#worldHubAlerts .hub-card{pointer-events:auto;padding:10px 12px;border-radius:14px;border:1px solid #5ee7ff;' +
+      'background:rgba(6,18,30,.93);color:#fff;font:13px/1.35 "Segoe UI",system-ui,sans-serif;box-shadow:0 0 18px #5ee7ff55,0 4px 16px #0009}' +
+    '#worldHubAlerts .hub-card b{display:block;color:#5ee7ff;font-size:14px;margin-bottom:2px}' +
+    '#worldHubAlerts .hub-card small{display:block;color:#bcd3e2;margin-bottom:6px}' +
+    '#worldHubAlerts .hub-card .hub-err{color:#ff8a8a;margin-bottom:6px}' +
+    '#worldHubAlerts .hub-card .hub-row{display:flex;gap:8px}' +
+    '#worldHubAlerts .hub-card button{flex:1;min-height:38px;border-radius:10px;border:1px solid #5ee7ff;' +
+      'background:rgba(94,231,255,.12);color:#fff;font:700 13px "Segoe UI",system-ui,sans-serif;cursor:pointer;touch-action:manipulation}' +
+    '#worldHubAlerts .hub-card button.on{background:#5ee7ff;color:#06141f}' +
+    '#worldHubAlerts .hub-card button:disabled{opacity:.55;cursor:wait}';
+  document.head.appendChild(s);
+}
+function hubEnter(room) {
+  if (HUB3.entering) return;
+  HUB3.entering = true;
+  toast('Partie prête ! Entrée dans le jeu…', 'good');
+  try { window.parent.postMessage({ mafWorldOpenRoom: { id: room.id } }, window.location.origin); } catch (err) {}
+  setTimeout(() => { HUB3.entering = false; }, 5000);
+}
+const hubReqKey = r => r.id + ':' + (r.guest && r.guest.id) + ':' + r.updated_at;
+async function hubAccept(r, btn) {
+  if (HUB3.working) return;
+  HUB3.working = true; btn.disabled = true; delete HUB3.err[r.id];
+  try {
+    const d = await hubApi('/' + r.id + '/accept', 'POST');
+    HUB3.prev.set(r.id, 'ready');
+    hubEnter(d.room || r);
+  } catch (err) {
+    HUB3.err[r.id] = err.message || 'Acceptation impossible.';
+    hubAlertsDraw(HUB3.rooms);
+  } finally { HUB3.working = false; btn.disabled = false; }
+}
+async function hubDecline(r, btn) {
+  if (HUB3.working) return;
+  HUB3.working = true; btn.disabled = true;
+  try { await hubApi('/' + r.id + '/decline', 'POST'); HUB3.skip.add(hubReqKey(r)); }
+  catch (err) { HUB3.err[r.id] = err.message || 'Refus impossible.'; }
+  finally { HUB3.working = false; btn.disabled = false; HUB3.sig = ''; void hubAlertsPoll(); }
+}
+async function hubCancel(r, btn) {
+  if (HUB3.working) return;
+  HUB3.working = true; btn.disabled = true;
+  try { await hubApi('/' + r.id + '/leave', 'POST'); }
+  catch (err) { HUB3.err[r.id] = err.message || 'Annulation impossible.'; }
+  finally { HUB3.working = false; btn.disabled = false; HUB3.sig = ''; void hubAlertsPoll(); }
+}
+function hubAlertsDraw(rooms) {
+  HUB3.rooms = rooms;
+  const asks = rooms.filter(r => r.status === 'pending' && r.is_host && !HUB3.skip.has(hubReqKey(r)));
+  const waits = rooms.filter(r => r.status === 'pending' && r.is_guest);
+  const sig = asks.map(r => hubReqKey(r) + (HUB3.err[r.id] || '')).join('|') + '#' +
+    waits.map(r => r.id + (HUB3.err[r.id] || '')).join('|');
+  if (sig === HUB3.sig) return;
+  HUB3.sig = sig;
+  const box = HUB3.box; box.textContent = '';
+  for (const r of asks) {
+    const card = hubEl('div', 'hub-card');
+    card.appendChild(hubEl('b', '', '⚔ Demande de duel'));
+    card.appendChild(hubEl('div', '', (r.guest && r.guest.pseudo || 'Un joueur') + ' veut jouer contre toi.'));
+    card.appendChild(hubEl('small', '', 'Tir au but · ' + r.shots + ' tirs · mise ' + hubMoney(r.stake) + ' · gain ' + hubMoney(r.stake * 2)));
+    if (HUB3.err[r.id]) card.appendChild(hubEl('div', 'hub-err', HUB3.err[r.id]));
+    const row = hubEl('div', 'hub-row');
+    row.appendChild(hubBtn('Accepter', 'on', b => { void hubAccept(r, b); }));
+    row.appendChild(hubBtn('Refuser', '', b => { void hubDecline(r, b); }));
+    card.appendChild(row); box.appendChild(card);
+  }
+  for (const r of waits) {
+    const card = hubEl('div', 'hub-card');
+    card.appendChild(hubEl('b', '', '⏳ Demande envoyée'));
+    card.appendChild(hubEl('div', '', 'En attente de ' + (r.host && r.host.pseudo || 'ce joueur') + '.'));
+    card.appendChild(hubEl('small', '', 'Tu entres dans la partie dès qu’il accepte.'));
+    if (HUB3.err[r.id]) card.appendChild(hubEl('div', 'hub-err', HUB3.err[r.id]));
+    const row = hubEl('div', 'hub-row');
+    row.appendChild(hubBtn('Annuler', '', b => { void hubCancel(r, b); }));
+    card.appendChild(row); box.appendChild(card);
+  }
+}
+async function hubAlertsPoll() {
+  if (!MP.ready || document.hidden || HUB3.polling) return;
+  HUB3.polling = true;
+  let rooms;
+  try { rooms = ((await hubApi('/mine/all')).rooms || []).filter(r => r.game === 'penalty'); }
+  catch (err) { return; }
+  finally { HUB3.polling = false; }
+  const ids = new Set(rooms.map(r => r.id));
+  for (const id of Array.from(HUB3.prev.keys())) if (!ids.has(id)) HUB3.prev.delete(id);
+  for (const r of rooms) {
+    // On n'entre automatiquement que pour une demande vue "en attente" puis acceptee.
+    if (HUB3.prev.get(r.id) === 'pending' && (r.status === 'ready' || r.status === 'playing') && (r.is_host || r.is_guest)) hubEnter(r);
+    HUB3.prev.set(r.id, r.status);
+  }
+  hubAlertsDraw(rooms);
+}
+function hubAlertsStart() {
+  if (HUB3.box) return;
+  hub3Style();
+  const box = document.createElement('div'); box.id = 'worldHubAlerts';
+  document.body.appendChild(box); HUB3.box = box;
+  setTimeout(() => { void hubAlertsPoll(); }, 1500);
+  setInterval(() => { void hubAlertsPoll(); }, 5000);
+  addEventListener('focus', () => { void hubAlertsPoll(); });
+}
+
 function hubOpen() {
   if (!hubCanUse()) return;
   const pad = hubPad();
@@ -5649,6 +5765,7 @@ function main() {
   scene.add(peds.body); scene.add(peds.parts);
   scene.add(buildMarker());
   try { buildPenaltyHub(); } catch (e) { dbgFail('hub', e); }
+  try { hubAlertsStart(); } catch (e) { dbgFail('hub3', e); }
 
   _mark('actors');
   buildMinimapBase();

@@ -83,6 +83,17 @@ export default function WorldPage() {
         leave();
         return;
       }
+      if (e.data.mafWorldOpenRoom) {
+        // Salon accepte dans la ville : on quitte le monde et on ouvre le salon dans l'onglet Game.
+        const id = Number(e.data.mafWorldOpenRoom.id);
+        const uid = (currentSession() || {}).id;
+        if (Number.isSafeInteger(id) && id > 0 && uid) {
+          try { sessionStorage.setItem("maf:pending-room-to-open", JSON.stringify({ id, uid })); } catch { /* optionnel */ }
+          setPlaying(false);
+          window.location.hash = "#game";
+        }
+        return;
+      }
       if (e.data.mafWorldHello && frameRef.current && e.source === frameRef.current.contentWindow) {
         const token = currentToken();
         if (!token) return; // visiteur non connecte : pas de multijoueur
