@@ -4729,32 +4729,41 @@ addEventListener('error', ev => dbgFail('js', ev.error || ev.message));
 addEventListener('unhandledrejection', ev => dbgFail('promesse', ev.reason));
 let perfOn = true;
 
-/* ==================== PANNEAUX PUBLICITAIRES (etape 2) ==================== */
-// Bouton "Placer un panneau" : grille de cases au sol, choix du coin exact, pose automatique.
-// Ecran reel : 2,26 m x 0,85 m a l'echelle 1, ici x3 => 6,78 m x 2,54 m, ratio 8:3.
-const BB_SCALE = 3;
-const BB_SCREEN = { wM: 2.2597 * BB_SCALE, hM: 0.8472 * BB_SCALE, px: 2048, py: 768 };
+/* ==================== PANNEAUX PUBLICITAIRES (etape 3) ==================== */
+// 4 types de panneaux, poses via la grille (bouton "Placer un panneau"), enregistres sur le serveur.
+// Chaque type a un ecran aux mesures fixes : l'image est recadree au centre pour le remplir exactement.
+const BB_TYPES = {
+  lowpoly: { name: 'Panneau', file: 'billboard-lowpoly.glb', scale: 3, yaw: 0, px: 2048, py: 768,
+    wM: 2.2597 * 3, hM: 0.8472 * 3, half: [3.4, 0.5], screen: { kind: 'mat', mat: 'Billboard_Texture' } },
+  metal: { name: 'Grand panneau', file: 'billboard-metal.glb', scale: 0.6, yaw: -Math.PI / 2, px: 2048, py: 768,
+    wM: 10.8 * 0.6, hM: 4.05 * 0.6, half: [3.4, 1.3], screen: { kind: 'overlay', w: 10.8, h: 4.05, pos: [1.71, 9.445, 0] } },
+  busstop: { name: 'Abribus', file: 'billboard-busstop.glb', scale: 1.6, yaw: 0, px: 1000, py: 1560,
+    wM: 0.5 * 1.6, hM: 0.78 * 1.6, half: [2.6, 1.5], screen: { kind: 'mesh', name: 'info_light' } },
+  column: { name: 'Colonne (3 affiches)', file: 'billboard-column.glb', scale: 1.2, yaw: 0, px: 1000, py: 1974,
+    wM: 2 * Math.PI * 0.6048 * 1.2 / 3, hM: 2.5 * 1.2, half: [0.9, 0.9], screen: { kind: 'wrap', name: 'posters', repeat: 3 } }
+};
 const BB_CELL = 2, BB_RANGE = 5;      // cases de 2 m, grille 11 x 11 autour du joueur
-const BB_HALF_W = 3.4, BB_HALF_D = 0.5; // demi-emprise du panneau au sol
-const bb = { tpl: null, loading: null, boards: [], cur: null, place: null, ui: null };
+const bb = { tpls: {}, loading: {}, boards: [], cur: null, place: null, ui: null, syncing: false, nextSync: 0 };
+const bbFmt = n => n.toFixed(2).replace('.', ',');
 
 function bbPaintDefault(b) {
-  const g = b.ctx, W = BB_SCREEN.px, H = BB_SCREEN.py;
+  const T = BB_TYPES[b.type], g = b.ctx, W = T.px, H = T.py;
   g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
   g.strokeStyle = '#d5d9e0'; g.lineWidth = 12; g.strokeRect(6, 6, W - 12, H - 12);
+  const big = Math.min(H * 0.3, W / 4.2);
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillStyle = '#1b2433'; g.font = '800 230px system-ui, Arial, sans-serif';
+  g.fillStyle = '#1b2433'; g.font = '800 ' + Math.round(big) + 'px system-ui, Arial, sans-serif';
   g.fillText('À LOUER', W / 2, H * 0.42);
-  g.fillStyle = '#6b7685'; g.font = '600 60px system-ui, Arial, sans-serif';
+  g.fillStyle = '#6b7685'; g.font = '600 ' + Math.round(big * 0.26) + 'px system-ui, Arial, sans-serif';
   g.fillText('Ta pub ici · ' + W + ' × ' + H + ' px', W / 2, H * 0.78);
   b.tex.needsUpdate = true;
 }
 
 async function bbSetPhoto(b, file) {
-  const url = URL.createObjectURL(file);
+  const T = BB_TYPES[b.type], url = URL.createObjectURL(file);
   try {
     const img = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = url; });
-    const W = BB_SCREEN.px, H = BB_SCREEN.py;
+    const W = T.px, H = T.py;
     const s = Math.max(W / img.naturalWidth, H / img.naturalHeight); // la photo s'adapte au panneau (recadrage centre)
     const w = img.naturalWidth * s, h = img.naturalHeight * s;
     b.ctx.fillStyle = '#ffffff'; b.ctx.fillRect(0, 0, W, H);
@@ -4765,64 +4774,156 @@ async function bbSetPhoto(b, file) {
   finally { URL.revokeObjectURL(url); }
 }
 
-function bbLoadTemplate() {
-  if (bb.tpl) return Promise.resolve(bb.tpl);
-  if (bb.loading) return bb.loading;
-  bb.loading = (async () => {
+/* ---------- UV : l'image remplit exactement la surface, haut de l'image en haut ---------- */
+function bbRemapUV(geo) {
+  const uv = geo.attributes.uv;
+  let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+  for (let i = 0; i < uv.count; i++) { u0 = Math.min(u0, uv.getX(i)); u1 = Math.max(u1, uv.getX(i)); v0 = Math.min(v0, uv.getY(i)); v1 = Math.max(v1, uv.getY(i)); }
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) - u0) / (u1 - u0), (v1 - uv.getY(i)) / (v1 - v0));
+  uv.needsUpdate = true;
+}
+function bbProjectUV(geo) {
+  geo.computeBoundingBox();
+  const b = geo.boundingBox, p = geo.attributes.position, uv = new Float32Array(p.count * 2);
+  for (let i = 0; i < p.count; i++) { uv[i * 2] = (p.getX(i) - b.min.x) / (b.max.x - b.min.x); uv[i * 2 + 1] = (b.max.y - p.getY(i)) / (b.max.y - b.min.y); }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+function bbWrapUV(geo, rep) {
+  const g = geo.index ? geo.toNonIndexed() : geo, p = g.attributes.position, uv = new Float32Array(p.count * 2);
+  let y0 = 1e9, y1 = -1e9;
+  for (let i = 0; i < p.count; i++) { y0 = Math.min(y0, p.getY(i)); y1 = Math.max(y1, p.getY(i)); }
+  for (let t = 0; t + 2 < p.count; t += 3) {
+    const a = [0, 1, 2].map(k => Math.atan2(p.getX(t + k), p.getZ(t + k)));
+    for (let k = 1; k < 3; k++) { while (a[k] - a[0] > Math.PI) a[k] -= TAU; while (a[k] - a[0] < -Math.PI) a[k] += TAU; }
+    for (let k = 0; k < 3; k++) { uv[(t + k) * 2] = rep * a[k] / TAU; uv[(t + k) * 2 + 1] = (y1 - p.getY(t + k)) / (y1 - y0); }
+  }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return g;
+}
+
+function bbPrepTemplate(type, model) {
+  const T = BB_TYPES[type], S = T.screen;
+  model.traverse(o => {
+    if (!o.isMesh) return;
+    const m = Array.isArray(o.material) ? o.material[0] : o.material;
+    let screen = false;
+    if (S.kind === 'mat' && m && m.name === S.mat) { bbRemapUV(o.geometry); screen = true; }
+    else if (S.kind === 'mesh' && o.name.includes(S.name)) { bbProjectUV(o.geometry); screen = true; }
+    else if (S.kind === 'wrap' && o.name.includes(S.name)) { o.geometry = bbWrapUV(o.geometry, S.repeat); screen = true; }
+    if (screen) o.userData.bbScreen = true; else o.castShadow = o.receiveShadow = true;
+  });
+  if (S.kind === 'overlay') {
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(S.w, S.h), new THREE.MeshBasicMaterial());
+    const uv = plane.geometry.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
+    plane.position.set(S.pos[0], S.pos[1], S.pos[2]); plane.rotation.y = Math.PI / 2; // face vers +X
+    plane.userData.bbScreen = true;
+    model.add(plane);
+  }
+  model.scale.setScalar(T.scale);
+  return model;
+}
+
+function bbLoadTemplate(type) {
+  if (bb.tpls[type]) return Promise.resolve(bb.tpls[type]);
+  if (bb.loading[type]) return bb.loading[type];
+  bb.loading[type] = (async () => {
     const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
-    const { scene: model } = await new GLTFLoader().loadAsync(new URL('./billboard-lowpoly.glb', document.baseURI).href);
-    model.traverse(o => {
-      if (!o.isMesh) return;
-      const m = Array.isArray(o.material) ? o.material[0] : o.material;
-      if (m && m.name === 'Billboard_Texture') {
-        // UV recalees sur 0..1 : l'image remplit exactement l'ecran, haut de l'image en haut.
-        const uv = o.geometry.attributes.uv;
-        let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
-        for (let i = 0; i < uv.count; i++) { u0 = Math.min(u0, uv.getX(i)); u1 = Math.max(u1, uv.getX(i)); v0 = Math.min(v0, uv.getY(i)); v1 = Math.max(v1, uv.getY(i)); }
-        for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) - u0) / (u1 - u0), (v1 - uv.getY(i)) / (v1 - v0));
-        uv.needsUpdate = true;
-        o.userData.bbScreen = true;
-      } else { o.castShadow = o.receiveShadow = true; }
-    });
-    model.scale.setScalar(BB_SCALE);
-    bb.tpl = model;
-    return model;
-  })().catch(err => { bb.loading = null; console.warn('Panneau : chargement indisponible.', err); return null; });
-  return bb.loading;
+    const { scene: model } = await new GLTFLoader().loadAsync(new URL('./' + BB_TYPES[type].file, document.baseURI).href);
+    return (bb.tpls[type] = bbPrepTemplate(type, model));
+  })().catch(err => { bb.loading[type] = null; console.warn('Panneau : chargement indisponible.', err); return null; });
+  return bb.loading[type];
 }
 
 // Chaque panneau a son propre ecran (canvas + texture) : une image par panneau.
-function bbCreateBoard(x, z, rotY) {
-  const model = bb.tpl.clone(true);
+function bbCreateBoard(r) {
+  const T = BB_TYPES[r.type], model = bb.tpls[r.type].clone(true);
   const canvas = document.createElement('canvas');
-  canvas.width = BB_SCREEN.px; canvas.height = BB_SCREEN.py;
-  const b = { x, z, rotY, model, canvas, ctx: canvas.getContext('2d'), tex: null };
+  canvas.width = T.px; canvas.height = T.py;
+  const b = { id: r.id || null, type: r.type, x: r.x, z: r.z, rot: r.rot, mine: !!r.mine,
+    version: r.version == null ? -1 : r.version, model, canvas, ctx: canvas.getContext('2d'), tex: null, mats: [] };
   b.tex = new THREE.CanvasTexture(canvas);
   b.tex.flipY = false; b.tex.colorSpace = THREE.SRGBColorSpace; b.tex.anisotropy = 4;
+  if (T.screen.kind === 'wrap') b.tex.wrapS = THREE.RepeatWrapping;
   bbPaintDefault(b);
   model.traverse(o => {
-    if (o.userData && o.userData.bbScreen) o.material = new THREE.MeshBasicMaterial({ map: b.tex, side: THREE.DoubleSide });
+    if (o.userData && o.userData.bbScreen) { const mat = new THREE.MeshBasicMaterial({ map: b.tex, side: THREE.DoubleSide }); b.mats.push(mat); o.material = mat; }
   });
-  model.position.set(x, groundY(x, z), z);
-  model.rotation.y = rotY;
+  model.position.set(r.x, groundY(r.x, r.z), r.z);
+  model.rotation.y = r.rot + T.yaw;
   scene.add(model);
   bb.boards.push(b);
   return b;
 }
 
+function bbRemoveBoard(b) {
+  scene.remove(b.model);
+  b.mats.forEach(m => m.dispose()); b.tex.dispose();
+  bb.boards = bb.boards.filter(x => x !== b);
+  if (bb.cur === b) bb.cur = null;
+}
+
+/* ---------- serveur ---------- */
+async function bbApi(path, method, body) {
+  const r = await fetch(MP.api + '/api/world/billboards' + path, {
+    method: method || 'GET', cache: 'no-store',
+    headers: Object.assign({ Authorization: 'Bearer ' + MP.token }, body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    body: body !== undefined ? JSON.stringify(body) : undefined
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Erreur serveur');
+  return j;
+}
+
+async function bbLoadRemoteImage(b, version) {
+  const r = await fetch(MP.api + '/api/world/billboards/' + b.id + '/image?v=' + version, { headers: { Authorization: 'Bearer ' + MP.token } });
+  if (!r.ok) throw new Error('image');
+  await bbSetPhoto(b, await r.blob());
+}
+
+async function bbPushImage(b) {
+  let q = 0.88, url = b.canvas.toDataURL('image/jpeg', q);
+  while (url.length > 1500000 && q > 0.45) { q -= 0.12; url = b.canvas.toDataURL('image/jpeg', q); }
+  const r = await bbApi('/' + b.id + '/image', 'PUT', { image: url });
+  b.version = r.version;
+}
+
+async function bbSync() {
+  if (!MP.ready || bb.syncing) return;
+  bb.syncing = true;
+  try {
+    const { boards } = await bbApi('');
+    const seen = new Set();
+    for (const r of boards) {
+      seen.add(r.id);
+      let b = bb.boards.find(x => x.id === r.id);
+      if (!b) {
+        if (Math.hypot(playerX() - r.x, playerZ() - r.z) > 220) continue;   // seulement les panneaux proches
+        if (!BB_TYPES[r.type] || !(await bbLoadTemplate(r.type))) continue;
+        b = bbCreateBoard(r); b.version = -1;
+      }
+      b.mine = r.mine;
+      if (r.version !== b.version) {
+        b.version = r.version;
+        if (r.has_image) await bbLoadRemoteImage(b, r.version).catch(() => {}); else bbPaintDefault(b);
+      }
+    }
+    for (const b of bb.boards.slice()) {
+      if (!b.id) continue;
+      if (!seen.has(b.id) || Math.hypot(playerX() - b.x, playerZ() - b.z) > 300) bbRemoveBoard(b);
+    }
+  } catch (e) { console.warn('Panneaux : synchronisation impossible.', e); }
+  finally { bb.syncing = false; bb.nextSync = nowMs() + 20000; }
+}
+
 /* ---------- mode "placer un panneau" ---------- */
 const bbInCity = (x, z) => x >= CITY_X0 && x <= CITY_X1 && z >= CITY_Z0 && z <= CITY_Z1;
 const bbPointOk = (x, z) => bbInCity(x, z) && !onRoad(x, z) && !insideAnyCollider(x, z, 0.2);
-function bbFootprintPts(x, z, rot) {
-  const c = Math.cos(rot), s = Math.sin(rot), pts = [];
-  for (const [lx, lz] of [[0, 0], [-1.7, 0], [1.7, 0], [-BB_HALF_W, 0], [BB_HALF_W, 0],
-    [-BB_HALF_W, -BB_HALF_D], [-BB_HALF_W, BB_HALF_D], [BB_HALF_W, -BB_HALF_D], [BB_HALF_W, BB_HALF_D]])
-    pts.push([x + lx * c + lz * s, z - lx * s + lz * c]);
-  return pts;
-}
-function bbFootprintOk(x, z, rot) {
-  if (bb.boards.some(b => Math.hypot(b.x - x, b.z - z) < 7)) return false;
-  return bbFootprintPts(x, z, rot).every(p => bbPointOk(p[0], p[1]));
+function bbFootprintOk(x, z, rot, type) {
+  const [hw, hd] = BB_TYPES[type].half, c = Math.cos(rot), s = Math.sin(rot);
+  if (bb.boards.some(b => Math.hypot(b.x - x, b.z - z) < hw + BB_TYPES[b.type].half[0] + 0.5)) return false;
+  const pts = [[0, 0], [-hw / 2, 0], [hw / 2, 0], [-hw, 0], [hw, 0], [-hw, -hd], [-hw, hd], [hw, -hd], [hw, hd]];
+  return pts.every(([lx, lz]) => bbPointOk(x + lx * c + lz * s, z - lx * s + lz * c));
 }
 
 function bbStartPlace() {
@@ -4831,13 +4932,14 @@ function bbStartPlace() {
   if (tools && tools.classList.contains('open')) document.getElementById('btnWorldTools').click();
   bb.ui.hint.textContent = 'Chargement du panneau…';
   bb.ui.panel.hidden = false;
-  bbLoadTemplate().then(tpl => {
+  const type = bb.ui.sel.value;
+  bbLoadTemplate(type).then(tpl => {
     if (!tpl) { bb.ui.panel.hidden = true; toast('Panneau indisponible, réessaie dans un instant.'); return; }
-    bbEnterPlace();
+    bbEnterPlace(type);
   });
 }
 
-function bbEnterPlace() {
+function bbEnterPlace(type) {
   const C = BB_CELL, R = BB_RANGE, n = R * 2 + 1;
   const cx = Math.round(playerX() / C) * C, cz = Math.round(playerZ() / C) * C;
   const baseY = groundY(cx, cz);
@@ -4860,7 +4962,7 @@ function bbEnterPlace() {
   const outline = new THREE.LineLoop(og, new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false }));
   outline.renderOrder = 999; outline.frustumCulled = false; outline.visible = false;
   scene.add(mesh); scene.add(outline);
-  bb.place = { cx, cz, baseY, n, mesh, outline, valid, sel: null, rot: 0, ok: false };
+  bb.place = { cx, cz, baseY, n, mesh, outline, valid, sel: null, rot: 0, ok: false, type };
   bbPaintCells();
   bb.ui.hint.textContent = 'Touche un carré au sol (vert = libre, rouge = bloqué).';
   bb.ui.overlay.hidden = false; bb.ui.panel.hidden = false; bb.ui.btn.hidden = true;
@@ -4877,15 +4979,16 @@ function bbPaintCells() {
 }
 
 function bbUpdateSel() {
-  const p = bb.place; if (!p.sel) return;
-  const { x, z } = p.sel, c = Math.cos(p.rot), s = Math.sin(p.rot), y = groundY(x, z) + 0.14;
+  const p = bb.place; if (!p) return;
+  if (!p.sel) { bb.ui.hint.textContent = 'Touche un carré au sol (vert = libre, rouge = bloqué).'; return; }
+  const { x, z } = p.sel, [hw, hd] = BB_TYPES[p.type].half, c = Math.cos(p.rot), s = Math.sin(p.rot), y = groundY(x, z) + 0.14;
   const a = p.outline.geometry.attributes.position;
   [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach((d, q) => {
-    const lx = d[0] * BB_HALF_W, lz = d[1] * BB_HALF_D;
+    const lx = d[0] * hw, lz = d[1] * hd;
     a.setXYZ(q, x + lx * c + lz * s, y, z - lx * s + lz * c);
   });
   a.needsUpdate = true;
-  p.ok = bbFootprintOk(x, z, p.rot);
+  p.ok = bbFootprintOk(x, z, p.rot, p.type);
   p.outline.material.color.set(p.ok ? 0x66ff99 : 0xff5555);
   p.outline.visible = true;
   bb.ui.hint.textContent = p.ok ? 'Emplacement libre. Appuie sur « Placer ici ».' : 'Emplacement bloqué : choisis un autre carré ou tourne le panneau.';
@@ -4916,69 +5019,93 @@ function bbEndPlace() {
   bb.ui.overlay.hidden = true; bb.ui.panel.hidden = true;
 }
 
-function bbConfirmPlace() {
-  const p = bb.place; if (!p) return;
+async function bbConfirmPlace() {
+  const p = bb.place; if (!p || bb.ui.busy) return;
   if (!p.sel) { bb.ui.hint.textContent = 'Touche d’abord un carré au sol.'; return; }
   if (!p.ok) { bb.ui.hint.textContent = 'Emplacement bloqué : choisis un carré libre.'; return; }
-  const b = bbCreateBoard(p.sel.x, p.sel.z, p.rot);
-  bbEndPlace();
-  bb.cur = b;
-  toast('Panneau placé ✔ Approche-toi pour y mettre ta pub.');
+  const r = { type: p.type, x: p.sel.x, z: p.sel.z, rot: p.rot, mine: true };
+  bb.ui.busy = true;
+  try {
+    if (MP.ready) { const s = await bbApi('', 'POST', { type: r.type, x: r.x, z: r.z, rot: r.rot }); r.id = s.id; r.version = s.version; }
+    bbEndPlace();
+    bb.cur = bbCreateBoard(r);
+    toast('Panneau placé ✔ Approche-toi pour y mettre ta pub.');
+  } catch (e) { bb.ui.hint.textContent = e.message || 'Pose impossible.'; }
+  finally { bb.ui.busy = false; }
 }
 
 /* ---------- interface ---------- */
+function bbOpenDialog() {
+  const b = bb.cur; if (!b) return;
+  const T = BB_TYPES[b.type], U = bb.ui;
+  U.info.innerHTML = '<b>' + T.name + '</b><br>Écran : <b>' + bbFmt(T.wM) + ' × ' + bbFmt(T.hM) + ' m</b>.<br>'
+    + 'Image idéale : <b>' + T.px + ' × ' + T.py + ' px</b>, JPG ou PNG. Une autre taille sera recadrée au centre pour remplir l’écran.'
+    + (T.screen.kind === 'wrap' ? '<br>La même affiche est répétée sur les 3 faces de la colonne.' : '');
+  U.msg.textContent = '';
+  U.dlg.hidden = false;
+}
+
 function bbBuildUI() {
   const st = document.createElement('style');
   st.textContent = '.bb-btn{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;padding:.7em 1.1em;border-radius:999px;background:rgba(5,3,15,.9);color:#fff;border:1px solid rgba(198,138,255,.65);font:600 14px system-ui,sans-serif}'
     + '.bb-ov{position:fixed;inset:0;z-index:40;touch-action:none}'
     + '.bb-panel{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:41;width:min(94vw,420px);background:rgba(5,3,15,.92);color:#fff;border:1px solid rgba(198,138,255,.45);border-radius:14px;padding:12px;font:13px/1.4 system-ui,sans-serif}'
     + '.bb-panel p{margin:0 0 8px;color:#d9d3ee}.bb-row{display:flex;gap:8px}'
+    + '.bb-panel select{width:100%;margin-bottom:8px;padding:.6em;border-radius:10px;border:1px solid rgba(198,138,255,.5);background:#1a1433;color:#fff;font:600 13px system-ui,sans-serif}'
     + '.bb-panel button{flex:1;padding:.75em .4em;border-radius:10px;border:1px solid rgba(198,138,255,.5);background:#1a1433;color:#fff;font:600 13px system-ui,sans-serif}'
     + '.bb-panel button.main{background:#7b3fe4;border-color:#7b3fe4}'
     + '.bb-dlg{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(5,3,15,.82);padding:16px}'
     + '.bb-card{width:min(92vw,380px);background:#0d0a1c;color:#fff;border:1px solid rgba(198,138,255,.4);border-radius:16px;padding:18px;font:14px/1.45 system-ui,sans-serif}'
     + '.bb-card h3{margin:0 0 8px;font-size:17px}.bb-card p{margin:6px 0;color:#c9c4dd}'
     + '.bb-card button{width:100%;margin-top:10px;padding:.8em;border-radius:10px;border:1px solid rgba(198,138,255,.5);background:#1a1433;color:#fff;font:600 14px system-ui,sans-serif}'
-    + '.bb-card button.main{background:#7b3fe4;border-color:#7b3fe4}'
+    + '.bb-card button.main{background:#7b3fe4;border-color:#7b3fe4}.bb-card button.del{border-color:rgba(255,100,100,.6);color:#ffb4b4}'
     + '.bb-btn[hidden],.bb-ov[hidden],.bb-panel[hidden],.bb-dlg[hidden]{display:none}';
   document.head.appendChild(st);
-  const U = bb.ui = {};
-  // bouton "Mettre ma pub" (pres d'un panneau)
+  const U = bb.ui = { busy: false };
   U.btn = document.createElement('button');
   U.btn.type = 'button'; U.btn.className = 'bb-btn'; U.btn.hidden = true;
   U.btn.textContent = '🖼️ Mettre ma pub sur le panneau';
-  U.btn.onclick = () => { U.dlg.hidden = false; U.msg.textContent = ''; };
+  U.btn.onclick = bbOpenDialog;
   document.body.appendChild(U.btn);
-  // choix de la photo
   U.input = document.createElement('input');
   U.input.type = 'file'; U.input.accept = 'image/*'; U.input.hidden = true;
   U.input.onchange = async () => {
     const f = U.input.files && U.input.files[0]; U.input.value = '';
-    if (!f || !bb.cur) return;
+    const b = bb.cur;
+    if (!f || !b) return;
     U.msg.textContent = 'Chargement…';
-    const ok = await bbSetPhoto(bb.cur, f);
-    U.msg.textContent = ok ? 'Photo placée sur le panneau ✔' : 'Image illisible, essaie un JPG ou PNG.';
-    if (ok) U.dlg.hidden = true;
+    if (!(await bbSetPhoto(b, f))) { U.msg.textContent = 'Image illisible, essaie un JPG ou PNG.'; return; }
+    if (b.id && MP.ready) {
+      try { await bbPushImage(b); } catch (e) { U.msg.textContent = 'Affichée ici mais non enregistrée : ' + (e.message || 'erreur'); return; }
+    }
+    U.dlg.hidden = true;
+    toast('Pub enregistrée sur le panneau ✔');
   };
   document.body.appendChild(U.input);
-  // fenetre de pub
   U.dlg = document.createElement('div');
   U.dlg.className = 'bb-dlg'; U.dlg.hidden = true;
-  U.dlg.innerHTML = '<div class="bb-card"><h3>Panneau publicitaire</h3>'
-    + '<p>Écran : <b>' + BB_SCREEN.wM.toFixed(2).replace('.', ',') + ' × ' + BB_SCREEN.hM.toFixed(2).replace('.', ',') + ' m</b> (ratio 8:3).</p>'
-    + '<p>Image idéale : <b>' + BB_SCREEN.px + ' × ' + BB_SCREEN.py + ' px</b>, JPG ou PNG. Une autre taille sera recadrée au centre pour remplir l’écran.</p>'
+  U.dlg.innerHTML = '<div class="bb-card"><h3>Panneau publicitaire</h3><p data-i></p>'
     + '<button type="button" class="main" data-a="pick">Choisir une photo</button>'
     + '<button type="button" data-a="reset">Remettre « À LOUER »</button>'
+    + '<button type="button" class="del" data-a="del">Retirer ce panneau</button>'
     + '<button type="button" data-a="close">Fermer</button><p data-m></p></div>';
-  U.msg = U.dlg.querySelector('[data-m]');
-  U.dlg.addEventListener('click', e => {
-    const a = e.target.dataset && e.target.dataset.a;
+  U.info = U.dlg.querySelector('[data-i]'); U.msg = U.dlg.querySelector('[data-m]');
+  U.dlg.addEventListener('click', async e => {
+    const a = e.target.dataset && e.target.dataset.a, b = bb.cur;
     if (a === 'pick') U.input.click();
-    else if (a === 'reset') { if (bb.cur) bbPaintDefault(bb.cur); U.dlg.hidden = true; }
+    else if (a === 'reset' && b) {
+      bbPaintDefault(b);
+      if (b.id && MP.ready) { try { const r = await bbApi('/' + b.id + '/image', 'PUT', { image: null }); b.version = r.version; } catch (er) { U.msg.textContent = er.message; return; } }
+      U.dlg.hidden = true;
+    }
+    else if (a === 'del' && b) {
+      if (!confirm('Retirer définitivement ce panneau ?')) return;
+      if (b.id && MP.ready) { try { await bbApi('/' + b.id, 'DELETE'); } catch (er) { U.msg.textContent = er.message; return; } }
+      bbRemoveBoard(b); U.dlg.hidden = true;
+    }
     else if (a === 'close' || e.target === U.dlg) U.dlg.hidden = true;
   });
   document.body.appendChild(U.dlg);
-  // calque de selection + barre d'actions du mode "placer"
   U.overlay = document.createElement('div');
   U.overlay.className = 'bb-ov'; U.overlay.hidden = true;
   U.overlay.addEventListener('pointerdown', e => { e.preventDefault(); bbPick(e.clientX, e.clientY); });
@@ -4986,29 +5113,42 @@ function bbBuildUI() {
   document.body.appendChild(U.overlay);
   U.panel = document.createElement('div');
   U.panel.className = 'bb-panel'; U.panel.hidden = true;
-  U.panel.innerHTML = '<p data-h></p><div class="bb-row"><button type="button" class="main" data-a="ok">✔ Placer ici</button>'
+  U.panel.innerHTML = '<select data-t aria-label="Type de panneau">'
+    + Object.keys(BB_TYPES).map(k => '<option value="' + k + '">' + BB_TYPES[k].name + ' · écran ' + bbFmt(BB_TYPES[k].wM) + ' × ' + bbFmt(BB_TYPES[k].hM) + ' m</option>').join('')
+    + '</select><p data-h></p><div class="bb-row"><button type="button" class="main" data-a="ok">✔ Placer ici</button>'
     + '<button type="button" data-a="rot">↻ Tourner</button><button type="button" data-a="no">✖ Annuler</button></div>';
-  U.hint = U.panel.querySelector('[data-h]');
+  U.hint = U.panel.querySelector('[data-h]'); U.sel = U.panel.querySelector('[data-t]');
   U.panel.addEventListener('click', e => {
     const a = e.target.dataset && e.target.dataset.a;
     if (a === 'ok') bbConfirmPlace();
     else if (a === 'rot') { if (bb.place && bb.place.sel) { bb.place.rot += Math.PI / 2; bbUpdateSel(); } }
     else if (a === 'no') bbEndPlace();
   });
+  U.sel.addEventListener('change', async () => {
+    const t = U.sel.value;
+    if (!bb.place) return;
+    U.hint.textContent = 'Chargement…';
+    if (await bbLoadTemplate(t)) { if (bb.place) { bb.place.type = t; bbUpdateSel(); } }
+    else { U.sel.value = bb.place ? bb.place.type : 'lowpoly'; U.hint.textContent = 'Modèle indisponible, réessaie.'; }
+  });
   document.body.appendChild(U.panel);
-  // bouton du menu (a gauche du burger)
   const menuBtn = document.getElementById('btnWorldBillboard');
   if (menuBtn) menuBtn.onclick = bbStartPlace;
 }
 
 function bbTick(now) {
   if (!bb.ui) bbBuildUI();
+  if (MP.ready && !bb.syncing && now >= bb.nextSync) bbSync();
   let best = null, bd = 16;
-  for (const b of bb.boards) { const d = Math.hypot(player.x - b.x, player.z - b.z); if (d < bd) { bd = d; best = b; } }
+  for (const b of bb.boards) {
+    if (b.id && !b.mine) continue;   // seul le proprietaire modifie l'image
+    const d = Math.hypot(player.x - b.x, player.z - b.z); if (d < bd) { bd = d; best = b; }
+  }
   if (best) bb.cur = best;
   bb.ui.btn.hidden = !(best && !bb.place && player.mode === 'walk' && !menuOpen() && bb.ui.dlg.hidden);
 }
 /* ==================== FIN PANNEAUX PUBLICITAIRES ==================== */
+
 
 
 function frame() {
