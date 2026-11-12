@@ -4728,6 +4728,131 @@ addEventListener('error', ev => dbgFail('js', ev.error || ev.message));
 addEventListener('unhandledrejection', ev => dbgFail('promesse', ev.reason));
 let perfOn = true;
 
+/* ==================== PANNEAUX PUBLICITAIRES (etape 1) ==================== */
+// Panneau low-poly : l'ecran est vide/blanc, le joueur y met une photo.
+// Ecran reel : 2,26 m x 0,85 m a l'echelle 1, ici x3 => 6,78 m x 2,54 m, ratio 8:3.
+const BB_SCALE = 3;
+const BB_SCREEN = { wM: 2.2597 * BB_SCALE, hM: 0.8472 * BB_SCALE, px: 2048, py: 768 };
+const bb = { model: null, loading: false, retryAt: 0, canvas: null, ctx: null, tex: null, btn: null, dlg: null, input: null, msg: null };
+const bbSpot = () => ({ x: roadX(3) + HALF_ROAD + 1.4, z: player0Z() - 10 });
+function player0Z() { return roadZ(3) + 26; }
+
+function bbPaintDefault() {
+  const g = bb.ctx, W = BB_SCREEN.px, H = BB_SCREEN.py;
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+  g.strokeStyle = '#d5d9e0'; g.lineWidth = 12; g.strokeRect(6, 6, W - 12, H - 12);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#1b2433'; g.font = '800 230px system-ui, Arial, sans-serif';
+  g.fillText('À LOUER', W / 2, H * 0.42);
+  g.fillStyle = '#6b7685'; g.font = '600 60px system-ui, Arial, sans-serif';
+  g.fillText('Ta pub ici · ' + W + ' × ' + H + ' px', W / 2, H * 0.78);
+  bb.tex.needsUpdate = true;
+}
+
+async function bbSetPhoto(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = url; });
+    const W = BB_SCREEN.px, H = BB_SCREEN.py;
+    const s = Math.max(W / img.naturalWidth, H / img.naturalHeight); // la photo s'adapte au panneau (recadrage centre)
+    const w = img.naturalWidth * s, h = img.naturalHeight * s;
+    bb.ctx.fillStyle = '#ffffff'; bb.ctx.fillRect(0, 0, W, H);
+    bb.ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+    bb.tex.needsUpdate = true;
+    return true;
+  } catch (e) { return false; }
+  finally { URL.revokeObjectURL(url); }
+}
+
+async function loadBillboards() {
+  bb.loading = true;
+  try {
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const { scene: model } = await new GLTFLoader().loadAsync(new URL('./billboard-lowpoly.glb', document.baseURI).href);
+    bb.canvas = document.createElement('canvas');
+    bb.canvas.width = BB_SCREEN.px; bb.canvas.height = BB_SCREEN.py;
+    bb.ctx = bb.canvas.getContext('2d');
+    bb.tex = new THREE.CanvasTexture(bb.canvas);
+    bb.tex.flipY = false; bb.tex.colorSpace = THREE.SRGBColorSpace; bb.tex.anisotropy = 4;
+    bbPaintDefault();
+    model.traverse(o => {
+      if (!o.isMesh) return;
+      const m = Array.isArray(o.material) ? o.material[0] : o.material;
+      if (m && m.name === 'Billboard_Texture') {
+        // UV recalees sur 0..1 : l'image remplit exactement l'ecran, haut de l'image en haut.
+        const uv = o.geometry.attributes.uv;
+        let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+        for (let i = 0; i < uv.count; i++) { u0 = Math.min(u0, uv.getX(i)); u1 = Math.max(u1, uv.getX(i)); v0 = Math.min(v0, uv.getY(i)); v1 = Math.max(v1, uv.getY(i)); }
+        for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) - u0) / (u1 - u0), (v1 - uv.getY(i)) / (v1 - v0));
+        uv.needsUpdate = true;
+        o.material = new THREE.MeshBasicMaterial({ map: bb.tex, side: THREE.DoubleSide });
+      } else { o.castShadow = o.receiveShadow = true; }
+    });
+    const p = bbSpot();
+    model.scale.setScalar(BB_SCALE);
+    model.position.set(p.x, groundY(p.x, p.z), p.z);
+    model.rotation.y = -Math.PI / 2; // face vers la route (-X)
+    scene.add(model);
+    bb.model = model;
+  } catch (err) {
+    bb.retryAt = nowMs() + 15000;
+    console.warn('Panneau : chargement indisponible.', err);
+  } finally { bb.loading = false; }
+}
+
+function bbBuildUI() {
+  const st = document.createElement('style');
+  st.textContent = '.bb-btn{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;padding:.7em 1.1em;border-radius:999px;background:rgba(5,3,15,.9);color:#fff;border:1px solid rgba(198,138,255,.65);font:600 14px system-ui,sans-serif}'
+    + '.bb-dlg{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(5,3,15,.82);padding:16px}'
+    + '.bb-card{width:min(92vw,380px);background:#0d0a1c;color:#fff;border:1px solid rgba(198,138,255,.4);border-radius:16px;padding:18px;font:14px/1.45 system-ui,sans-serif}'
+    + '.bb-card h3{margin:0 0 8px;font-size:17px}.bb-card p{margin:6px 0;color:#c9c4dd}'
+    + '.bb-card button{width:100%;margin-top:10px;padding:.8em;border-radius:10px;border:1px solid rgba(198,138,255,.5);background:#1a1433;color:#fff;font:600 14px system-ui,sans-serif}'
+    + '.bb-card button.main{background:#7b3fe4;border-color:#7b3fe4}';
+  document.head.appendChild(st);
+  bb.btn = document.createElement('button');
+  bb.btn.type = 'button'; bb.btn.className = 'bb-btn'; bb.btn.hidden = true;
+  bb.btn.textContent = '🖼️ Mettre ma pub sur le panneau';
+  bb.btn.onclick = () => { bb.dlg.hidden = false; bb.msg.textContent = ''; };
+  document.body.appendChild(bb.btn);
+  bb.input = document.createElement('input');
+  bb.input.type = 'file'; bb.input.accept = 'image/*'; bb.input.hidden = true;
+  bb.input.onchange = async () => {
+    const f = bb.input.files && bb.input.files[0]; bb.input.value = '';
+    if (!f) return;
+    bb.msg.textContent = 'Chargement…';
+    const ok = await bbSetPhoto(f);
+    bb.msg.textContent = ok ? 'Photo placée sur le panneau ✔' : 'Image illisible, essaie un JPG ou PNG.';
+    if (ok) bb.dlg.hidden = true;
+  };
+  document.body.appendChild(bb.input);
+  bb.dlg = document.createElement('div');
+  bb.dlg.className = 'bb-dlg'; bb.dlg.hidden = true;
+  bb.dlg.innerHTML = '<div class="bb-card"><h3>Panneau publicitaire</h3>'
+    + '<p>Écran : <b>' + BB_SCREEN.wM.toFixed(2).replace('.', ',') + ' × ' + BB_SCREEN.hM.toFixed(2).replace('.', ',') + ' m</b> (ratio 8:3).</p>'
+    + '<p>Image idéale : <b>' + BB_SCREEN.px + ' × ' + BB_SCREEN.py + ' px</b>, JPG ou PNG. Une autre taille sera recadrée au centre pour remplir l’écran.</p>'
+    + '<button type="button" class="main" data-a="pick">Choisir une photo</button>'
+    + '<button type="button" data-a="reset">Remettre « À LOUER »</button>'
+    + '<button type="button" data-a="close">Fermer</button><p data-m></p></div>';
+  bb.msg = bb.dlg.querySelector('[data-m]');
+  bb.dlg.addEventListener('click', e => {
+    const a = e.target.dataset && e.target.dataset.a;
+    if (a === 'pick') bb.input.click();
+    else if (a === 'reset') { bbPaintDefault(); bb.dlg.hidden = true; }
+    else if (a === 'close' || e.target === bb.dlg) bb.dlg.hidden = true;
+  });
+  document.body.appendChild(bb.dlg);
+}
+
+function bbTick(now) {
+  const p = bbSpot();
+  if (!bb.model && !bb.loading && now >= bb.retryAt && Math.hypot(playerX() - p.x, playerZ() - p.z) < 250) loadBillboards();
+  if (!bb.model) return;
+  if (!bb.btn) bbBuildUI();
+  bb.btn.hidden = !(player.mode === 'walk' && !menuOpen() && bb.dlg.hidden &&
+    Math.hypot(player.x - p.x, player.z - p.z) < 16);
+}
+/* ==================== FIN PANNEAUX PUBLICITAIRES ==================== */
+
 function frame() {
   requestAnimationFrame(frame);
   const now = nowMs();
@@ -4778,6 +4903,7 @@ function frame() {
       Math.hypot(playerX() - VILLA.x, playerZ() - VILLA.z) <= 175) loadLoft();
   const foodDist = Math.hypot(playerX() - FASTFOOD.x, playerZ() - FASTFOOD.z);
   if (!fastfood.model && !fastfood.loading && now >= fastfood.retryAt && foodDist < 135) loadFastFood();
+  try { bbTick(now); } catch (e) { dbgFail('panneaux', e); }
   if (fastfood.model) fastfood.model.visible = foodDist < 260;
   if (MP.ready && Date.now() >= energy.nextRefresh) void refreshEnergy();
   if (player.mode === 'walk') animateCharacter(simDt);
