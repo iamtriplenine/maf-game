@@ -47,7 +47,7 @@ function CarModel({ url }) {
   const gltf = useLoader(GLTFLoader, url);
   const fit = useMemo(() => {
     gltf.scene.updateMatrixWorld(true);
-    const box = new Box3().setFromObject(gltf.scene);
+    const box = new Box3().setFromObject(gltf.scene, true); // MAF-FIX-SOL
     const size = box.getSize(new Vector3());
     const ctr = box.getCenter(new Vector3());
     const s = CAR_LENGTH / Math.max(size.x, size.z, 0.01);

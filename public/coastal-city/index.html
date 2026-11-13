@@ -7163,7 +7163,7 @@ function mpCarWrap(root, len, flip) {
     });
   });
   root.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(root);
+  const box = new THREE.Box3().setFromObject(root, true); // MAF-FIX-SOL : vrais sommets, sinon la voiture flotte
   const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
   root.position.set(-c.x, -box.min.y, -c.z);
   const inner = new THREE.Group();
