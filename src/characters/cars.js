@@ -23,6 +23,15 @@ export const CARS = [
     file: "cars/lamborghini-veneno-roadster.glb",
   },
   {
+    id: "mercedes-amg-one",
+    name: "Mercedes-AMG ONE",
+    description: "Voiture exclusive : a gagner en tournoi ou a recevoir en cadeau",
+    access: "exclusive",
+    badge: "VOITURE EXCLUSIVE",
+    eyebrow: "CADEAU DE TOURNOI",
+    file: "cars/mercedes-amg-one.glb",
+  },
+  {
     id: "ford-shelby-gt500-patrol",
     name: "Ford Shelby GT500 Police",
     description: "Voiture de police du World : patrouille en ville, non attribuable",

@@ -7147,7 +7147,9 @@ const CAR_DEFS = {
   'porsche-911-gt3-rs': { name: 'Porsche 911 GT3 RS', access: 'public', file: 'cars/porsche-911-gt3-rs.glb' },
   // flip:true = l'avant du modele est vers -Z (cas de la Porsche) ; ici l'avant est vers +Z.
   'lamborghini-veneno-roadster': { name: 'Lamborghini Veneno Roadster', access: 'exclusive', file: 'cars/lamborghini-veneno-roadster.glb', len: 4.9, flip: false,
-    t: { id: 'lambo', name: 'Lamborghini Veneno Roadster', w: 2.05, l: 4.9, accel: 24, top: 68, grip: 8.4, steer: 2.05, hp: 'Exclusive : ultra rapide' } }
+    t: { id: 'lambo', name: 'Lamborghini Veneno Roadster', w: 2.05, l: 4.9, accel: 24, top: 68, grip: 8.4, steer: 2.05, hp: 'Exclusive : ultra rapide' } },
+  'mercedes-amg-one': { name: 'Mercedes-AMG ONE', access: 'exclusive', file: 'cars/mercedes-amg-one.glb', len: 4.8, flip: false,
+    t: { id: 'amgone', name: 'Mercedes-AMG ONE', w: 2.0, l: 4.8, accel: 25, top: 70, grip: 8.6, steer: 2.05, hp: 'Exclusive : hypercar F1' } }
 };
 const POLICE_FILE = '../cars/ford-shelby-gt500-patrol.glb';
 const POLICE_FLIP = false;
@@ -7250,25 +7252,31 @@ function mpCarOwnerUi(pan, sty) {
   const box = document.createElement('div');
   box.style.cssText = 'margin:12px 0 4px;padding-top:10px;border-top:1px solid rgba(255,255,255,.15)';
   const t = document.createElement('strong');
-  t.textContent = 'Compte propriétaire : offrir la Lamborghini';
+  t.textContent = 'Compte propriétaire : offrir une voiture exclusive';
   t.style.cssText = 'display:block;font-size:13px;margin-bottom:6px';
+  const fld = 'width:100%;box-sizing:border-box;margin:0 0 6px;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:#1a2029;color:#fff;font:inherit';
+  const sel = document.createElement('select');
+  sel.style.cssText = fld;
+  Object.keys(CAR_DEFS).filter(id => CAR_DEFS[id].access === 'exclusive').forEach(id => {
+    const o = document.createElement('option'); o.value = id; o.textContent = CAR_DEFS[id].name; sel.appendChild(o);
+  });
   const inp = document.createElement('input');
   inp.type = 'text'; inp.inputMode = 'numeric'; inp.maxLength = 5; inp.placeholder = 'ID client (5 chiffres)';
-  inp.style.cssText = 'width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font:inherit';
+  inp.style.cssText = fld;
   ['keydown', 'keyup', 'keypress'].forEach(ev => inp.addEventListener(ev, e => e.stopPropagation()));   // le jeu ne lit pas ce qui est tapé ici
   const msg = document.createElement('p');
   msg.style.cssText = 'margin:6px 0 0;font-size:12px;opacity:.85';
   const go = (action) => {
-    const clientId = inp.value.trim();
+    const clientId = inp.value.trim(), carId = sel.value, nom = CAR_DEFS[carId] ? CAR_DEFS[carId].name : carId;
     if (!/^\d{5}$/.test(clientId)) { msg.textContent = 'ID client à cinq chiffres requis.'; return; }
     msg.textContent = '…';
     fetch(MP.api + '/api/world/cars/grant', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + MP.token },
-      body: JSON.stringify({ clientId: clientId, carId: 'lamborghini-veneno-roadster', action: action })
+      body: JSON.stringify({ clientId: clientId, carId: carId, action: action })
     })
       .then(r => r.json().catch(() => ({})).then(j => ({ ok: r.ok, j: j })))
-      .then(o => { msg.textContent = o.ok ? (action === 'give' ? 'Lamborghini offerte à ' : 'Lamborghini retirée à ') + (o.j.pseudo || clientId) + '.' : (o.j.error || 'Échec.'); })
+      .then(o => { msg.textContent = o.ok ? nom + (action === 'give' ? ' offerte à ' : ' retirée à ') + (o.j.pseudo || clientId) + '.' : (o.j.error || 'Échec.'); })
       .catch(() => { msg.textContent = 'Serveur injoignable.'; });
   };
   const mk = (label, action) => {
@@ -7277,9 +7285,9 @@ function mpCarOwnerUi(pan, sty) {
     b.addEventListener('click', () => go(action));
     return b;
   };
-  box.appendChild(t); box.appendChild(inp);
-  box.appendChild(mk('Offrir la Lamborghini', 'give'));
-  box.appendChild(mk('Retirer la Lamborghini', 'revoke'));
+  box.appendChild(t); box.appendChild(sel); box.appendChild(inp);
+  box.appendChild(mk('Offrir la voiture', 'give'));
+  box.appendChild(mk('Retirer la voiture', 'revoke'));
   box.appendChild(msg);
   pan.appendChild(box);
 }
