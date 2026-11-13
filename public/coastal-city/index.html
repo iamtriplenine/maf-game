@@ -3125,7 +3125,7 @@ function applyTrafficMeshes() {
   const o = _dummy.obj;
   for (let k = 0; k < traffic.cars.length; k++) {
     const c = traffic.cars[k];
-    o.position.set(c.x, 0, c.z); o.rotation.set(0, c.yaw, 0); o.scale.set(1, 1, 1); o.updateMatrix();
+    o.position.set(c.x, 0, c.z); o.rotation.set(0, c.yaw, 0); { const sc = c.police ? 0.0001 : 1; o.scale.set(sc, sc, sc); } o.updateMatrix();
     traffic.body.setMatrixAt(k, o.matrix); traffic.trim.setMatrixAt(k, o.matrix);
   }
   traffic.body.instanceMatrix.needsUpdate = true;
@@ -4154,7 +4154,7 @@ function paintWorldMap(cv, view, round) {
   // traffic
   ctx.fillStyle = '#cfd8e0';
   for (let i = 0; i < traffic.cars.length; i++) {
-    const c = traffic.cars[i], p = toS(c.x, c.z);
+    const c = traffic.cars[i], p = toS(c.x, c.z); ctx.fillStyle = c.police ? '#4aa3ff' : '#cfd8e0';
     if (p[0] < -4 || p[0] > W + 4 || p[1] < -4 || p[1] > H + 4) continue;
     ctx.fillRect(p[0] - 1.6, p[1] - 1.6, 3.2, 3.2);
   }
@@ -5687,6 +5687,7 @@ function frame() {
   if (MP.ready && Date.now() >= energy.nextRefresh) void refreshEnergy();
   if (player.mode === 'walk') animateCharacter(simDt);
   try { applyTrafficMeshes(); applyPedMeshes(); } catch (e) { dbgFail('trafic', e); }
+  try { policeTick(); } catch (e) { dbgFail('police', e); }
   for (const v of vehicles) {
     const d = Math.hypot(v.x - camera.position.x, v.z - camera.position.z);
     v.mesh.visible = d < 190;
@@ -5805,7 +5806,7 @@ function main() {
   vehicles.forEach(v => scene.add(v.mesh));
 
   const heavy = !(navigator.maxTouchPoints > 0 && window.innerWidth < 900);
-  initTraffic(heavy ? 26 : 14, seed);
+  initTraffic((heavy ? 26 : 14) + (heavy ? 8 : 5), seed); polMark(heavy ? 8 : 5);
   scene.add(traffic.body); scene.add(traffic.trim);
   initPeds(heavy ? 46 : 22, seed);
   scene.add(peds.body); scene.add(peds.parts);
@@ -6029,6 +6030,10 @@ function mpInit() {
     void refreshEnergy();
     ui.worldStatusLayer.classList.remove('hidden');
     if (d.mySkin) mpSetLocal(d.mySkin);
+    MP.myCars = Array.isArray(d.myCars) ? d.myCars.filter(x => typeof x === 'string') : [];
+    try { const s = localStorage.getItem('maf:world-car'); if (s) MP.carId = s; } catch (e) { /* optionnel */ }
+    mpCarUi();
+    if (MP.porsche) mpApplyCar(mpPickCar(MP.carId));
   });
   try { window.parent.postMessage({ mafWorldHello: true }, window.location.origin); } catch (err) {}
   addEventListener('pagehide', () => {
@@ -7091,7 +7096,9 @@ function mpPorscheInit() {
   mpCarSource().then(w => {
     if (!w || MP.porsche !== v) return;
     v.mesh.children.slice().forEach(ch => { ch.visible = false; });   // on cache la voiture simple, la vraie Porsche la remplace
-    v.mesh.add(w.clone(true));
+    v.skin = w.clone(true); v.mesh.add(v.skin); v.skinId = CAR_DEFAULT;
+    const want = mpPickCar(MP.carId);
+    if (want !== CAR_DEFAULT) mpApplyCar(want);
   });
 }
 
@@ -7127,6 +7134,202 @@ function mpRemoteCar(r, gy) {
     });
   }
   if (r.car) { r.car.visible = true; r.car.position.set(r.x, gy, r.z); r.car.rotation.y = r.yaw; }
+}
+
+/* MAF-WORLD-CARS-V2 : changement de voiture (Porsche / Lamborghini) + patrouilles de police.
+   Rien n'est charge tant que le joueur ne choisit pas une autre voiture ou qu'une police n'est pas proche. */
+const CAR_DEFAULT = 'porsche-911-gt3-rs';
+const CAR_DEFS = {
+  'porsche-911-gt3-rs': { name: 'Porsche 911 GT3 RS', access: 'public', file: 'cars/porsche-911-gt3-rs.glb' },
+  // flip:true = l'avant du modele est vers -Z (cas de la Porsche) ; ici l'avant est vers +Z.
+  'lamborghini-veneno-roadster': { name: 'Lamborghini Veneno Roadster', access: 'exclusive', file: 'cars/lamborghini-veneno-roadster.glb', len: 4.9, flip: false,
+    t: { id: 'lambo', name: 'Lamborghini Veneno Roadster', w: 2.05, l: 4.9, accel: 24, top: 68, grip: 8.4, steer: 2.05, hp: 'Exclusive : ultra rapide' } }
+};
+const POLICE_FILE = '../cars/ford-shelby-gt500-patrol.glb';
+const POLICE_FLIP = false;
+const mpCarCache = new Map();
+
+function mpCarWrap(root, len, flip) {
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = false;
+    // le verre "transmission" force un 2e rendu de toute la scene : on le remplace par une simple transparence
+    (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
+      if (m && m.transmission > 0) { m.transmission = 0; m.transparent = true; m.opacity = Math.min(m.opacity, 0.5); }
+    });
+  });
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  root.position.set(-c.x, -box.min.y, -c.z);
+  const inner = new THREE.Group();
+  inner.add(root);
+  const k = len / Math.max(size.x, size.z, 0.01);
+  inner.scale.setScalar(k);
+  if (flip) inner.rotation.y = Math.PI;
+  const wrap = new THREE.Group();
+  wrap.add(inner);
+  wrap.userData.h = size.y * k;
+  return wrap;
+}
+
+function mpCarModel(id) {
+  const def = CAR_DEFS[id];
+  if (!def) return Promise.resolve(null);
+  if (id === CAR_DEFAULT) return mpCarSource();
+  let p = mpCarCache.get(id);
+  if (!p) {
+    p = (async () => {
+      const L = await mpLoaders();
+      const g = await new Promise((ok, ko) => L.gltf.load(MP.base + def.file, ok, undefined, ko));
+      return mpCarWrap(g.scene, def.len || 4.6, !!def.flip);
+    })().catch(() => { mpCarCache.delete(id); return null; });
+    mpCarCache.set(id, p);
+  }
+  return p;
+}
+
+function mpOwnsCar(id) {
+  const d = CAR_DEFS[id];
+  return !!d && (d.access === 'public' || (MP.myCars || []).includes(id));
+}
+function mpPickCar(id) { return CAR_DEFS[id] && mpOwnsCar(id) ? id : CAR_DEFAULT; }
+
+function mpApplyCar(id) {
+  const v = MP.porsche, def = CAR_DEFS[id];
+  if (!v || !def || !mpOwnsCar(id)) return;
+  MP.carId = id;
+  mpCarModel(id).then(w => {
+    if (!w || MP.porsche !== v || MP.carId !== id) { if (!w) toast('Voiture indisponible pour le moment'); return; }
+    if (v.skin) v.mesh.remove(v.skin);
+    v.skin = w.clone(true); v.skinId = id; v.mesh.add(v.skin);
+    v.t = def.t ? Object.assign({}, PORSCHE_T, def.t) : PORSCHE_T;
+    mpCarUiRefresh();
+    toast(v.t.name + ' — ' + v.t.hp);
+  });
+}
+
+function mpCarUi() {
+  if (MP.carUi) return;
+  const drop = document.getElementById('worldToolsDrop');
+  if (!drop) return;
+  MP.carUi = true;
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.id = 'btnWorldCar'; btn.title = 'Changer de voiture';
+  btn.setAttribute('aria-label', 'Changer de voiture');
+  btn.textContent = '🚗'; btn.style.fontSize = '20px';
+  const pan = document.createElement('div');
+  pan.id = 'worldCarPanel';
+  pan.style.cssText = 'display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;width:min(88vw,340px);padding:14px;border-radius:16px;background:rgba(12,16,24,.95);color:#fff;box-shadow:0 12px 40px rgba(0,0,0,.5);font:14px system-ui,sans-serif';
+  document.body.appendChild(pan);
+  btn.addEventListener('click', () => { mpCarUiRefresh(); pan.style.display = pan.style.display === 'none' ? 'block' : 'none'; });
+  drop.appendChild(btn);
+}
+
+function mpCarUiRefresh() {
+  const pan = document.getElementById('worldCarPanel');
+  if (!pan) return;
+  pan.textContent = '';
+  const sty = 'display:block;width:100%;margin:6px 0;padding:11px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;text-align:left;font:inherit';
+  const h = document.createElement('strong');
+  h.textContent = 'Changer de voiture'; h.style.cssText = 'display:block;margin-bottom:10px;font-size:16px';
+  pan.appendChild(h);
+  for (const id of Object.keys(CAR_DEFS)) {
+    const def = CAR_DEFS[id], own = mpOwnsCar(id), b = document.createElement('button');
+    b.type = 'button'; b.style.cssText = sty; b.disabled = !own;
+    if (!own) b.style.opacity = '.55';
+    if (id === MP.carId) b.style.borderColor = '#7ee0a0';
+    b.textContent = (id === MP.carId ? '✓ ' : '') + def.name + (own ? '' : ' 🔒 à gagner en tournoi ou en cadeau');
+    b.addEventListener('click', () => {
+      try { localStorage.setItem('maf:world-car', id); } catch (e) { /* optionnel */ }
+      pan.style.display = 'none';
+      mpApplyCar(id);
+    });
+    pan.appendChild(b);
+  }
+  const note = document.createElement('p');
+  note.textContent = '🚓 La police patrouille en ville : cette voiture n’appartient à personne.';
+  note.style.cssText = 'margin:10px 2px 6px;opacity:.7;font-size:12px';
+  pan.appendChild(note);
+  const x = document.createElement('button');
+  x.type = 'button'; x.textContent = 'Fermer'; x.style.cssText = sty + ';text-align:center';
+  x.addEventListener('click', () => { pan.style.display = 'none'; });
+  pan.appendChild(x);
+}
+
+/* ---------------------------------------------------------------- police */
+const POL = { model: null, loading: false, fail: 0, groups: new Map(), mats: null, tex: null, snd: null };
+function polMark(n) {
+  const cs = traffic.cars;
+  for (let k = Math.max(0, cs.length - n); k < cs.length; k++) { cs[k].police = true; cs[k].want = 12.5 + Math.random() * 3; }
+}
+function polLoad() {
+  if (POL.model || POL.loading || POL.fail >= 2) return;
+  POL.loading = true;
+  (async () => {
+    const L = await mpLoaders();
+    const url = new URL(POLICE_FILE, document.baseURI).href;
+    const g = await new Promise((ok, ko) => L.gltf.load(url, ok, undefined, ko));
+    POL.model = mpCarWrap(g.scene, 4.9, POLICE_FLIP);
+  })().catch(() => { POL.fail++; }).then(() => { POL.loading = false; });
+}
+function polMake(k) {
+  if (!POL.mats) {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+    POL.tex = new THREE.CanvasTexture(c);
+    const mk = col => new THREE.SpriteMaterial({ map: POL.tex, color: col, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+    POL.mats = [{ r: mk(0xff2020), b: mk(0x2a63ff) }, { r: mk(0xff2020), b: mk(0x2a63ff) }];
+  }
+  const g = new THREE.Group();
+  g.add(POL.model.clone(true));
+  const h = POL.model.userData.h || 1.4, set = POL.mats[k % 2];
+  [[-0.4, set.r], [0.4, set.b]].forEach(([sx, m]) => {
+    const s = new THREE.Sprite(m);
+    s.position.set(sx, h + 0.15, 0.05); s.scale.set(1.6, 1.6, 1);
+    g.add(s);
+  });
+  return g;
+}
+function polSiren(near) {
+  if (!A.ctx || !A.master || A.ctx.state !== 'running') return;
+  if (!POL.snd) {
+    if (near > 140) return;
+    const o = A.ctx.createOscillator(); o.type = 'triangle';
+    const g = A.ctx.createGain(); g.gain.value = 0;
+    o.connect(g); g.connect(A.master); o.start();
+    POL.snd = { o: o, g: g };
+  }
+  const vol = near < 140 ? Math.pow(1 - near / 140, 2) * 0.16 : 0;
+  POL.snd.g.gain.value = vol;
+  if (vol > 0) POL.snd.o.frequency.value = 800 + 220 * Math.sin(A.ctx.currentTime * 2.6);
+}
+function policeTick() {
+  const cars = traffic.cars;
+  if (!cars.length || !camera) return;
+  const cx = camera.position.x, cz = camera.position.z;
+  let near = 1e9;
+  for (let k = 0; k < cars.length; k++) {
+    const c = cars[k];
+    if (!c.police) continue;
+    const d = Math.hypot(c.x - cx, c.z - cz);
+    if (d < near) near = d;
+    let g = POL.groups.get(k);
+    if (d > 170) { if (g) g.visible = false; continue; }
+    if (!POL.model) { polLoad(); continue; }
+    if (!g) { g = polMake(k); POL.groups.set(k, g); scene.add(g); }
+    g.visible = true;
+    g.position.set(c.x, groundY(c.x, c.z), c.z);
+    g.rotation.y = c.yaw;
+  }
+  if (POL.mats) {
+    const ph = Math.floor(performance.now() / 120) % 4, a = ph < 2;
+    POL.mats[0].r.opacity = a ? 1 : 0.06; POL.mats[0].b.opacity = a ? 0.06 : 1;
+    POL.mats[1].r.opacity = a ? 0.06 : 1; POL.mats[1].b.opacity = a ? 1 : 0.06;
+  }
+  polSiren(near);
 }
 
 function mpTick(dt) {

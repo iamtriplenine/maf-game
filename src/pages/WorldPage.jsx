@@ -53,6 +53,13 @@ const buildSkinTable = () => {
   return out;
 };
 
+// Voitures que ce joueur peut conduire dans le World (la Porsche est pour tous ; le compte proprietaire a tout).
+const worldCarsFor = (s) => {
+  const own = s && Array.isArray(s.owned_cars) ? s.owned_cars.filter((x) => typeof x === "string") : [];
+  if (s && s.account_role === "owner" && !own.includes("lamborghini-veneno-roadster")) own.push("lamborghini-veneno-roadster");
+  return own;
+};
+
 export default function WorldPage() {
   const [playing, setPlaying] = useState(false);
   const frameRef = useRef(null);
@@ -98,7 +105,7 @@ export default function WorldPage() {
         const token = currentToken();
         if (!token) return; // visiteur non connecte : pas de multijoueur
         e.source.postMessage(
-          { mafWorldInit: { api: API_URL, token, base: import.meta.env.BASE_URL, skins: buildSkinTable(), mySkin: (currentSession() || {}).skin_id || null } },
+          { mafWorldInit: { api: API_URL, token, base: import.meta.env.BASE_URL, skins: buildSkinTable(), mySkin: (currentSession() || {}).skin_id || null, myCars: worldCarsFor(currentSession()) } },
           window.location.origin
         );
       }
