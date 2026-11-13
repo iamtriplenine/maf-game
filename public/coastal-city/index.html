@@ -6030,10 +6030,10 @@ function mpInit() {
     void refreshEnergy();
     ui.worldStatusLayer.classList.remove('hidden');
     if (d.mySkin) mpSetLocal(d.mySkin);
-    MP.myCars = Array.isArray(d.myCars) ? d.myCars.filter(x => typeof x === 'string') : [];
+    MP.myCars = [];   // MAF-WORLD-CARS-V3 : la liste vient du serveur
     try { const s = localStorage.getItem('maf:world-car'); if (s) MP.carId = s; } catch (e) { /* optionnel */ }
     mpCarUi();
-    if (MP.porsche) mpApplyCar(mpPickCar(MP.carId));
+    mpFetchCars();
   });
   try { window.parent.postMessage({ mafWorldHello: true }, window.location.origin); } catch (err) {}
   addEventListener('pagehide', () => {
@@ -6058,6 +6058,7 @@ function mpSend() {
     car: veh ? {type:veh.t.id,x:veh.x,z:veh.z,yaw:veh.yaw} :
       (MP.lastOwnedCar ? {type:MP.lastOwnedCar.t.id,x:MP.lastOwnedCar.x,
         z:MP.lastOwnedCar.z,yaw:MP.lastOwnedCar.yaw} : null),
+    carId: MP.carId || null,
     wantParked: nowMs()>= (MP.parkedNextAt||0),
     voice: true, voiceClient: worldChat.client, voiceDone
   };
@@ -6898,7 +6899,7 @@ function mpApply(list) {
     }
     const status = typeof p.status === 'string' ? p.status : '';
     if (r.statusBubble.textContent !== status) r.statusBubble.textContent = status;
-    r.tx = p.x; r.tz = p.z; r.tyaw = p.yaw; r.mv = !!p.mv; r.veh = !!p.veh;
+    r.tx = p.x; r.tz = p.z; r.tyaw = p.yaw; r.mv = !!p.mv; r.veh = !!p.veh; r.carId = typeof p.carId === 'string' ? p.carId : null;
     r.seat = !r.veh && Number.isInteger(p.seat) ? VILLA_SEATS[p.seat - 1] || null : null;
   }
   for (const id of Array.from(MP.remotes.keys())) {
@@ -7124,11 +7125,14 @@ function mmPorscheIcon(ctx, toS, W, H, round) {
 function mpRemoteCar(r, gy) {
   const near = Math.hypot(r.x - camera.position.x, r.z - camera.position.z) < 120;
   if (!(r.veh && near)) { if (r.car) r.car.visible = false; return; }
-  if (!r.car && !r.carLoading) {
+  const wantId = CAR_DEFS[r.carId] ? r.carId : CAR_DEFAULT;
+  if (r.car && r.carModelId !== wantId) { scene.remove(r.car); r.car = null; }
+  if (!r.car && !r.carLoading && nowMs() >= (r.carRetry || 0)) {
     r.carLoading = true;
-    mpCarSource().then(w => {
+    mpCarModel(wantId).then(w => {
       r.carLoading = false;
-      if (!w || MP.remotes.get(r.id) !== r) return;
+      if (!w || MP.remotes.get(r.id) !== r) { if (!w) r.carRetry = nowMs() + 5000; return; }
+      r.carModelId = wantId;
       r.car = w.clone(true);
       scene.add(r.car);
     });
@@ -7136,7 +7140,7 @@ function mpRemoteCar(r, gy) {
   if (r.car) { r.car.visible = true; r.car.position.set(r.x, gy, r.z); r.car.rotation.y = r.yaw; }
 }
 
-/* MAF-WORLD-CARS-V2 : changement de voiture (Porsche / Lamborghini) + patrouilles de police.
+/* MAF-WORLD-CARS-V3 (serveur) + MAF-WORLD-CARS-V2 : changement de voiture (Porsche / Lamborghini) + patrouilles de police.
    Rien n'est charge tant que le joueur ne choisit pas une autre voiture ou qu'une police n'est pas proche. */
 const CAR_DEFAULT = 'porsche-911-gt3-rs';
 const CAR_DEFS = {
@@ -7222,8 +7226,62 @@ function mpCarUi() {
   pan.id = 'worldCarPanel';
   pan.style.cssText = 'display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;width:min(88vw,340px);padding:14px;border-radius:16px;background:rgba(12,16,24,.95);color:#fff;box-shadow:0 12px 40px rgba(0,0,0,.5);font:14px system-ui,sans-serif';
   document.body.appendChild(pan);
-  btn.addEventListener('click', () => { mpCarUiRefresh(); pan.style.display = pan.style.display === 'none' ? 'block' : 'none'; });
+  btn.addEventListener('click', () => { mpFetchCars(); mpCarUiRefresh(); pan.style.display = pan.style.display === 'none' ? 'block' : 'none'; });
   drop.appendChild(btn);
+}
+
+/* MAF-WORLD-CARS-V3 : voitures debloquees (liste fournie par le serveur) + offre de la Lamborghini par le proprietaire. */
+function mpFetchCars() {
+  if (!MP.ready) return;
+  fetch(MP.api + '/api/world/cars/mine', { headers: { Authorization: 'Bearer ' + MP.token } })
+    .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
+    .then(j => {
+      MP.myCars = Array.isArray(j.owned) ? j.owned.filter(x => typeof x === 'string') : [];
+      MP.carsOwner = !!j.owner;
+      const want = mpPickCar(MP.carId);
+      MP.carId = want;
+      if (MP.porsche && MP.porsche.skinId && MP.porsche.skinId !== want) mpApplyCar(want);
+      mpCarUiRefresh();
+    })
+    .catch(() => { /* hors ligne : on reste sur la Porsche */ });
+}
+
+function mpCarOwnerUi(pan, sty) {
+  const box = document.createElement('div');
+  box.style.cssText = 'margin:12px 0 4px;padding-top:10px;border-top:1px solid rgba(255,255,255,.15)';
+  const t = document.createElement('strong');
+  t.textContent = 'Compte propriétaire : offrir la Lamborghini';
+  t.style.cssText = 'display:block;font-size:13px;margin-bottom:6px';
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.inputMode = 'numeric'; inp.maxLength = 5; inp.placeholder = 'ID client (5 chiffres)';
+  inp.style.cssText = 'width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font:inherit';
+  ['keydown', 'keyup', 'keypress'].forEach(ev => inp.addEventListener(ev, e => e.stopPropagation()));   // le jeu ne lit pas ce qui est tapé ici
+  const msg = document.createElement('p');
+  msg.style.cssText = 'margin:6px 0 0;font-size:12px;opacity:.85';
+  const go = (action) => {
+    const clientId = inp.value.trim();
+    if (!/^\d{5}$/.test(clientId)) { msg.textContent = 'ID client à cinq chiffres requis.'; return; }
+    msg.textContent = '…';
+    fetch(MP.api + '/api/world/cars/grant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + MP.token },
+      body: JSON.stringify({ clientId: clientId, carId: 'lamborghini-veneno-roadster', action: action })
+    })
+      .then(r => r.json().catch(() => ({})).then(j => ({ ok: r.ok, j: j })))
+      .then(o => { msg.textContent = o.ok ? (action === 'give' ? 'Lamborghini offerte à ' : 'Lamborghini retirée à ') + (o.j.pseudo || clientId) + '.' : (o.j.error || 'Échec.'); })
+      .catch(() => { msg.textContent = 'Serveur injoignable.'; });
+  };
+  const mk = (label, action) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = label; b.style.cssText = sty + ';text-align:center;margin:6px 0 0';
+    b.addEventListener('click', () => go(action));
+    return b;
+  };
+  box.appendChild(t); box.appendChild(inp);
+  box.appendChild(mk('Offrir la Lamborghini', 'give'));
+  box.appendChild(mk('Retirer la Lamborghini', 'revoke'));
+  box.appendChild(msg);
+  pan.appendChild(box);
 }
 
 function mpCarUiRefresh() {
@@ -7251,6 +7309,7 @@ function mpCarUiRefresh() {
   note.textContent = '🚓 La police patrouille en ville : cette voiture n’appartient à personne.';
   note.style.cssText = 'margin:10px 2px 6px;opacity:.7;font-size:12px';
   pan.appendChild(note);
+  if (MP.carsOwner) mpCarOwnerUi(pan, sty);
   const x = document.createElement('button');
   x.type = 'button'; x.textContent = 'Fermer'; x.style.cssText = sty + ';text-align:center';
   x.addEventListener('click', () => { pan.style.display = 'none'; });
