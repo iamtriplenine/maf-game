@@ -1,7 +1,7 @@
 import AnimatedAmount from './AnimatedAmount';
 import { registerRefresh } from '../api/refresh';
 import { useEffect, useRef, useState } from 'react';
-import { walletRequest, setAdminAccess } from '../api/accounts';
+import { walletRequest, setAdminAccess, currentSession } from '../api/accounts';
 import { setWinGrant } from '../utils/winMode';
 import { IconFranc, IconV } from './Icons';
 import HourglassLoader from './HourglassLoader';
@@ -18,6 +18,20 @@ export function WalletBalances({ user }) {
 }
 export function CouponForm({ onUser, onAdmin }) {
   const [code,setCode] = useState(''), [busy,setBusy] = useState(false), [error,setError] = useState(''), [message,setMessage] = useState('');
+  // Sauvegarde complete de la base : visible seulement pour le compte proprietaire quand on tape 0852.
+  const [exporting,setExporting] = useState(false);
+  async function downloadBackup() {
+    if (exporting) return; setExporting(true); setError(''); setMessage('');
+    try {
+      const blob = await walletRequest('/api/owner/db-export',{ method:'POST', body:{ code:'0852' }, responseType:'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob); link.download = `maf-sauvegarde-${new Date().toISOString().slice(0,10)}.zip`;
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(()=>URL.revokeObjectURL(link.href),30000);
+      setMessage('Sauvegarde téléchargée. Garde ce fichier privé : il contient toutes les données.');
+    } catch(e) { setError(e.message); } finally { setExporting(false); }
+  }
+  const showBackup = code.trim()==='0852' && currentSession()?.account_role==='owner';
   const inFlight = useRef(false);
   async function submit(e) {
     e.preventDefault(); if (inFlight.current) return; inFlight.current=true; setBusy(true); setError(''); setMessage('');
@@ -47,6 +61,7 @@ export function CouponForm({ onUser, onAdmin }) {
     {error && <p className="sheet__error" role="alert">{error}</p>}
     {message && <p className="wallet-notice" role="status">{message}</p>}
     {busy && <HourglassLoader />}
+    {showBackup && <button type="button" className="btn btn--block" onClick={downloadBackup} disabled={exporting}>{exporting ? 'Préparation de la sauvegarde…' : 'Télécharger la sauvegarde complète'}</button>}
     <button className="btn btn--primary btn--block" disabled={busy || code.trim().length<4}>{busy ? 'Verification…':'Utiliser le coupon'}</button>
   </form>;
 }
