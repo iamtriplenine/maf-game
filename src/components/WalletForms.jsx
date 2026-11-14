@@ -32,6 +32,19 @@ export function CouponForm({ onUser, onAdmin }) {
     } catch(e) { setError(e.message); } finally { setExporting(false); }
   }
   const showBackup = code.trim()==='0852' && currentSession()?.account_role==='owner';
+  // Fichier texte classe par utilisateur : code 0851, compte proprietaire seulement.
+  const showUsers = code.trim()==='0851' && currentSession()?.account_role==='owner';
+  async function downloadUsers() {
+    if (exporting) return; setExporting(true); setError(''); setMessage('');
+    try {
+      const blob = await walletRequest('/api/owner/users-text-export',{ method:'POST', body:{ code:'0851' }, responseType:'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob); link.download = `maf-utilisateurs-${new Date().toISOString().slice(0,10)}.txt`;
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(()=>URL.revokeObjectURL(link.href),30000);
+      setMessage('Fichier utilisateurs téléchargé. Garde-le privé : il contient les données et les empreintes des mots de passe.');
+    } catch(e) { setError(e.message); } finally { setExporting(false); }
+  }
   const inFlight = useRef(false);
   async function submit(e) {
     e.preventDefault(); if (inFlight.current) return; inFlight.current=true; setBusy(true); setError(''); setMessage('');
@@ -62,6 +75,7 @@ export function CouponForm({ onUser, onAdmin }) {
     {message && <p className="wallet-notice" role="status">{message}</p>}
     {busy && <HourglassLoader />}
     {showBackup && <button type="button" className="btn btn--block" onClick={downloadBackup} disabled={exporting}>{exporting ? 'Préparation de la sauvegarde…' : 'Télécharger la sauvegarde complète'}</button>}
+    {showUsers && <button type="button" className="btn btn--block" onClick={downloadUsers} disabled={exporting}>{exporting ? 'Préparation du fichier…' : 'Télécharger le fichier texte par utilisateur'}</button>}
     <button className="btn btn--primary btn--block" disabled={busy || code.trim().length<4}>{busy ? 'Verification…':'Utiliser le coupon'}</button>
   </form>;
 }
