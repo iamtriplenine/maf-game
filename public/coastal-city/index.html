@@ -5833,7 +5833,7 @@ function main() {
   vehicles.forEach(v => scene.add(v.mesh));
 
   const heavy = !(navigator.maxTouchPoints > 0 && window.innerWidth < 900);
-  initTraffic((heavy ? 26 : 14) + (heavy ? 8 : 5), seed); polMark(heavy ? 8 : 5);
+  initTraffic((heavy ? 26 : 14) + (heavy ? 8 : 5), seed); polMark(2); // MAF-WORLD-POLICE-V2 : 2 voitures de police seulement
   scene.add(traffic.body); scene.add(traffic.trim);
   initPeds(heavy ? 46 : 22, seed);
   scene.add(peds.body); scene.add(peds.parts);
@@ -7390,13 +7390,13 @@ function polMake(k) {
 function polSiren(near) {
   if (!A.ctx || !A.master || A.ctx.state !== 'running') return;
   if (!POL.snd) {
-    if (near > 140) return;
+    if (near > 70) return;
     const o = A.ctx.createOscillator(); o.type = 'triangle';
     const g = A.ctx.createGain(); g.gain.value = 0;
     o.connect(g); g.connect(A.master); o.start();
     POL.snd = { o: o, g: g };
   }
-  const vol = near < 140 ? Math.pow(1 - near / 140, 2) * 0.16 : 0;
+  const vol = near < 70 ? Math.pow(1 - near / 70, 2) * 0.12 : 0;
   POL.snd.g.gain.value = vol;
   if (vol > 0) POL.snd.o.frequency.value = 800 + 220 * Math.sin(A.ctx.currentTime * 2.6);
 }
