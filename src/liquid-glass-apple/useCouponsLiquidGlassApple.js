@@ -1,43 +1,45 @@
 import { useEffect } from "react";
-import "./liquid-glass-apple.js";
+import LiquidGlassApple from "./liquid-glass-apple.js";
 import "./coupons-liquid-glass.css";
 
-// Meme moteur, memes options que useHomeLiquidGlassApple.js (bulles V3).
+// Bouton Coupons : 60 px de haut, coins de 34 px -> bord plus large que les bulles.
+const COUPONS_GLASS = {
+  radius: 34,
+  surface: "convex_squircle",
+  glassThickness: 36,
+  bezelWidth: 18,
+  refractiveIndex: 1.6,
+  scaleRatio: 1,
+  blur: 0.25,
+  specularOpacity: 0.5,
+  specularSaturation: 3,
+  tintColor: "#ffffff",
+  tintOpacity: 0.05,
+  innerShadowColor: "#ffffff",
+  innerShadowBlur: 14,
+  innerShadowSpread: -7,
+  outerShadowBlur: 16,
+  fallbackBlur: 14,
+  interactive: true,
+  pressScale: 1.05,
+  stretch: 0.0001,
+  maxStretch: 0.1,
+  stiffness: 260,
+  damping: 13,
+};
+
 export default function useCouponsLiquidGlassApple() {
   useEffect(() => {
-    const engine = window.LiquidGlassApple;
+    const engine = LiquidGlassApple;
     if (!engine) return;
     let button = null;
     let instance = null;
-    const options = {
-      radius: 19,
-      surface: 'convex_squircle',
-      glassThickness: 92,
-      bezelWidth: 14,
-      refractiveIndex: 3.0,
-      scaleRatio: 1.6,
-      blur: 0.0,
-      specularOpacity: 0.3,
-      specularSaturation: 2.0,
-      tintColor: '#ffffff',
-      tintOpacity: 0.0,
-      innerShadowBlur: 0,
-      innerShadowSpread: 0,
-      outerShadowBlur: 8,
-      fallbackBlur: 0,
-      interactive: true,
-      pressScale: 1.085,
-      stretch: 0.00012,
-      maxStretch: 0.12,
-      stiffness: 260,
-      damping: 12,
-    };
     const sync = () => {
-      const current = document.querySelector('.profile .profile__btn.maf-lga-coupons');
+      const current = document.querySelector(".profile .profile__btn.maf-lga-coupons");
       if (current === button) return;
       if (instance) { instance.destroy(); instance = null; }
       button = current;
-      if (button) instance = engine.apply(button, options);
+      if (button) instance = engine.apply(button, COUPONS_GLASS);
     };
     sync();
     const observer = new MutationObserver(sync);

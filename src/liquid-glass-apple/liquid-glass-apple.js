@@ -3,17 +3,17 @@
  * Basé sur « Liquid Glass » © 2026 Archis Vaze, licence MIT.
  * (La licence MIT impose de conserver cette ligne de copyright.)
  *
- * Utilisation :
- *   Inclure ce fichier dans la page (balise script src="liquid-glass.js"), puis :
- *   LiquidGlass.apply(document.querySelector('.ma-carte'));
- *   LiquidGlass.apply(element, { radius: 40, refractiveIndex: 2.2, interactive: true });
+ * Version MAF : physique d'origine conservee, espace de noms « lga- » et
+ * global window.LiquidGlassApple (ne touche pas au Liquid Glass CSS existant).
+ *   import LiquidGlassApple from './liquid-glass-apple.js';
+ *   LiquidGlassApple.apply(element, { radius: 19, bezelWidth: 12 });
  *
  * Tout ce qui se trouve DERRIÈRE l'élément (texte, images, listes qui défilent…)
  * est déformé comme à travers une goutte d'eau / une lentille.
  * Réfraction réelle : Chrome, Edge, Brave, Opera, Chrome Android.
  * Safari / iPhone / Firefox : repli automatique sur un verre flouté (pas de déformation).
  */
-(function (global) {
+const LiquidGlassApple = (function (global) {
   'use strict';
 
   /* ------------------------------------------------------------------ */
@@ -43,7 +43,8 @@
     maxStretch: 0.12,        // étirement maximal
     stiffness: 260,          // ressort : raideur
     damping: 14,             // ressort : amortissement (plus bas = plus de rebond)
-    fallbackBlur: 1.3,        // flou utilisé quand la réfraction n'est pas supportée
+    fallbackBlur: 14,        // flou utilisé quand la réfraction n'est pas supportée
+    maxOffsetRatio: 2,       // MAF : décalage max = 2 × largeur du bord (évite le « bruit » sur les petits boutons)
   };
 
   /* ------------------------------------------------------------------ */
@@ -83,40 +84,23 @@
     return profile;
   }
 
-  // V3 : bord COMPLET d'un rectangle arrondi, pas uniquement les coins.
-  // Le calcul précédent sautait les segments horizontaux/verticaux des bulles.
+  // Parcourt uniquement les pixels du bord (le centre est plat → aucun calcul).
   function forEachBezelPixel(w, h, r, bezel, cb) {
-    const halfW = w / 2, halfH = h / 2;
-    const rr = Math.max(1, Math.min(r, halfW, halfH));
-    for (let y = 0; y < h; y++) {
-      const py = y + 0.5;
-      const nearY = py < bezel + 1 || py > h - bezel - 1;
-      for (let x = 0; x < w; x++) {
-        const px = x + 0.5;
-        if (!nearY && px > bezel + 1 && px < w - bezel - 1) {
-          x = Math.max(x, Math.ceil(w - bezel - 2));
-          continue;
-        }
-        const qx = Math.abs(px - halfW) - (halfW - rr);
-        const qy = Math.abs(py - halfH) - (halfH - rr);
-        const ox = Math.max(qx, 0), oy = Math.max(qy, 0);
-        const signed = Math.hypot(ox, oy) + Math.min(Math.max(qx, qy), 0) - rr;
-        const depth = -signed; // distance depuis le bord vers l'intérieur
-        if (depth < 0 || depth > bezel) continue;
-        let nx, ny;
-        if (ox > 0 || oy > 0) {
-          const mag = Math.hypot(ox, oy) || 1;
-          nx = Math.sign(px - halfW) * ox / mag;
-          ny = Math.sign(py - halfH) * oy / mag;
-        } else if (qx > qy) {
-          nx = Math.sign(px - halfW); ny = 0;
-        } else {
-          nx = 0; ny = Math.sign(py - halfH);
-        }
-        // Épaisseur optique : pic au milieu de la zone réfractive, zéro au centre et au bord.
-        const t = Math.max(0, Math.min(1, depth / bezel));
-        const fade = Math.pow(Math.sin(Math.PI * t), 0.8);
-        cb((y * w + x) * 4, nx, ny, depth, fade);
+    const rSq = r * r, r1Sq = (r + 1) ** 2, rBSq = Math.max(r - bezel, 0) ** 2;
+    const wB = w - r * 2, hB = h - r * 2, sqR = Math.sqrt(rSq), sqR1 = Math.sqrt(r1Sq);
+    const band = Math.ceil(r) + 1;
+    for (let y1 = 0; y1 < h; y1++) {
+      const inBandY = y1 < band || y1 >= h - band;
+      for (let x1 = 0; x1 < w; x1++) {
+        if (!inBandY && x1 >= band && x1 < w - band) { x1 = w - band - 1; continue; }
+        const x = x1 < r ? x1 - r : x1 >= w - r ? x1 - r - wB : 0;
+        const y = y1 < r ? y1 - r : y1 >= h - r ? y1 - r - hB : 0;
+        const dSq = x * x + y * y;
+        if (dSq > r1Sq || dSq < rBSq) continue;
+        const dist = Math.sqrt(dSq);
+        const op = dSq < rSq ? 1 : 1 - (dist - sqR) / (sqR1 - sqR);
+        if (op <= 0 || dist === 0) continue;
+        cb((y1 * w + x1) * 4, x / dist, y / dist, r - dist, op);
       }
     }
   }
@@ -128,16 +112,15 @@
     return { c, ctx, img: ctx.createImageData(w, h) };
   }
 
-  function displacementMap(w, h, r, bezel) {
+  function displacementMap(w, h, r, bezel, profile, maxDisp) {
     const { c, ctx, img } = makeCanvas(w, h);
     const d = img.data;
-    for (let i = 0; i < d.length; i += 4) {
-      d[i] = 128; d[i + 1] = 128; d[i + 2] = 0; d[i + 3] = 255;
-    }
-    forEachBezelPixel(w, h, r, bezel, (idx, nx, ny, depth, fade) => {
-      // 128 est neutre pour feDisplacementMap. Les côtés droits sont maintenant couverts.
-      d[idx] = Math.round(128 + nx * fade * 120);
-      d[idx + 1] = Math.round(128 + ny * fade * 120);
+    for (let i = 0; i < d.length; i += 4) { d[i] = 128; d[i + 1] = 128; d[i + 2] = 0; d[i + 3] = 255; }
+    const S = profile.length;
+    forEachBezelPixel(w, h, r, bezel, (idx, cos, sin, fromSide, op) => {
+      const disp = profile[Math.min(((fromSide / bezel) * S) | 0, S - 1)] || 0;
+      d[idx] = (128 + ((-cos * disp) / maxDisp) * 127 * op + 0.5) | 0;
+      d[idx + 1] = (128 + ((-sin * disp) / maxDisp) * 127 * op + 0.5) | 0;
     });
     ctx.putImageData(img, 0, 0);
     return c.toDataURL();
@@ -146,12 +129,14 @@
   function specularMap(w, h, r, bezel, angle) {
     const { c, ctx, img } = makeCanvas(w, h);
     const d = img.data;
-    const lightX = Math.cos(angle), lightY = Math.sin(angle);
-    forEachBezelPixel(w, h, r, bezel, (idx, nx, ny, depth, fade) => {
-      const light = Math.pow(Math.max(0, nx * lightX + ny * lightY), 2);
-      const shine = Math.round(255 * light * fade);
-      d[idx] = d[idx + 1] = d[idx + 2] = shine;
-      d[idx + 3] = Math.round(125 * light * fade);
+    const sv = [Math.cos(angle), Math.sin(angle)];
+    forEachBezelPixel(w, h, r, bezel, (idx, cos, sin, fromSide, op) => {
+      const dot = Math.abs(cos * sv[0] - sin * sv[1]);
+      const edge = Math.sqrt(Math.max(0, 1 - (1 - fromSide) ** 2));
+      const coeff = dot * edge;
+      const col = (255 * coeff) | 0;
+      d[idx] = d[idx + 1] = d[idx + 2] = col;
+      d[idx + 3] = (col * coeff * op) | 0;
     });
     ctx.putImageData(img, 0, 0);
     return c.toDataURL();
@@ -162,6 +147,7 @@
   /* ------------------------------------------------------------------ */
   // backdrop-filter: url(#svg) n'est rendu que par Chromium (pas Safari/WebKit, pas Firefox).
   const SUPPORTS_REFRACTION = (() => {
+    if (typeof navigator === 'undefined' || typeof ResizeObserver === 'undefined') return false;
     const brands = navigator.userAgentData && navigator.userAgentData.brands;
     if (brands) return brands.some((b) => /Chromium/.test(b.brand));
     return /(Chrome|Chromium)\//.test(navigator.userAgent) && !/Firefox\//.test(navigator.userAgent);
@@ -174,11 +160,16 @@
   function ensureShared() {
     if (svgDefs) return;
     const style = document.createElement('style');
+    style.setAttribute('data-maf', 'liquid-glass-apple');
     style.textContent = `
-:where(.lga-glass){position:relative;isolation:isolate;border-radius:var(--lga-radius);
-  box-shadow:0 4px var(--lga-outer-blur) rgba(0,0,0,.18);transform-origin:center;will-change:transform}
-.lga-glass::before,.lga-glass::after{content:none!important}
-:where(.lga-glass.lga-interactive){touch-action:pan-y;user-select:none;-webkit-user-select:none}`;
+:where(.lga-glass){position:relative;isolation:isolate;border-radius:var(--lga-radius);transform-origin:center}
+.lga-glass.lga-glass{
+  backdrop-filter:var(--lga-filter)!important;-webkit-backdrop-filter:var(--lga-filter)!important;
+  background-image:none!important;background-color:rgba(var(--lga-tint),var(--lga-tint-opacity))!important;
+  box-shadow:inset 0 0 var(--lga-inner-blur) var(--lga-inner-spread) var(--lga-inner-color),
+    inset 0 .5px 0 rgba(255,255,255,.28),0 4px var(--lga-outer-blur) rgba(0,0,0,.18)!important}
+.lga-glass.lga-interactive{will-change:transform}
+:where(.lga-glass.lga-interactive){touch-action:manipulation;user-select:none;-webkit-user-select:none}`;
     document.head.appendChild(style);
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', '0');
@@ -213,8 +204,9 @@
       el.classList.add('lga-glass');
       this._applyCss();
 
-      if (SUPPORTS_REFRACTION && typeof ResizeObserver !== "undefined") {
+      if (SUPPORTS_REFRACTION) {
         this.ro = new ResizeObserver(() => this._scheduleBuild());
+        // MAF : premier calcul immédiat, puis recalcul seulement quand la taille est stable.
         this.ro.observe(el);
         this._build();
       } else {
@@ -228,12 +220,13 @@
       Object.assign(this.o, options);
       this._applyCss();
       this.lastSize = '';
-      if (SUPPORTS_REFRACTION && typeof ResizeObserver !== "undefined") this._build();
+      if (SUPPORTS_REFRACTION) this._build();
     }
 
     /** Retirer l'effet */
     destroy() {
       this.ro && this.ro.disconnect();
+      clearTimeout(this._timer);
       this.filterEl && this.filterEl.remove();
       this._jellyOff && this._jellyOff();
       this.el.classList.remove('lga-glass', 'lga-interactive');
@@ -254,8 +247,10 @@
     }
 
     _scheduleBuild() {
-      cancelAnimationFrame(this._raf);
-      this._raf = requestAnimationFrame(() => this._build());
+      // MAF : attend la fin d'une animation de taille (bulle qui apparaît, champ qui s'élargit)
+      // au lieu de recalculer les cartes à chaque image.
+      clearTimeout(this._timer);
+      this._timer = setTimeout(() => this._build(), 120);
     }
 
     _build() {
@@ -268,16 +263,20 @@
       this.lastSize = key;
 
       const radius = Math.floor(Math.min(o.radius, w / 2, h / 2));
-      const bezel = Math.max(3, Math.min(o.bezelWidth, Math.min(w, h) / 2 - 1));
-      const disp = displacementMap(w, h, radius, bezel);
-      const spec = specularMap(w, h, radius, bezel, o.specularAngle);
-      // Limite le déplacement pour éviter les artefacts sur les petites bulles.
-      const strength = Math.min(36, Math.max(12, bezel * 1.25)) * (o.scaleRatio || 1);
+      const bezel = Math.max(1, Math.min(o.bezelWidth, radius - 1, Math.min(w, h) / 2 - 1));
+      const profile = refractionProfile(o.glassThickness, bezel, SURFACE_FNS[o.surface] || SURFACE_FNS.convex_squircle, o.refractiveIndex);
+      let maxDisp = 0;
+      for (let i = 0; i < profile.length; i++) maxDisp = Math.max(maxDisp, Math.abs(profile[i]));
+      maxDisp = maxDisp || 1;
 
+      const disp = displacementMap(w, h, radius, bezel, profile, maxDisp);
+      const spec = specularMap(w, h, radius, bezel * 2.5, o.specularAngle);
+
+      const scale = Math.min(maxDisp * o.scaleRatio, bezel * 2 * o.maxOffsetRatio);
       const markup = `<filter id="${this.id}" x="0%" y="0%" width="100%" height="100%">
   <feGaussianBlur in="SourceGraphic" stdDeviation="${o.blur}" result="blurred_source"/>
   <feImage href="${disp}" x="0" y="0" width="${w}" height="${h}" result="disp_map"/>
-  <feDisplacementMap in="blurred_source" in2="disp_map" scale="${strength}" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+  <feDisplacementMap in="blurred_source" in2="disp_map" scale="${scale}" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
   <feColorMatrix in="displaced" type="saturate" values="${o.specularSaturation}" result="displaced_sat"/>
   <feImage href="${spec}" x="0" y="0" width="${w}" height="${h}" result="spec_layer"/>
   <feComposite in="displaced_sat" in2="spec_layer" operator="in" result="spec_masked"/>
@@ -362,6 +361,8 @@
     defaults: DEFAULTS,
   };
 
-  if (typeof module !== 'undefined' && module.exports) module.exports = LiquidGlass;
-  else global.LiquidGlassApple = LiquidGlass;
-})(typeof window !== 'undefined' ? window : this);
+  if (global) global.LiquidGlassApple = LiquidGlass;
+  return LiquidGlass;
+})(typeof window !== 'undefined' ? window : undefined);
+
+export default LiquidGlassApple;

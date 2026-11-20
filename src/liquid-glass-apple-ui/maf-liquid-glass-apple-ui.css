@@ -1,56 +1,30 @@
-/* Extension V4 : Liquid Glass Apple pour boutons UI (Coupons + Composer + micro/envoi) */
-.maf-liquid-apple-ui {
-  position: relative;
-  isolation: isolate;
-  background: transparent !important;
-  overflow: visible;
+/* MAF - Liquid Glass Apple pour boutons UI (classe .maf-liquid-apple-ui).
+   Le moteur gere fond, ombres et refraction ; ici : bordures, texte, transitions. */
+.maf-liquid-apple-ui.lga-glass {
+  border: 1px solid rgba(255, 255, 255, .18);
+  color: var(--text);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .55);
 }
 
-.profile .profile__btn.maf-liquid-apple-ui {
-  background: transparent !important;
-  border-color: rgba(173, 220, 255, 0.18) !important;
-  box-shadow: none !important;
-  color: var(--text) !important;
+/* Pilule de saisie du chat : garde l'elargissement au focus, pas de transition sur transform. */
+.profile .chat-composer.maf-liquid-apple-ui.lga-glass {
+  transition: width .3s var(--ease), border-color .2s var(--ease);
 }
-.profile .profile__btn.maf-liquid-apple-ui svg,
-.profile .profile__btn.maf-liquid-apple-ui small {
-  color: inherit !important;
+.profile .chat-composer.maf-liquid-apple-ui.lga-glass:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
 }
 
-.profile .chat-composer.maf-liquid-apple-ui,
-.profile .chat-composer--guest.maf-liquid-apple-ui {
-  background: transparent !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-  border-color: rgba(173, 220, 255, 0.18) !important;
-  box-shadow: none !important;
-}
-.profile .chat-composer.maf-liquid-apple-ui:focus-within {
-  border-color: rgba(173, 220, 255, 0.28) !important;
-  box-shadow: 0 0 0 1px rgba(173, 220, 255, 0.10), 0 0 0 3px rgba(84, 170, 255, 0.10) !important;
-}
-
-.chat-composer__mic.maf-liquid-apple-ui,
-.chat-composer button[type="submit"].maf-liquid-apple-ui {
-  background: transparent !important;
-  border: 1px solid rgba(173, 220, 255, 0.20) !important;
-  box-shadow: none !important;
-  color: #e9f8ff !important;
-}
-.chat-composer__mic.maf-liquid-apple-ui.is-rec {
-  background: transparent !important;
-  border-color: rgba(255, 137, 160, 0.30) !important;
+/* Boutons micro / envoi DANS la pilule : verre simple (un verre dans un verre ne refracte rien). */
+.chat-composer .maf-liquid-apple-ui--inner {
+  border: 1px solid rgba(255, 255, 255, .22) !important;
+  background: rgba(255, 255, 255, .12) !important;
+  box-shadow: inset 0 .5px 0 rgba(255, 255, 255, .35), inset 0 0 8px rgba(255, 255, 255, .08) !important;
   color: #fff !important;
 }
-
-/* Les pseudo-elements du moteur doivent depasser proprement */
-.profile .chat-composer.maf-liquid-apple-ui::before,
-.profile .chat-composer.maf-liquid-apple-ui::after,
-.profile .profile__btn.maf-liquid-apple-ui::before,
-.profile .profile__btn.maf-liquid-apple-ui::after,
-.chat-composer__mic.maf-liquid-apple-ui::before,
-.chat-composer__mic.maf-liquid-apple-ui::after,
-.chat-composer button[type="submit"].maf-liquid-apple-ui::before,
-.chat-composer button[type="submit"].maf-liquid-apple-ui::after {
-  border-radius: inherit;
+.chat-composer button[type="submit"].maf-liquid-apple-ui--inner:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 55%, rgba(255, 255, 255, .12)) !important;
+}
+.chat-composer__mic.maf-liquid-apple-ui--inner.is-rec {
+  border-color: rgba(255, 137, 160, .5) !important;
+  background: rgba(255, 70, 110, .35) !important;
 }
