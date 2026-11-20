@@ -406,6 +406,7 @@
         <button id="btnMission" aria-label="Start or cancel delivery run" title="Delivery run (M)">📦</button>
         <button id="btnSound" aria-label="Toggle sound" aria-pressed="true" title="Sound (P)">🔊</button>
         <button id="btnCam" aria-label="Cycle camera" title="Camera (C)">🎥</button>
+        <button id="btnFp" aria-label="First person view" aria-pressed="false" title="First person (V)">👁️</button>
         <button id="btnLocate" aria-label="Show my position" title="My position">📍</button>
         <button id="btnSettings" aria-label="Open settings" title="Settings (Esc)">⚙️</button>
         <button id="btnExit" aria-label="Exit the world" title="Exit">🚪</button>
@@ -2935,12 +2936,27 @@ function updateCamera(dt, input) {
   } else {
     tx = player.x; ty = player.y + 1.45; tz = player.z;
     baseDist = 5.0;
-    if (cam.walkInputYaw !== null && cam.userLook <= 0 &&
+    if (!cam.fp && cam.walkInputYaw !== null && cam.userLook <= 0 &&
         Math.hypot(player.vx, player.vz) > 0.12) {
       const behind = Math.atan2(player.vx, player.vz) + Math.PI;
       cam.yaw += angDelta(cam.yaw, behind) * (1 - Math.pow(0.03, dt));
     }
   }
+  const fpOn = !!cam.fp && player.mode !== 'drive';
+  if (fpOn) {
+    // MAF-WORLD-FP-V1 : camera a hauteur des yeux, meme direction de regard que la vue 3e personne
+    if (camera.near !== 0.15) { camera.near = 0.15; camera.updateProjectionMatrix(); }
+    cam.zoomU = 1; cam.recenter = 0; cam.dist = 0.01;
+    if (cam.beacon) cam.beacon.visible = false;
+    if (player.mesh && player.mesh.visible) player.mesh.visible = false;
+    const cpf = Math.cos(cam.pitch);
+    cam.pos.set(tx - Math.sin(cam.yaw) * 0.1, ty + 0.05, tz - Math.cos(cam.yaw) * 0.1);
+    cam.look.set(cam.pos.x - Math.sin(cam.yaw) * cpf, cam.pos.y + Math.sin(cam.pitch), cam.pos.z - Math.cos(cam.yaw) * cpf);
+    camera.position.copy(cam.pos);
+    camera.lookAt(cam.look.x, cam.look.y, cam.look.z);
+    return;
+  }
+  if (camera.near !== 0.3) { camera.near = 0.3; camera.updateProjectionMatrix(); }
   const zf = cam.zoomU;
   if (!cam.beacon) {           // repere jaune au-dessus du joueur quand on est zoome loin
     const bm = new THREE.Mesh(new THREE.ConeGeometry(1, 2.4, 16), new THREE.MeshBasicMaterial({ color: 0xffd166, fog: false, transparent: true, opacity: 0.95, depthTest: false }));
@@ -4424,6 +4440,7 @@ function bindInput() {
     if (k === 'KeyF' && player.mode === 'drive') tryEnterExit();
     if (k === 'KeyM') startMission();
     if (k === 'KeyC') cycleCam();
+    if (k === 'KeyV') toggleFp();
     if (k === 'KeyR') unstick();
     if (k === 'KeyP') toggleSound();
     if (k === 'KeyH') sfxHorn();
@@ -4585,6 +4602,7 @@ function bindInput() {
   ui.btnClose.onclick = () => toggleMenu(false);
   ui.btnSound.onclick = () => { audioResume(); toggleSound(); };
   ui.btnCam.onclick = () => cycleCam();
+  { const bf = document.getElementById('btnFp'); if (bf) bf.onclick = () => toggleFp(); }
   ui.btnMission.onclick = () => { audioResume(); startMission(); };
   bindWorldMap();
   ui.menu.addEventListener('click', e => { if (e.target === ui.menu) toggleMenu(false); });
@@ -4635,6 +4653,15 @@ function gatherInput(dt) {
 }
 
 function cycleCam() { cam.mode = (cam.mode + 1) % CAM_MODES.length; toast('Camera ' + ['close', 'normal', 'wide'][cam.mode]); saveSoon(); }
+// Vue 1re personne (bouton 👁️ / touche V) : la camera passe a hauteur des yeux, le personnage est cache.
+// Utile dans les maisons ou la camera 3e personne est genee par les murs. En voiture, la vue 3e personne reste.
+function toggleFp() {
+  cam.fp = !cam.fp;
+  if (cam.fp) { cam.zoomU = 1; cam.recenter = 0; }
+  const b = document.getElementById('btnFp');
+  if (b) b.setAttribute('aria-pressed', cam.fp ? 'true' : 'false');
+  toast(cam.fp ? 'Vue 1re personne' : 'Vue 3e personne');
+}
 function menuOpen() { return ui.menu && !ui.menu.classList.contains('hidden'); }
 function toggleMenu(force) {
   const open = force != null ? force : !menuOpen();
