@@ -1,0 +1,35 @@
+/* MAF - Liquid Glass Apple V2. Seulement les bulles d'accueil. */
+:root {
+  --maf-lga-refraction: 1;
+  --maf-lga-glass-fill: rgba(255,255,255,0.008);
+  --maf-lga-glass-border: rgba(255,255,255,0.19);
+}
+/* Le moteur fixe --lga-filter: url(#...) sur chaque bulle Chromium.
+   Pas de couche blanche ni de superposition de blur : le fond reste visible. */
+.profile .chat-feed .chat-msg__bubble.lga-glass,
+.profile .chat-feed .chat-msg--me .chat-msg__bubble.lga-glass {
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  background: var(--maf-lga-glass-fill) !important;
+  background-image: none !important;
+  border: 1px solid var(--maf-lga-glass-border) !important;
+  color: #fff !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,.75) !important;
+  box-shadow: inset 0 0.5px 0 rgba(255,255,255,.22),
+              inset 0 -1px 3px rgba(255,255,255,.05),
+              0 3px 13px rgba(0,0,0,.12) !important;
+  backdrop-filter: var(--lga-filter, blur(1.3px)) !important;
+  -webkit-backdrop-filter: var(--lga-filter, blur(1.3px)) !important;
+  overflow: visible;
+  transform-origin: 50% 50%;
+  touch-action: pan-y;
+}
+.profile .chat-feed .chat-msg__bubble.lga-glass::before,
+.profile .chat-feed .chat-msg__bubble.lga-glass::after {
+  content: none !important;
+  display: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile .chat-feed .chat-msg__bubble.lga-glass { transition: none !important; }
+}

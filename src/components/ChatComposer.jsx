@@ -44,7 +44,7 @@ export default function ChatComposer({ session, onSend, onNeedLogin }) {
 
   if (!session) {
     return (
-      <button type="button" className="chat-composer chat-composer--guest" onClick={onNeedLogin}>
+      <button type="button" className="chat-composer chat-composer--guest maf-liquid-apple-ui maf-liquid-apple-ui--composer" onClick={onNeedLogin}>
         Connecte-toi pour ecrire
       </button>
     );
@@ -72,7 +72,7 @@ export default function ChatComposer({ session, onSend, onNeedLogin }) {
   };
 
   return (
-    <form className={`chat-composer${voice.recording ? " chat-composer--rec" : ""}`} onSubmit={submit}>
+    <form className={`chat-composer maf-liquid-apple-ui maf-liquid-apple-ui--composer${voice.recording ? " chat-composer--rec" : ""}`} onSubmit={submit}>
       {error && (
         <span className="chat-composer__error" role="alert">
           {error}
@@ -97,7 +97,7 @@ export default function ChatComposer({ session, onSend, onNeedLogin }) {
       {canVoice ? (
         <button
           type="button"
-          className={`chat-composer__mic${voice.recording ? " is-rec" : ""}`}
+          className={`chat-composer__mic maf-liquid-apple-ui maf-liquid-apple-ui--orb${voice.recording ? " is-rec" : ""}`}
           aria-label="Maintenir pour enregistrer un vocal"
           disabled={busy}
           {...hold}
@@ -105,7 +105,7 @@ export default function ChatComposer({ session, onSend, onNeedLogin }) {
           <IconMic size={18} />
         </button>
       ) : (
-        <button type="submit" aria-label="Envoyer" disabled={busy || !hasText}>
+        <button type="submit" className="maf-liquid-apple-ui maf-liquid-apple-ui--orb" aria-label="Envoyer" disabled={busy || !hasText}>
           <IconSend size={18} />
         </button>
       )}

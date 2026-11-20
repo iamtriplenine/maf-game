@@ -1,3 +1,4 @@
+import useCouponsLiquidGlassApple from "../liquid-glass-apple/useCouponsLiquidGlassApple";
 import useReferralSignup from "../referrals/useReferralSignup";
 import "../styles/gift-menu-indicator.css";
 import usePendingGifts from "../components/usePendingGifts";
@@ -60,6 +61,7 @@ const readChatPref = () => {
 const APP_NAME = ["VIVA", "CENTER"];
 
 export default function ProfilePage({ onOpenStudio }) {
+  useCouponsLiquidGlassApple();
   const { session, login, register, logout, updateUser } = useSession();
   const [sheet, setSheet] = useState(null);
   const openReferralSignup = useCallback(() => setSheet('signup'), []);
@@ -219,7 +221,7 @@ export default function ProfilePage({ onOpenStudio }) {
             <>
               <button
                 type="button"
-                className="btn btn--glass profile__btn"
+                className="btn btn--glass profile__btn maf-lga-coupons"
                 onClick={() => setSheet("coupons")}
               >
                 <IconVoucher />

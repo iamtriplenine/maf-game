@@ -1,0 +1,56 @@
+/* Extension V4 : Liquid Glass Apple pour boutons UI (Coupons + Composer + micro/envoi) */
+.maf-liquid-apple-ui {
+  position: relative;
+  isolation: isolate;
+  background: transparent !important;
+  overflow: visible;
+}
+
+.profile .profile__btn.maf-liquid-apple-ui {
+  background: transparent !important;
+  border-color: rgba(173, 220, 255, 0.18) !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+}
+.profile .profile__btn.maf-liquid-apple-ui svg,
+.profile .profile__btn.maf-liquid-apple-ui small {
+  color: inherit !important;
+}
+
+.profile .chat-composer.maf-liquid-apple-ui,
+.profile .chat-composer--guest.maf-liquid-apple-ui {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border-color: rgba(173, 220, 255, 0.18) !important;
+  box-shadow: none !important;
+}
+.profile .chat-composer.maf-liquid-apple-ui:focus-within {
+  border-color: rgba(173, 220, 255, 0.28) !important;
+  box-shadow: 0 0 0 1px rgba(173, 220, 255, 0.10), 0 0 0 3px rgba(84, 170, 255, 0.10) !important;
+}
+
+.chat-composer__mic.maf-liquid-apple-ui,
+.chat-composer button[type="submit"].maf-liquid-apple-ui {
+  background: transparent !important;
+  border: 1px solid rgba(173, 220, 255, 0.20) !important;
+  box-shadow: none !important;
+  color: #e9f8ff !important;
+}
+.chat-composer__mic.maf-liquid-apple-ui.is-rec {
+  background: transparent !important;
+  border-color: rgba(255, 137, 160, 0.30) !important;
+  color: #fff !important;
+}
+
+/* Les pseudo-elements du moteur doivent depasser proprement */
+.profile .chat-composer.maf-liquid-apple-ui::before,
+.profile .chat-composer.maf-liquid-apple-ui::after,
+.profile .profile__btn.maf-liquid-apple-ui::before,
+.profile .profile__btn.maf-liquid-apple-ui::after,
+.chat-composer__mic.maf-liquid-apple-ui::before,
+.chat-composer__mic.maf-liquid-apple-ui::after,
+.chat-composer button[type="submit"].maf-liquid-apple-ui::before,
+.chat-composer button[type="submit"].maf-liquid-apple-ui::after {
+  border-radius: inherit;
+}

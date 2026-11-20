@@ -16,6 +16,8 @@ export default function AuthForm({ mode, onSubmit, referral }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [needsPhone, setNeedsPhone] = useState(false);
   const isSignup = mode === "signup";
   const inFlight = useRef(false);
   const referralBlocked = isSignup && referral && !['none','valid'].includes(referral.status);
@@ -27,9 +29,10 @@ export default function AuthForm({ mode, onSubmit, referral }) {
     setBusy(true);
     setError("");
     try {
-      await onSubmit(pseudo, code);
+      await onSubmit(pseudo, code, needsPhone ? phone : undefined);
     } catch (err) {
       setError(err.message);
+      if (err.needsPhone && !isSignup) setNeedsPhone(true);
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -70,6 +73,26 @@ export default function AuthForm({ mode, onSubmit, referral }) {
 
       <CodeDials onChange={setCode} disabled={busy} />
       <p className="dials-hint">Fais rouler chaque molette sur ton chiffre.</p>
+
+      {needsPhone && !isSignup && (
+        <>
+          <label className="field">
+            <input
+              className="pseudo-input"
+              name="phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="Numero Wave de ce compte"
+              maxLength={20}
+              value={phone}
+              disabled={busy}
+              onChange={(event) => setPhone(event.target.value.replace(/[^\d+\s]/g, ""))}
+            />
+          </label>
+          <p className="dials-hint">Compte bloque : ajoute le numero Wave enregistre sur ce compte pour te connecter tout de suite.</p>
+        </>
+      )}
 
       <p className="sheet__error" role="alert">
         {error}

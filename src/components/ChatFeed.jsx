@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import ChatMessage from "./ChatMessage";
 import { useStickBottom } from "../chat/useStickBottom";
+import { useHomeLiquidGlassApple } from "../liquid-glass-apple/useHomeLiquidGlassApple";
 
 // Bulles du chat (style messages Apple) posees sur la scene du personnage.
 // Glisser le doigt SUR une bulle fait defiler tout le chat (gauche et droite ensemble) ;
@@ -9,6 +10,7 @@ const VISIBLE = 40; // bulles gardees a l'ecran (l'historique complet est dans l
 
 export default function ChatFeed({ messages, myId }) {
   const ref = useRef(null);
+  useHomeLiquidGlassApple(ref);
   const shown = messages.slice(-VISIBLE);
   const onScroll = useStickBottom(ref, messages);
 

@@ -14,8 +14,8 @@ export function useSession() {
     };
   }, []);
 
-  const login = useCallback(async (pseudo, code) => {
-    setSession(await accounts.login(pseudo, code));
+  const login = useCallback(async (pseudo, code, phone) => {
+    setSession(await accounts.login(pseudo, code, phone));
   }, []);
 
   const register = useCallback(async (pseudo, code, referralProof) => {
