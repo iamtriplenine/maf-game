@@ -167,7 +167,7 @@ const LiquidGlassApple = (function (global) {
   backdrop-filter:var(--lga-filter)!important;-webkit-backdrop-filter:var(--lga-filter)!important;
   background-image:none!important;background-color:rgba(var(--lga-tint),var(--lga-tint-opacity))!important;
   box-shadow:inset 0 0 var(--lga-inner-blur) var(--lga-inner-spread) var(--lga-inner-color),
-    inset 0 .5px 0 rgba(255,255,255,.28),0 4px var(--lga-outer-blur) rgba(0,0,0,.18)!important}
+    inset 0 .5px 0 rgba(255,255,255,.12),0 4px var(--lga-outer-blur) rgba(0,0,0,.14)!important}
 .lga-glass.lga-interactive{will-change:transform}
 :where(.lga-glass.lga-interactive){touch-action:manipulation;user-select:none;-webkit-user-select:none}`;
     document.head.appendChild(style);
@@ -203,6 +203,12 @@ const LiquidGlassApple = (function (global) {
       this.lastSize = '';
       el.classList.add('lga-glass');
       this._applyCss();
+      // MAF : React réécrit className à chaque rendu (ex. « is-dragging ») et effaçait nos classes.
+      this.mo = new MutationObserver(() => {
+        if (!el.classList.contains('lga-glass')) el.classList.add('lga-glass');
+        if (this.o.interactive && !el.classList.contains('lga-interactive')) el.classList.add('lga-interactive');
+      });
+      this.mo.observe(el, { attributes: true, attributeFilter: ['class'] });
 
       if (SUPPORTS_REFRACTION) {
         this.ro = new ResizeObserver(() => this._scheduleBuild());
@@ -225,6 +231,7 @@ const LiquidGlassApple = (function (global) {
 
     /** Retirer l'effet */
     destroy() {
+      this.mo && this.mo.disconnect();
       this.ro && this.ro.disconnect();
       clearTimeout(this._timer);
       this.filterEl && this.filterEl.remove();

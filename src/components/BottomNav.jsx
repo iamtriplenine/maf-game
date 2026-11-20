@@ -80,7 +80,7 @@ export default function BottomNav({ value, onChange }) {
   return (
     <nav
       ref={rootRef}
-      className={`bottom-nav${dragPos !== null ? " is-dragging" : ""}`}
+      className={`bottom-nav maf-liquid-apple-ui maf-liquid-apple-ui--nav${dragPos !== null ? " is-dragging" : ""}`}
       style={{ "--pos": pos }}
       aria-label="Navigation principale"
       onPointerDown={onPointerDown}

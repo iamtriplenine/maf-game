@@ -2,7 +2,7 @@ import LiquidGlassApple from "./liquid-glass-apple.js";
 import "./maf-liquid-glass-apple-ui.css";
 
 // Ajouter la classe « maf-liquid-apple-ui » a un element suffit pour lui donner le Liquid Glass Apple.
-//   --composer : pilule de saisie du chat     --pill : bouton pilule     (defaut) : bouton rond
+//   --nav : barre de navigation du bas     --composer : pilule de saisie du chat     --pill : bouton pilule     (defaut) : bouton rond
 const SELECTOR = ".maf-liquid-apple-ui";
 const instances = new WeakMap();
 
@@ -11,7 +11,7 @@ const BASE = {
   scaleRatio: 1,
   specularSaturation: 3,
   tintColor: "#ffffff",
-  innerShadowColor: "#ffffff",
+  innerShadowColor: "rgba(255, 255, 255, .22)",
   interactive: true,
   stretch: 0.0001,
   stiffness: 260,
@@ -20,18 +20,24 @@ const BASE = {
 };
 
 function optionsFor(el) {
+  if (el.classList.contains("maf-liquid-apple-ui--nav")) {
+    // Barre de 58 px : la gelee reste discrete pour ne pas gener le glissement Game/World/Profil.
+    return { ...BASE, radius: 999, glassThickness: 32, bezelWidth: 15, refractiveIndex: 1.55, blur: 0,
+      specularOpacity: 0.22, tintOpacity: 0, innerShadowBlur: 12, innerShadowSpread: -6,
+      outerShadowBlur: 18, pressScale: 1.02, stretch: 0.00004, maxStretch: 0.035 };
+  }
   if (el.classList.contains("maf-liquid-apple-ui--composer")) {
-    return { ...BASE, radius: 22, glassThickness: 30, bezelWidth: 14, refractiveIndex: 1.5, blur: 0.2,
-      specularOpacity: 0.45, tintOpacity: 0.05, innerShadowBlur: 10, innerShadowSpread: -6,
+    return { ...BASE, radius: 22, glassThickness: 30, bezelWidth: 14, refractiveIndex: 1.5, blur: 0,
+      specularOpacity: 0.22, tintOpacity: 0, innerShadowBlur: 10, innerShadowSpread: -6,
       outerShadowBlur: 12, pressScale: 1.02, maxStretch: 0.05 };
   }
   if (el.classList.contains("maf-liquid-apple-ui--pill")) {
-    return { ...BASE, radius: 30, glassThickness: 34, bezelWidth: 16, refractiveIndex: 1.6, blur: 0.25,
-      specularOpacity: 0.5, tintOpacity: 0.05, innerShadowBlur: 12, innerShadowSpread: -6,
+    return { ...BASE, radius: 30, glassThickness: 34, bezelWidth: 16, refractiveIndex: 1.6, blur: 0,
+      specularOpacity: 0.22, tintOpacity: 0, innerShadowBlur: 12, innerShadowSpread: -6,
       outerShadowBlur: 14, pressScale: 1.05, maxStretch: 0.1 };
   }
   return { ...BASE, radius: 999, surface: "convex_circle", glassThickness: 26, bezelWidth: 10,
-    refractiveIndex: 1.5, blur: 0.2, specularOpacity: 0.5, tintOpacity: 0.06, innerShadowBlur: 8,
+    refractiveIndex: 1.5, blur: 0, specularOpacity: 0.22, tintOpacity: 0, innerShadowBlur: 8,
     innerShadowSpread: -4, outerShadowBlur: 8, pressScale: 1.1, maxStretch: 0.12 };
 }
 

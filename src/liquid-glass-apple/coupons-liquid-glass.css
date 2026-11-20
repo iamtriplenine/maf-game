@@ -1,9 +1,9 @@
 /* MAF Coupons : verre Liquid Glass Apple (le moteur gere fond, ombres et refraction). */
 .profile .profile__actions .profile__btn.maf-lga-coupons.lga-glass {
-  border: 1px solid rgba(255, 255, 255, .18);
+  border: 1px solid rgba(255, 255, 255, .09);
   color: var(--text);
   text-shadow: 0 1px 3px rgba(0, 0, 0, .6);
   /* Pas de transition sur transform : sinon l'effet « gelee » est en retard sur le doigt. */
   transition: border-color var(--t) var(--ease);
 }
-.profile .profile__actions .profile__btn.maf-lga-coupons.lga-glass:hover { border-color: rgba(255, 255, 255, .32); }
+.profile .profile__actions .profile__btn.maf-lga-coupons.lga-glass:hover { border-color: rgba(255, 255, 255, .18); }
