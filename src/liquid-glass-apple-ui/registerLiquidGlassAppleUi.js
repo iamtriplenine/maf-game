@@ -16,7 +16,7 @@ const BASE = {
   stretch: 0.0001,
   stiffness: 260,
   damping: 14,
-  fallbackBlur: 12,
+  fallbackBlur: 3,
 };
 
 function optionsFor(el) {

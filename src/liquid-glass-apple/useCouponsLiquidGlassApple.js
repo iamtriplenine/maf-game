@@ -19,7 +19,7 @@ const COUPONS_GLASS = {
   innerShadowBlur: 14,
   innerShadowSpread: -7,
   outerShadowBlur: 16,
-  fallbackBlur: 14,
+  fallbackBlur: 3,
   interactive: true,
   pressScale: 1.05,
   stretch: 0.0001,

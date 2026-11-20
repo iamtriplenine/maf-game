@@ -216,7 +216,8 @@ const LiquidGlassApple = (function (global) {
         this.ro.observe(el);
         this._build();
       } else {
-        el.style.setProperty('--lga-filter', `blur(${this.o.fallbackBlur}px) saturate(1.6)`);
+        // iPhone / Safari / Firefox : pas de réfraction possible → verre presque net, comme en Chrome.
+        el.style.setProperty('--lga-filter', `blur(${this.o.fallbackBlur}px) saturate(1.15)`);
       }
       if (this.o.interactive) this._initJelly();
     }

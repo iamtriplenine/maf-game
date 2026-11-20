@@ -20,7 +20,7 @@ export const BUBBLE_GLASS = {
   innerShadowBlur: 10,
   innerShadowSpread: -6,
   outerShadowBlur: 10,
-  fallbackBlur: 12,
+  fallbackBlur: 3,
   interactive: true,
   pressScale: 1.05,
   stretch: 0.0001,
