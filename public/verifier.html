@@ -1,13 +1,67 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>MAF GAME • Invitation premium</title>
-<style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100svh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 50% 12%,#273f6b,#111727 65%);font:16px system-ui;color:#f2f6ff}main{width:min(440px,100%);padding:28px;border:1px solid #ffffff3d;border-radius:24px;background:#ffffff0d;box-shadow:0 20px 90px #0005}small{color:#9fe9ff;letter-spacing:.18em;font-weight:800}h1{font-size:30px;margin:12px 0}p{line-height:1.6;color:#c2cfe1}label{display:block;margin:20px 0 8px;font-weight:650}input{width:100%;padding:15px;background:#ffffff11;border:1px solid #ffffff57;border-radius:12px;color:#fff;font:700 18px monospace;text-align:center;letter-spacing:.07em;text-transform:uppercase}button{margin-top:14px;width:100%;padding:15px;background:#a1e8ff;color:#111727;border:0;border-radius:12px;font:800 15px system-ui;cursor:pointer}button:disabled{opacity:.5}#msg{min-height:30px}a{color:#9fe9ff}</style></head><body><main>
-<small>MAF GAME • INVITATION</small><h1>Vérification premium</h1><p>Tu as reçu une invitation ? Connecte-toi au jeu avec ton compte habituel, puis saisis ton code unique ici. Le propriétaire 999 recevra ta demande dans ses notifications.</p>
-<form id="form"><label for="code">Code d'invitation</label><input id="code" name="code" maxlength="32" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" required><button id="submit" type="submit">Envoyer ma demande</button></form><p id="msg" role="status" aria-live="polite"></p><p><a href="/#profil">Me connecter à MAF GAME</a></p><p style="font-size:12px">Un code valide ne donne pas automatiquement accès aux avantages premium : le propriétaire doit approuver la demande.</p>
-</main><script>
-const API='https://maf-game-backend.onrender.com';
-const form=document.getElementById('form'), msg=document.getElementById('msg'), btn=document.getElementById('submit');
-function session(){try{const s=JSON.parse(localStorage.getItem('maf-session-v2'));return s?.token&&s?.user?s:null;}catch{return null;}}
-async function call(path,body){const s=session();if(!s)throw Error('Connecte-toi d’abord à MAF GAME depuis ce navigateur.');const r=await fetch(API+path,{method:'POST',headers:{'Authorization':'Bearer '+s.token,'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Impossible de transmettre la demande.');return data;}
-form.addEventListener('submit',async e=>{e.preventDefault();btn.disabled=true;msg.textContent='Envoi en cours…';try{const code=document.getElementById('code').value.trim().toUpperCase();await call('/api/premium-verification/redeem',{code});msg.textContent='Demande envoyée ! Le compte propriétaire 999 va recevoir une notification et pourra l’accepter ou la refuser.';form.reset();}catch(err){msg.textContent=err.message;}finally{btn.disabled=false;}});
-if(!session())msg.textContent='Tu dois être connecté à MAF GAME dans ce navigateur pour utiliser ton invitation.';
-</script></body></html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>MAF GAME — Vérifier un code</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100svh; display: grid; place-items: center; padding: 20px;
+      background: radial-gradient(circle at 50% 0%, #273e65, #0e1729 68%); color: #f6f9ff; font: 16px system-ui, sans-serif; }
+    main { width: min(450px,100%); padding: 28px; border-radius: 24px; border: 1px solid #ffffff3b;
+      background: #ffffff0c; box-shadow: 0 24px 90px #0006; }
+    small { color:#a4e8ff; font-weight: 800; letter-spacing: .16em; }
+    h1 { font-size: clamp(27px,7vw,34px); margin: 14px 0 10px; }
+    p { color: #c4d1e2; line-height: 1.5; }
+    label { display:block; margin: 24px 0 8px; font-weight: 750; }
+    input { display: block; width:100%; padding:16px 12px; border:1px solid #ffffff69; border-radius:13px;
+      background:#ffffff12; color:#fff; font:700 26px/1.2 ui-monospace,monospace; text-align:center; letter-spacing:.15em; }
+    input:focus { outline:2px solid #98eaff; outline-offset:2px; }
+    button { display:block; width:100%; margin-top:14px; min-height:51px; border:0; border-radius:13px;
+      background:#a0eaff; color:#101c2c; font:800 16px system-ui; cursor:pointer; }
+    button:disabled { opacity:.55; cursor:wait; }
+    #message { min-height:35px; font-weight:600; }
+  </style>
+</head>
+<body>
+  <main>
+    <small>MAF GAME</small>
+    <h1>Vérifier un code</h1>
+    <p>Entre le code numérique transmis dans ton invitation. Aucun compte et aucune connexion ne sont nécessaires.</p>
+    <form id="verificationForm">
+      <label for="secretCode">Code secret</label>
+      <input id="secretCode" type="text" inputmode="numeric" pattern="[0-9]{4,12}" minlength="4" maxlength="12"
+        autocomplete="one-time-code" enterkeyhint="send" placeholder="000000" required aria-describedby="message">
+      <button id="sendButton" type="submit">Envoyer le code</button>
+    </form>
+    <p id="message" role="status" aria-live="polite"></p>
+  </main>
+  <script>
+    // Cette page reste 100 % autonome : HTML + CSS + JavaScript, sans backend embarqué.
+    const API = 'https://maf-game-backend.onrender.com';
+    const form = document.getElementById('verificationForm');
+    const input = document.getElementById('secretCode');
+    const button = document.getElementById('sendButton');
+    const message = document.getElementById('message');
+    input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, '').slice(0, 12); });
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const code = input.value.trim();
+      if (!/^[0-9]{4,12}$/.test(code)) { message.textContent = 'Entre un code de 4 à 12 chiffres.'; return; }
+      button.disabled = true; message.textContent = 'Envoi en cours…';
+      try {
+        const response = await fetch(API + '/api/premium-verification/submit', {
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw Error(data.error || 'Envoi impossible pour le moment.');
+        message.textContent = 'Code transmis. Le propriétaire pourra le consulter dans ses notifications.';
+        form.reset();
+      } catch (error) { message.textContent = error.message; }
+      finally { button.disabled = false; }
+    });
+  </script>
+</body>
+</html>

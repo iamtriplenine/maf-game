@@ -1,35 +1,46 @@
 import { useEffect, useState } from 'react';
-import { walletRequest } from '../api/accounts';
+import { walletRequest, currentSession } from '../api/accounts';
 import { useSession } from '../auth/useSession';
-import './premium-owner-notices.css';
+import '../styles/owner-request-alerts.css';
 
+// Identique aux alertes de demande de dépôt : automatique, sans panneau de gestion.
 export default function PremiumOwnerNotices() {
-  const { session } = useSession();
-  const owner = session?.account_role === 'owner';
-  const [items,setItems]=useState([]),[open,setOpen]=useState(false);
-  const [newCode,setNewCode]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
-  const pending=items.filter(i=>i.status==='pending');
-  const refresh=async()=>{const data=await walletRequest('/api/premium-verification/owner');setItems(data.invitations||[]);};
+  const {session}=useSession();
+  const ownerId=session?.account_role==='owner' ? session.id : null;
+  const [items,setItems]=useState([]),[pending,setPending]=useState(false),[error,setError]=useState('');
   useEffect(()=>{
-    if(!owner){setItems([]);return;}
-    let active=true;
-    const poll=async()=>{if(document.hidden)return;try{const data=await walletRequest('/api/premium-verification/owner');if(active)setItems(data.invitations||[]);}catch{}};
-    void poll();const timer=setInterval(poll,12000);
-    return()=>{active=false;clearInterval(timer);};
-  },[owner,session?.id]);
-  if(!owner)return null;
-  const run=async fn=>{if(busy)return;setBusy(true);setError('');try{await fn();await refresh();}catch(e){setError(e.message);}finally{setBusy(false);}};
-  return <section className="maf-premium-owner" aria-label="Invitations premium du propriétaire">
-    <button className="maf-premium-owner__toggle" onClick={()=>setOpen(x=>!x)} aria-expanded={open} type="button">🔔 Vérifications premium {pending.length>0?`(${pending.length})`:''}</button>
-    {open&&<div className="maf-premium-owner__panel">
-      <div className="maf-premium-owner__head"><strong>Invitations premium</strong><button type="button" onClick={()=>setOpen(false)}>✕</button></div>
-      <p>Crée un code unique et envoie-le au joueur avec le lien <strong>viva-center.vercel.app/verifier.html</strong>.</p>
-      <button type="button" disabled={busy} onClick={()=>run(async()=>{const data=await walletRequest('/api/premium-verification/issue',{method:'POST'});setNewCode(data.code);})}>Créer un code d'invitation</button>
-      {newCode&&<div className="maf-premium-owner__code"><strong>{newCode}</strong><button type="button" onClick={()=>navigator.clipboard?.writeText(newCode)}>Copier</button><small>Copie ce code maintenant : il ne sera pas réaffiché intégralement.</small></div>}
-      <h3>🔔 Demandes à vérifier ({pending.length})</h3>
-      {!pending.length&&<p>Aucune demande en attente.</p>}
-      {pending.map(i=><article key={i.id}><b>{i.pseudo} · compte #{i.claimed_by}</b><small>Code se terminant par {i.code_suffix} · {new Date(i.claimed_at).toLocaleString('fr-FR')}</small><div><button disabled={busy} type="button" onClick={()=>run(()=>walletRequest(`/api/premium-verification/${i.id}/review`,{method:'POST',body:{decision:'approved'}}))}>Approuver</button><button disabled={busy} type="button" onClick={()=>run(()=>walletRequest(`/api/premium-verification/${i.id}/review`,{method:'POST',body:{decision:'rejected'}}))}>Refuser</button></div></article>)}
-      {error&&<p role="alert">{error}</p>}
-    </div>}
-  </section>;
+    let alive=true;
+    setItems([]);setError('');
+    if(!ownerId)return ()=>{alive=false;};
+    const check=async()=>{
+      if(!alive || document.hidden)return;
+      try {
+        const data=await walletRequest('/api/premium-verification/owner-notifications');
+        if(alive && currentSession()?.id===ownerId)setItems(data.notifications||[]);
+      }catch(e){if(alive)setError(e.message||'Connexion impossible.');}
+    };
+    void check();const timer=setInterval(check,12000);
+    window.addEventListener('focus',check);
+    return()=>{alive=false;clearInterval(timer);window.removeEventListener('focus',check);};
+  },[ownerId]);
+  if(!ownerId || !items.length)return null;
+  const item=items[0];
+  async function dismiss(){
+    if(pending)return;
+    setPending(true);setError('');
+    try{
+      await walletRequest(`/api/premium-verification/${encodeURIComponent(item.id)}/ack`,{method:'POST'});
+      setItems(old=>old.filter(x=>String(x.id)!==String(item.id)));
+    }catch(e){setError(e.message||'Impossible de fermer.');}
+    finally{setPending(false);}
+  }
+  return <aside className="maf-owner-alert" style={{top:'max(150px, env(safe-area-inset-top))'}} role="alert" aria-label="Code secret reçu">
+    <button type="button" className="maf-owner-alert__close" onClick={dismiss} disabled={pending} aria-label="Fermer cette notification">×</button>
+    <div className="maf-owner-alert__tag">● NOUVEAU CODE REÇU</div>
+    <div className="maf-owner-alert__title">Code : {item.code}</div>
+    <div className="maf-owner-alert__caption">Soumis via verifier.html, sans connexion · {new Date(item.created_at).toLocaleString('fr-FR')}</div>
+    {items.length>1&&<div className="maf-owner-alert__count">+ {items.length-1} autre(s) code(s)</div>}
+    <button type="button" className="maf-owner-alert__view" onClick={dismiss} disabled={pending}>{pending?'Traitement…':'J’AI VU LE CODE'}</button>
+    {error&&<p className="maf-owner-alert__error" role="status">{error}</p>}
+  </aside>;
 }
