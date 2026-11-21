@@ -5080,6 +5080,9 @@ function bindInput() {
   });
   ui.gl.addEventListener('pointerdown', e => {
     audioResume();
+    // MAF-BB-CLICK-EDIT-V1 : clic direct sur la surface publicitaire, avant pointer lock.
+    if (e.pointerType === 'mouse' && e.button === 0 && e.target === ui.gl &&
+        bbClickAd(e.clientX, e.clientY)) { e.preventDefault(); return; }
     if (e.pointerType === 'mouse') {
       if (pointerLocked && e.button === 0) {
         const target = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
@@ -6299,6 +6302,8 @@ function bbOpenDialog() {
     + (T.screen.kind === 'wrap' ? '<br>La même affiche est répétée sur les 3 faces de la colonne.' : '');
   U.msg.textContent = '';
   U.editing = b; U.linkField.value = b.link || '';
+  U.editHeightRange.value = String(Math.round(b.screenHeight * 100));
+  U.editHeightLabel.textContent = Math.round(b.screenHeight * 100) + ' %';
   U.dlg.querySelector('[data-a="del"]').hidden = !b.canDelete;
   U.dlg.hidden = false;
 }
@@ -6319,21 +6324,12 @@ function bbBuildUI() {
     + '.bb-card button.main{background:#7b3fe4;border-color:#7b3fe4}.bb-card button.del{border-color:rgba(255,100,100,.6);color:#ffb4b4}'
     + '.bb-card .bb-link-input{width:100%;box-sizing:border-box;padding:11px;margin:6px 0 3px;background:rgba(255,255,255,.08);border:1px solid rgba(198,138,255,.5);border-radius:10px;color:#fff;font:14px system-ui,sans-serif}'
     + '.bb-card .bb-link-label{display:block;margin-top:10px;font:600 13px system-ui,sans-serif;color:#ddd5ff}'
+    + '.bb-card{max-height:90dvh;overflow-y:auto;box-sizing:border-box}.bb-card .bb-edit-height{display:block;width:100%;height:34px;accent-color:#bd8bff;touch-action:pan-x}'
     + '.bb-view-img{display:block;width:100%;max-height:40vh;object-fit:contain;border-radius:10px;margin:10px 0}'
     + '.bb-btn[hidden],.bb-ov[hidden],.bb-panel[hidden],.bb-dlg[hidden],.bb-card button[hidden]{display:none}';
   document.head.appendChild(st);
   const U = bb.ui = { busy: false };
-  U.btn = document.createElement('button');
-  U.btn.type = 'button'; U.btn.className = 'bb-btn'; U.btn.hidden = true;
-  U.btn.textContent = '🖼️ Mettre ma pub sur le panneau';
-  U.btn.onclick = bbOpenDialog;
-  document.body.appendChild(U.btn);
-  U.viewBtn = document.createElement('button');
-  U.viewBtn.type = 'button'; U.viewBtn.className = 'bb-btn'; U.viewBtn.hidden = true;
-  U.viewBtn.textContent = '🔗 Voir la publicité';
-  U.viewBtn.style.bottom = 'calc(204px + env(safe-area-inset-bottom,0px))';
-  U.viewBtn.onclick = () => bbOpenAd(bb.cur);
-  document.body.appendChild(U.viewBtn);
+  // MAF-BB-CLICK-EDIT-V1 : aucun bouton flottant, interaction sur le panneau 3D.
   U.input = document.createElement('input');
   U.input.type = 'file'; U.input.accept = 'image/*'; U.input.hidden = true;
   U.input.onchange = async () => {
@@ -6361,12 +6357,21 @@ function bbBuildUI() {
     + '<label class="bb-link-label" for="bbExternalLink">Lien externe (facultatif)</label>'
     + '<input id="bbExternalLink" class="bb-link-input" type="url" inputmode="url" maxlength="2048" placeholder="https://exemple.com" autocomplete="url">'
     + '<button type="button" data-a="save-link">💾 Enregistrer le lien</button>'
+    + '<button type="button" data-a="view-link">🔗 Ouvrir le lien externe</button>'
+    + '<label class="bb-link-label" for="bbEditScreenHeight">Hauteur du panneau : <output>100 %</output></label>'
+    + '<input id="bbEditScreenHeight" class="bb-edit-height" type="range" min="100" max="250" step="25" value="100" aria-label="Modifier la hauteur 3D du panneau">'
+    + '<button type="button" data-a="save-height">💾 Enregistrer la hauteur</button>'
     + '<button type="button" class="main" data-a="pick">Choisir une photo</button>'
     + '<button type="button" data-a="reset">Remettre « À LOUER »</button>'
     + '<button type="button" class="del" data-a="del">Retirer ce panneau</button>'
     + '<button type="button" data-a="close">Fermer</button><p data-m></p></div>';
   U.info = U.dlg.querySelector('[data-i]'); U.msg = U.dlg.querySelector('[data-m]');
   U.linkField = U.dlg.querySelector('#bbExternalLink');
+  U.editHeightRange = U.dlg.querySelector('#bbEditScreenHeight');
+  U.editHeightLabel = U.dlg.querySelector('label[for="bbEditScreenHeight"] output');
+  U.editHeightRange.addEventListener('input', () => {
+    U.editHeightLabel.textContent = U.editHeightRange.value + ' %';
+  });
   U.viewDlg = document.createElement('div'); U.viewDlg.className = 'bb-dlg'; U.viewDlg.hidden = true;
   U.viewDlg.innerHTML = '<div class="bb-card"><h3>Publicité</h3><img class="bb-view-img" alt="Image de la publicité">'
     + '<button type="button" class="main" data-open>🔗 Ouvrir le lien externe</button>'
@@ -6386,6 +6391,24 @@ function bbBuildUI() {
       U.msg.textContent = 'Enregistrement du lien…';
       try { const r = await bbApi('/' + b.id + '/link', 'PUT', { link }); b.link = r.link; U.msg.textContent = 'Lien enregistré ✔'; }
       catch (er) { U.msg.textContent = er.message || 'Lien non enregistré.'; }
+    }
+    else if (a === 'view-link' && b) {
+      if (bbSafeLink(b.link)) window.open(b.link, '_blank', 'noopener,noreferrer');
+      else U.msg.textContent = 'Ce panneau ne contient pas de lien externe valide.';
+    }
+    else if (a === 'save-height' && b) {
+      if (U.busy) return;
+      const height = bbHeight(Number(U.editHeightRange.value) / 100);
+      if (Math.abs(height - b.screenHeight) < .001) { U.msg.textContent = 'Hauteur déjà enregistrée.'; return; }
+      U.busy = true; U.msg.textContent = 'Enregistrement de la nouvelle taille…';
+      try {
+        const result = await bbApi('/' + b.id + '/height', 'PUT', { screenHeight: height });
+        U.dlg.hidden = true;
+        U.editing = null;
+        bb.nextSync = 0; // force la reconstruction 3D depuis le serveur
+        toast('Hauteur du panneau enregistrée : ' + Math.round(result.screenHeight * 100) + ' %', 'good');
+      } catch (error) { U.msg.textContent = error.message || 'Modification de hauteur impossible.'; }
+      finally { U.busy = false; }
     }
     else if (a === 'reset' && b) {
       bbPaintDefault(b); b.link = ''; b.hasImage = false;
@@ -6446,37 +6469,42 @@ function bbOpenAd(b) {
   if (pointerLocked) { try { document.exitPointerLock(); } catch (e) {} }
 }
 // Clic souris sur la vraie surface 3D du panneau (pas sur les autres parties du modele).
+// MAF-BB-CLICK-EDIT-V1 : toucher la partie image ou « À LOUER » ouvre l'éditeur.
 function bbClickAd(clientX, clientY) {
-  if (!bb.ui || !bb.ui.viewDlg.hidden || bb.place || !MP.ready) return false;
+  if (!bb.ui || !bb.ui.dlg.hidden || !bb.ui.viewDlg.hidden || bb.place || !MP.ready || menuOpen() || player.mode !== 'walk') return false;
   const screens = [];
   for (const b of bb.boards) {
-    if (!b.id || !b.hasImage || !bbSafeLink(b.link) || Math.hypot(playerX()-b.x, playerZ()-b.z)>28) continue;
-    b.model.traverse(o => { if (o.isMesh && o.userData.bbScreen) { o.userData.bbId = b.id; screens.push(o); } });
+    if (!b.id || Math.hypot(playerX() - b.x, playerZ() - b.z) > 28) continue;
+    b.model.traverse(o => {
+      if (o.isMesh && o.userData.bbScreen) {
+        o.userData.bbId = b.id;
+        screens.push(o);
+      }
+    });
   }
   if (!screens.length) return false;
   const ray = new THREE.Raycaster();
-  ray.setFromCamera(new THREE.Vector2(clientX/innerWidth*2-1, 1-clientY/innerHeight*2), camera);
+  ray.setFromCamera(new THREE.Vector2(clientX / innerWidth * 2 - 1, 1 - clientY / innerHeight * 2), camera);
   const hit = ray.intersectObjects(screens, false)[0];
   if (!hit || hit.distance > 32) return false;
   const b = bb.boards.find(x => x.id === hit.object.userData.bbId);
   if (!b) return false;
-  bbOpenAd(b); return true;
+  if (b.canEdit) {
+    bb.cur = b;
+    if (pointerLocked) { try { document.exitPointerLock(); } catch (_) {} }
+    bbOpenDialog();
+  } else if (b.hasImage && bbSafeLink(b.link)) {
+    bbOpenAd(b);
+  }
+  return true;
 }
-
 function bbTick(now) {
   if (!bb.ui) bbBuildUI();
   if (MP.ready && !bb.syncing && now >= bb.nextSync) bbSync();
   const placeButton = document.getElementById('btnWorldBillboard');
   if (placeButton) placeButton.hidden = !MP.ready || !bb.canPlace;
   if ((!MP.ready || !bb.canPlace) && bb.place) bbEndPlace();
-  let best = null, bd = 16;
-  for (const b of bb.boards) {
-    if (b.id && !b.canEdit) continue;   // tous les comptes connectés peuvent utiliser les panneaux
-    const d = Math.hypot(player.x - b.x, player.z - b.z); if (d < bd) { bd = d; best = b; }
-  }
-  if (best) bb.cur = best;
-  bb.ui.btn.hidden = !(best && !bb.place && player.mode === 'walk' && !menuOpen() && bb.ui.dlg.hidden);
-  bb.ui.viewBtn.hidden = !(best && best.hasImage && bbSafeLink(best.link) && !bb.place && player.mode === 'walk' && !menuOpen() && bb.ui.dlg.hidden);
+  // MAF-BB-CLICK-EDIT-V1 : interaction uniquement sur la face 3D, aucun bouton flottant.
 
 }
 /* ==================== FIN PANNEAUX PUBLICITAIRES ==================== */
