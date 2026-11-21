@@ -1198,8 +1198,53 @@ const WORLD_MAP_PLACES = [
 ];
 const villa = { model: null, loading: false, retryAt: 0, rocks: [], ray: null, hits: [] };
 const villaLighting = { rig: null, loading: false, retryAt: 0 };
+/* MAF-VILLA2-V1 (etape 1/3) : 2e villa (jeu de Ludo) a cote de la villa du Tir au but.
+   Etape 1 : villa visible + murs/meubles du rez-de-chaussee. Etape 2 : escaliers + etage. Etape 3 : hologrammes Ludo. */
+const VILLA2 = { x: VILLA.x - 44.6, y: VILLA.y, z: VILLA.z - 2.4, scale: 0.8, hx: 17.6, hz: 17.8 };
+const villa2 = { model: null, loading: false, retryAt: 0 };
+// Boites de collision (repere local du modele) : [ouest, nord, est, sud, hauteur].
+const VILLA2_BOXES = [[-6.74,-6.96,-6.54,-6.7,3.45],[-6.74,-6.3,-6.54,-6.04,3.45],[-6.74,-5.64,-6.54,-5.38,3.45],[-11.44,-6.96,-11.25,-6.7,3.45],[-11.45,-6.7,-11.23,0.78,1.0],[7.16,-8.16,7.42,-7.96,3.45],[7.76,-8.16,8.02,-7.96,3.45],[8.33,-8.16,8.59,-7.96,3.45],[8.97,-8.16,9.23,-7.96,3.45],[9.55,-8.16,9.81,-7.96,3.45],[-6.66,-0.84,-6.46,-0.58,3.45],[1.66,-0.85,1.86,-0.59,3.45],[-6.57,2.54,-4.21,5.64,1.81],[-5.48,2.45,-5.3,4.51,4.3],[-6.73,0.78,-6.6,5.64,5.0],[4.62,5.58,4.82,5.84,3.45],[5.82,5.58,6.02,5.84,3.45],[4.67,5.81,6.02,5.81,3.3],[0.77,5.75,6.2,7.31,0.78],[1.66,5.75,6.98,11.0,0.87],[-8.31,7.73,-7.9,8.82,5.0],[-8.92,7.73,-8.51,8.82,5.0],[-9.53,7.73,-9.12,8.82,5.0],[-4.3,2.54,-4.2,2.64,1.27],[-4.3,3.47,-4.2,3.57,2.06],[-5.3,2.54,-5.19,2.64,1.27],[-5.3,3.47,-5.19,3.57,2.06],[-5.57,2.58,-5.23,4.6,4.32],[-6.49,2.58,-4.25,5.59,4.03],[-6.49,2.58,-4.25,5.59,3.75],[-5.57,2.58,-5.23,4.6,4.04],[-5.57,2.58,-5.23,4.6,3.76],[-6.49,2.58,-4.25,5.59,4.3],[-6.5,-0.71,1.69,-0.61,3.3],[-6.61,-0.7,1.71,-0.69,3.4],[-11.38,-6.59,-11.31,-6.53,3.4],[-11.38,-6.43,-11.31,-6.37,3.4],[-11.38,-6.27,-11.31,-6.21,3.4],[-11.38,-6.11,-11.31,-6.05,3.4],[-11.38,-5.95,-11.31,-5.89,3.4],[-11.38,-5.79,-11.31,-5.72,3.4],[-11.38,-5.62,-11.31,-5.56,3.4],[-11.38,-5.46,-11.31,-5.4,3.4],[-11.38,-5.3,-11.31,-5.24,3.4],[-11.38,-5.14,-11.31,-5.08,3.4],[-11.38,-4.98,-11.31,-4.92,3.4],[-11.38,-4.82,-11.31,-4.75,3.4],[-11.38,-4.65,-11.31,-4.59,3.4],[-11.38,-4.49,-11.31,-4.43,3.4],[-11.38,-4.33,-11.31,-4.27,3.4],[-11.38,-4.17,-11.31,-4.11,3.4],[-11.38,-4.01,-11.31,-3.95,3.4],[-11.38,-3.85,-11.31,-3.78,3.4],[-11.38,-3.68,-11.31,-3.62,3.4],[-11.38,-3.52,-11.31,-3.46,3.4],[-11.38,-3.36,-11.31,-3.3,3.4],[-11.38,-3.2,-11.31,-3.14,3.4],[-11.38,-3.04,-11.31,-2.98,3.4],[-11.38,-2.88,-11.31,-2.81,3.4],[-11.38,-2.71,-11.31,-2.65,3.4],[-11.38,-2.52,-11.31,-2.46,3.4],[-11.38,-2.33,-11.31,-2.27,3.4],[-11.38,-2.14,-11.31,-2.08,3.4],[-11.38,-1.95,-11.31,-1.89,3.4],[-11.38,-1.77,-11.31,-1.7,3.4],[-11.38,-1.58,-11.31,-1.51,3.4],[-11.38,-1.39,-11.31,-1.32,3.4],[-11.38,-1.2,-11.31,-1.13,3.4],[-11.38,-1.01,-11.31,-0.94,3.4],[-11.38,-0.82,-11.31,-0.75,3.4],[-11.38,-0.63,-11.31,-0.56,3.4],[-11.38,-0.44,-11.31,-0.37,3.4],[-11.38,-0.25,-11.31,-0.18,3.4],[-11.38,-0.06,-11.31,0.0,3.4],[-11.38,0.13,-11.31,0.19,3.4],[-11.38,0.31,-11.31,0.37,3.4],[-11.38,0.48,-11.31,0.54,3.4],[-11.38,0.66,-11.31,0.72,3.4],[10.0,-0.02,10.01,2.65,2.35]];
+function villa2Ground(x, z) {
+  if (!villa2.model) return null;
+  const u = (x - VILLA2.x) / VILLA2.scale, v = (z - VILLA2.z) / VILLA2.scale;
+  return (Math.abs(u) <= VILLA2.hx && Math.abs(v) <= VILLA2.hz) ? VILLA2.y : null;
+}
+function addVilla2Colliders() {
+  const { x, y, z, scale } = VILLA2;
+  for (const [x0, z0, x1, z1, top] of VILLA2_BOXES) {
+    addCollider(x + x0 * scale, z + z0 * scale, x + x1 * scale, z + z1 * scale, y + top * scale, 1);
+  }
+}
+async function loadVilla2() {
+  villa2.loading = true;
+  try {
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const url = new URL('./villa-modern.glb', document.baseURI);
+    const { scene: model } = await new GLTFLoader().loadAsync(url.href);
+    model.position.set(VILLA2.x, VILLA2.y, VILLA2.z);
+    model.scale.setScalar(VILLA2.scale);
+    model.traverse(o => { if (o.isMesh && !(o.material && o.material.transparent)) o.castShadow = o.receiveShadow = true; });
+    // Socle sous la dalle pour cacher le sable.
+    const base = new THREE.Mesh(new THREE.BoxGeometry(VILLA2.hx * 2, 1.1, VILLA2.hz * 2), MATS.walk);
+    base.position.y = -0.75; base.receiveShadow = true; model.add(base);
+    // Piscine peu profonde : plan d'eau pose sur la dalle (le bassin d'origine serait cache par le sable).
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(8.9, 8.07),
+      new THREE.MeshStandardMaterial({ color: 0x2ec4e6, transparent: true, opacity: 0.72, roughness: 0.08, metalness: 0.1, depthWrite: false }));
+    water.rotation.x = -Math.PI / 2; water.position.set(-9.35, 0.03, -8.65); model.add(water);
+    scene.add(model);
+    villa2.model = model;
+    addVilla2Colliders();
+    buildColliderHash();
+  } catch (err) {
+    villa2.retryAt = nowMs() + 15000;
+    console.warn('Villa 2 : chargement indisponible.', err);
+  } finally {
+    villa2.loading = false;
+  }
+}
 
 function villaGroundY(x, z, terrain) {
+  { const g2 = villa2Ground(x, z); if (g2 !== null) return g2; }
   if (!villa.model) return terrain;
   const u = (x - VILLA.x) / VILLA.scale, v = (z - VILLA.z) / VILLA.scale;
   // Plancher du loft aligne sur le rez-de-chaussee de la villa, meme au-dessus du sable.
@@ -2278,7 +2323,7 @@ function generateWorld(seed) {
     const m = new THREE.Mesh(g.build(), MATS.hill); m.frustumCulled = false; G.add(m);
   }
 
-  if (villa.model) addVillaColliders();
+  if (villa.model) addVillaColliders(); if (villa2.model) addVilla2Colliders();
   if (fastfood.model) addFastFoodColliders();
   buildColliderHash();
   return G;
@@ -5707,6 +5752,8 @@ function frame() {
       Math.hypot(playerX() - VILLA.x, playerZ() - VILLA.z) <= 175) loadVilla();
   if (villa.model && !loftExtension.model && !loftExtension.loading && now >= loftExtension.retryAt &&
       Math.hypot(playerX() - VILLA.x, playerZ() - VILLA.z) <= 175) loadLoft();
+  if (!villa2.model && !villa2.loading && now >= villa2.retryAt &&
+      Math.hypot(playerX() - VILLA2.x, playerZ() - VILLA2.z) <= 175) loadVilla2();
   const foodDist = Math.hypot(playerX() - FASTFOOD.x, playerZ() - FASTFOOD.z);
   if (!fastfood.model && !fastfood.loading && now >= fastfood.retryAt && foodDist < 135) loadFastFood();
   try { bbTick(now); } catch (e) { dbgFail('panneaux', e); }
