@@ -239,8 +239,8 @@
   /* ---------- touch controls ---------- */
   #touch{position:fixed;inset:0;z-index:19;pointer-events:none}
   #stickZone{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:auto;touch-action:none}
-  /* Joystick deplacement : repere visuel en bas a droite, zone tactile 40% x 20%. */
-  #stickZone::after{content:'DÉPLACER';position:absolute;right:calc(20% - 37px);bottom:calc(10% - 37px);
+  /* Joystick deplacement : repere visuel en bas a droite, zone tactile 50% x 30%. */
+  #stickZone::after{content:'DÉPLACER';position:absolute;right:calc(25% - 37px);bottom:calc(15% - 37px);
     width:74px;height:74px;border-radius:50%;box-sizing:border-box;pointer-events:none;
     display:grid;place-items:center;font:700 10px/1 system-ui,sans-serif;letter-spacing:.4px;
     color:rgba(255,255,255,.75);background:rgba(20,40,57,.18);border:1px solid rgba(255,255,255,.25);
@@ -5113,13 +5113,13 @@ function bindInput() {
     if (p && nowMs() - p.t < 320) bbClickAd(e.clientX, e.clientY);
   });
   ui.stickZone.addEventListener('pointercancel', e => bbTapStarts.delete(e.pointerId));
-  // MAF-WORLD-JOYSTICK-DROITE-V1 : seule la zone inferieure droite (40% x 20%)
+  // MAF-WORLD-JOYSTICK-DROITE-V1 : seule la zone inferieure droite (50% x 30%)
   // controle la marche. Tout le reste de l'ecran oriente le regard.
   const ZOOM_MAX = 120;
   const sz = ui.stickZone;
   const lookTouches = new Map();
   let lookPinch = null;
-  const inMoveZone = e => e.clientX >= innerWidth * 0.60 && e.clientY >= innerHeight * 0.80;
+  const inMoveZone = e => e.clientX >= innerWidth * 0.50 && e.clientY >= innerHeight * 0.70;
   const stickOff = () => {
     touchState.stickId = null; touchState.vx = 0; touchState.vy = 0; touchState.btn.run = false;
     ui.stickBase.style.opacity = '0'; ui.stickKnob.style.opacity = '0';
