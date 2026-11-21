@@ -56,3 +56,32 @@
 #hud #worldComms.lga-glass #btnWorldMic:focus-visible{outline:3px solid #ffd166}
 #hud #worldComms.lga-glass #btnWorldMic[data-recording]{background:rgba(225,64,96,.16) !important;color:#ffadc0}
 #hud #worldComms.lga-glass #btnWorldMic svg{pointer-events:none}
+
+/* V3 : bloc des joueurs exactement au centre de la mini-carte */
+#hud #minimapStack > #worldComms.lga-glass {
+  justify-self: center;
+  width: max-content;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* V3 : même moteur de réfraction Liquid Glass Apple sur la fenêtre de chat. */
+#hud #worldChatPanel.lga-glass {
+  background-color: transparent !important;
+  border: 1px solid rgba(255,255,255,.30);
+  border-radius: 18px;
+  color: #f3f4ff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.20), 0 7px 20px rgba(5,12,28,.12);
+}
+#hud #worldChatPanel.lga-glass .world-chat-head {
+  color: #f7f5ff;
+  text-shadow: 0 1px 3px rgba(0,0,0,.8);
+}
+#hud #worldChatPanel.lga-glass #worldChatForm {
+  background: rgba(8,12,24,.075);
+  border-top: 1px solid rgba(255,255,255,.24);
+}
+#hud #worldChatPanel.lga-glass #worldChatText {
+  background: rgba(4,12,22,.17);
+  border: 1px solid rgba(255,255,255,.14);
+}
