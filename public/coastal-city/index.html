@@ -1198,9 +1198,9 @@ const villaLighting = { rig: null, loading: false, retryAt: 0 };
    Etape 1 : villa visible + murs/meubles du rez-de-chaussee. Etape 2 : escaliers + etage. Etape 3 : hologrammes Ludo. */
 const VILLA2 = { x: VILLA.x - 44.6, y: VILLA.y, z: VILLA.z - 2.4, scale: 0.8, hx: 17.6, hz: 17.8 };
 const WORLD_MAP_PLACES = [
-  { label: 'Villa 🎯 Tir au but', x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale },
-  { label: 'Villa 🎲 Ludo', x: VILLA2.x, z: VILLA2.z - 12.7 * VILLA2.scale },
-  { label: 'Fastfood 🍔', x: FASTFOOD.x, z: FASTFOOD.z + 8 * FASTFOOD.scale }
+  { label: 'Tir au but', icon: '⚽', x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale },
+  { label: 'Ludo', icon: '🎲', x: VILLA2.x, z: VILLA2.z - 12.7 * VILLA2.scale },
+  { label: 'Fastfood', icon: '🍔', x: FASTFOOD.x, z: FASTFOOD.z + 8 * FASTFOOD.scale }
 ];
 const villa2 = { model: null, loading: false, retryAt: 0 };
 /* MAF-VILLA2-V2 (etape 2/3) : etage + escaliers. Les hauteurs de sol viennent de villa-modern-floors.json
@@ -4404,7 +4404,6 @@ function drawWorldMapRoute(ctx, toS) {
 
 function drawWorldMapPlaces(ctx, toS, w, h, round) {
   ctx.save();
-  ctx.font = '700 11px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
   for (const place of WORLD_MAP_PLACES) {
     const point = toS(place.x, place.z);
@@ -4413,8 +4412,10 @@ function drawWorldMapPlaces(ctx, toS, w, h, round) {
     ctx.fillStyle = '#ffd28a'; ctx.strokeStyle = '#242732'; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(x + 5, y);
     ctx.lineTo(x, y + 5); ctx.lineTo(x - 5, y); ctx.closePath(); ctx.fill(); ctx.stroke();
+    const icon = place.icon || '📍';
+    ctx.font = '700 13px system-ui, sans-serif';
     ctx.fillStyle = '#fff5e1'; ctx.lineWidth = 3;
-    ctx.strokeText(place.label, x, y - 12); ctx.fillText(place.label, x, y - 12);
+    ctx.strokeText(icon, x, y - 12); ctx.fillText(icon, x, y - 12);
   }
   ctx.restore();
 }
