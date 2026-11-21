@@ -1,0 +1,19 @@
+/* MAF WORLD : transparence eau, UI uniquement. Moteur de refraction dans liquid-glass-apple.js. */
+#hud #statusBar.lga-glass {
+  background-color: transparent !important;
+  border: 1px solid rgba(255,255,255,.29);
+  border-radius: 18px;
+  color: #f5f9ff;
+  text-shadow: 0 1px 3px rgba(0,0,0,.8);
+  overflow: visible;
+}
+#hud #statusBar.lga-glass .lbl { opacity: .85; }
+#hud #topMenus button.lga-glass {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,.29);
+  color: #f5f9ff;
+  text-shadow: 0 1px 4px rgba(0,0,0,.75);
+}
+#hud #topMenus button.lga-glass:focus-visible { outline: 3px solid #ffd166; }
+#hud #topMenus button.lga-glass svg { pointer-events: none; }
