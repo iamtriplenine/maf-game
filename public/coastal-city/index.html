@@ -4127,6 +4127,7 @@ function plazaInit() {
     beam.position.set(PLAZA.x+dx,y+3.5,PLAZA.z);g.add(beam);
   }
   PLAZA.group=g;scene.add(g);
+  plazaRankingInit(g);
   const style=document.createElement('style');style.textContent=
     '#mafPlazaButton{position:absolute;left:50%;bottom:calc(190px + env(safe-area-inset-bottom));'+
     'transform:translateX(-50%);z-index:24;padding:12px 16px;border-radius:22px;'+
@@ -4144,7 +4145,11 @@ function plazaInit() {
     '#mafPlazaPanel button:disabled{opacity:.5;cursor:wait}'+
     '#mafPlazaPanel .plaza-room{padding:10px;border:1px solid #365c72;border-radius:12px;margin:8px 0}'+
     '#mafPlazaPanel input,#mafPlazaPanel select{max-width:100%;padding:9px;margin:6px 0;'+
-    'background:#102c40;color:white;border:1px solid #5db1c8;border-radius:9px}';
+    'background:#102c40;color:white;border:1px solid #5db1c8;border-radius:9px}'+
+    '#mafPlazaPanel .ranking-row{display:flex;justify-content:space-between;gap:10px;align-items:center;'+
+    'padding:9px 7px;border-bottom:1px solid #436579;min-width:0}'+
+    '#mafPlazaPanel .ranking-row strong{min-width:0;overflow-wrap:anywhere}'+
+    '#mafPlazaPanel .ranking-row small{flex:none;color:#c8e8f3}';
   document.head.appendChild(style);
   PLAZA.button=hubEl('button','', '⚔️ Place des défis');
   PLAZA.button.id='mafPlazaButton';PLAZA.button.type='button';PLAZA.button.hidden=true;
@@ -4182,10 +4187,13 @@ function plazaRender(mode) {
   const nav=hubEl('div');
   nav.appendChild(hubBtn('Salons ouverts','',()=>plazaRender('lobby')));
   nav.appendChild(hubBtn('Créer un salon','',()=>plazaRender('create')));
+  nav.appendChild(hubBtn('🏆 Classement ⚽','',()=>plazaRender('ranking')));
   p.panel.appendChild(nav);
   const body=hubEl('div','plaza-content');p.panel.appendChild(body);
   p.panel.appendChild(hubEl('p','plaza-message',''));
-  if(mode==='create') {
+  if(mode==='ranking') {
+    plazaRankingDrawPanel(body);
+  } else if(mode==='create') {
     const game=hubEl('select');
     for(const [value,name] of [['ludo','🎲 Ludo'],['penalty','⚽ Tir au but']]){
       const option=document.createElement('option');option.value=value;option.textContent=name;game.appendChild(option);
@@ -4236,6 +4244,106 @@ async function plazaLoadRooms(seq) {
     body.appendChild(row);
   }
 }
+/* MAF-WORLD-FOOTBALL-RANKING-V1 : meme endpoint et statistiques que la section Game.
+   Classement cumule des matchs valides (aucun calcul hebdomadaire invente). */
+const PLAZA_RANKING = {
+  sprite:null, canvas:null, context:null, texture:null, players:[],
+  lastUpdate:0, fetching:false, error:'', loaded:false
+};
+function plazaRankingInit(group) {
+  const r=PLAZA_RANKING;
+  r.canvas=document.createElement('canvas');r.canvas.width=768;r.canvas.height=1024;
+  r.context=r.canvas.getContext('2d');
+  r.texture=new THREE.CanvasTexture(r.canvas);
+  r.texture.colorSpace=THREE.SRGBColorSpace;
+  const material=new THREE.SpriteMaterial({map:r.texture,transparent:true,depthWrite:false,
+    fog:false,toneMapped:false});
+  r.sprite=new THREE.Sprite(material);
+  r.sprite.position.set(PLAZA.x+12,CURB_H+6.0,PLAZA.z+3);
+  r.sprite.scale.set(8.4,11.2,1);
+  r.sprite.renderOrder=11;
+  group.add(r.sprite);
+  plazaRankingPaint();
+}
+function plazaRankingPaint() {
+  const r=PLAZA_RANKING,ctx=r.context;if(!ctx)return;
+  const w=768,h=1024;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='rgba(4,19,39,.95)';ctx.fillRect(14,14,w-28,h-28);
+  ctx.strokeStyle='#7bf3ff';ctx.lineWidth=9;ctx.strokeRect(20,20,w-40,h-40);
+  ctx.strokeStyle='#e3b6ff';ctx.lineWidth=3;ctx.strokeRect(34,34,w-68,h-68);
+  ctx.textAlign='center';ctx.fillStyle='#bcefff';ctx.font='bold 35px system-ui';
+  ctx.fillText('⚽ TIR AU BUT',w/2,105);
+  ctx.fillStyle='#fff';ctx.font='bold 47px system-ui';
+  ctx.fillText('CLASSEMENT',w/2,168);
+  ctx.font='24px system-ui';ctx.fillStyle='#c1dcea';
+  ctx.fillText('Résultats officiels du jeu',w/2,215);
+  ctx.textAlign='left';
+  if(!r.loaded){ctx.fillStyle='#fff';ctx.font='28px system-ui';
+    ctx.fillText('Chargement des résultats…',60,345);
+  } else if(r.error){ctx.fillStyle='#ffc5c5';ctx.font='25px system-ui';
+    ctx.fillText('Classement indisponible',60,345);
+  } else if(!r.players.length){ctx.fillStyle='#fff';ctx.font='27px system-ui';
+    ctx.fillText('Aucun match validé pour le moment',48,345);
+  } else {
+    for(const [i,p] of r.players.slice(0,5).entries()){
+      const y=305+i*118;
+      ctx.fillStyle=i<3?'rgba(135,205,248,.14)':'rgba(120,150,188,.07)';
+      ctx.fillRect(40,y-46,w-80,93);
+      ctx.fillStyle='#f6d88c';ctx.font='bold 35px system-ui';
+      ctx.fillText(['🥇','🥈','🥉'][i]||('#'+p.place),55,y+9);
+      ctx.fillStyle='#fff';ctx.font='bold 32px system-ui';
+      let name=String(p.pseudo||'Joueur');
+      while(ctx.measureText(name).width>335&&name.length>1)name=name.slice(0,-2)+'…';
+      ctx.fillText(name,146,y+9);
+      ctx.fillStyle='#91f1ea';ctx.font='bold 29px system-ui';
+      ctx.textAlign='right';ctx.fillText(String(p.wins)+' V',w-60,y+9);
+      ctx.textAlign='left';
+    }
+  }
+  ctx.textAlign='center';ctx.fillStyle='#c7d9e7';ctx.font='26px system-ui';
+  ctx.fillText('Top 5 · victoires / défaites',w/2,940);
+  r.texture.needsUpdate=true;
+}
+async function plazaRankingRefresh(force=false) {
+  const r=PLAZA_RANKING;
+  if(r.fetching||!MP.ready||(!force&&Date.now()-r.lastUpdate<60000))return;
+  r.fetching=true;r.lastUpdate=Date.now();
+  try{
+    const response=await fetch(MP.api+'/api/rooms/leaderboard/football',{cache:'no-store'});
+    if(!response.ok)throw new Error('Classement indisponible ('+response.status+').');
+    const data=await response.json();
+    if(!Array.isArray(data.players))throw new Error('Réponse du classement invalide.');
+    r.players=data.players.slice(0,50).map((p,i)=>({
+      place:Number(p.place)||i+1,pseudo:String(p.pseudo||'Joueur'),
+      wins:Number(p.wins)||0,losses:Number(p.losses)||0,played:Number(p.played)||0
+    }));
+    r.error='';r.loaded=true;
+  }catch(e){r.error=e.message||'Classement indisponible.';r.loaded=true;}
+  finally{
+    r.fetching=false;plazaRankingPaint();
+    if(PLAZA.open&&PLAZA.mode==='ranking'){
+      const content=PLAZA.panel.querySelector('.plaza-content');
+      if(content)plazaRankingDrawPanel(content);
+    }
+  }
+}
+function plazaRankingDrawPanel(body) {
+  const r=PLAZA_RANKING;body.textContent='';
+  body.appendChild(hubEl('p','','⚽ Classement Tir au but — mêmes résultats que Game.'));
+  body.appendChild(hubEl('p','','Matchs terminés et gains réglés · victoires, défaites et parties jouées.'));
+  body.appendChild(hubBtn('↻ Actualiser','',()=>{r.lastUpdate=0;void plazaRankingRefresh(true);}));
+  if(!r.loaded){body.appendChild(hubEl('p','','Chargement des champions…'));void plazaRankingRefresh();return;}
+  if(r.error){body.appendChild(hubEl('p','',r.error));return;}
+  if(!r.players.length){body.appendChild(hubEl('p','','Aucun résultat pour le moment.'));return;}
+  for(const [i,p] of r.players.entries()){
+    const row=hubEl('div','ranking-row');
+    row.appendChild(hubEl('strong','',(i<3?['🥇','🥈','🥉'][i]:'#'+p.place)+' '+p.pseudo));
+    row.appendChild(hubEl('small','',p.wins+' V · '+p.losses+' D · '+p.played+' matchs'));
+    body.appendChild(row);
+  }
+  body.appendChild(hubEl('p','','Le classement est celui de la section Game ; il est actuellement cumulatif, et non limité à la semaine.'));
+}
 function plazaDraw(now) {
   if(!PLAZA.group)return;
   const d=Math.hypot(player.x-PLAZA.x,player.z-PLAZA.z);
@@ -4243,6 +4351,7 @@ function plazaDraw(now) {
   if(PLAZA.group.visible)PLAZA.sign.position.y=CURB_H+8+Math.sin(now/950)*.14;
   if(PLAZA.open&&(!plazaNear()||d>22))plazaClose();
   PLAZA.button.hidden=!plazaNear()||PLAZA.open;
+  if(MP.ready && d<250 && Date.now()-PLAZA_RANKING.lastUpdate>60000) void plazaRankingRefresh();
   if(PLAZA.open&&PLAZA.mode==='lobby'&&now-PLAZA.lastPoll>7000){
     PLAZA.lastPoll=now;void plazaLoadRooms(PLAZA.seq);
   }
