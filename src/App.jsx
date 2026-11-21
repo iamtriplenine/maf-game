@@ -7,7 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import ProfilePage from "./pages/ProfilePage";
 import GamePage from "./pages/GamePage";
 import MatchReturnAlert from "./components/MatchReturnAlert";
-import OwnerRequestAlerts from "./components/OwnerRequestAlerts"; // MAF_OWNER_ALERTS_V1
+import OwnerRequestAlerts from "./components/OwnerRequestAlerts";
+import PremiumOwnerNotices from "./components/PremiumOwnerNotices"; // MAF_OWNER_ALERTS_V1
 import PenaltyDuelAlert from "./components/PenaltyDuelAlert";
 import DepositReminder from "./components/DepositReminder"; // MAF_RAPPELS_V1
 import AdminPanel from "./components/AdminPanel";
@@ -66,6 +67,7 @@ export default function App() {
       <RoomJoinAlert />
       <MatchReturnAlert />
       <OwnerRequestAlerts />
+      <PremiumOwnerNotices />
       <PenaltyDuelAlert />
       <DepositReminder />
       <div key={view} className={`page page--${direction}`}>
