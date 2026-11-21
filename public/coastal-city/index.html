@@ -2909,12 +2909,15 @@ function stepPlayer(dt, input) {
   const mag = Math.hypot(mx, mz);
   if (mag > 1) { mx /= mag; mz /= mag; }
   // Hold the movement axes steady while the camera turns to follow this input.
-  if (mag <= 0.05 || cam.userLook > 0) {
+  if (cam.fp) {
+    // FPS : le déplacement suit immédiatement la direction du regard.
+    cam.walkInputYaw = null;
+  } else if (mag <= 0.05 || cam.userLook > 0) {
     cam.walkInputYaw = null;
   } else if (cam.walkInputYaw === null) {
     cam.walkInputYaw = cam.yaw;
   }
-  const moveYaw = cam.walkInputYaw ?? cam.yaw;
+  const moveYaw = cam.fp ? cam.yaw : (cam.walkInputYaw ?? cam.yaw);
   const cy = Math.cos(moveYaw), sy = Math.sin(moveYaw);
   // camera forward on the ground plane
   const fwdX = -sy, fwdZ = -cy;
@@ -3085,13 +3088,13 @@ function updateCamera(dt, input) {
   const px = tx + dirX * cam.dist;
   const py = ty + dirY * cam.dist + 0.15;
   const pz = tz + dirZ * cam.dist;
-  const smooth = player.mode === 'drive' ? 0.00004 : 0.000006;
+  const smooth = player.mode === 'drive' ? 0.00004 : 0.00015;
   cam.pos.x = damp(cam.pos.x, px, smooth, dt);
   cam.pos.y = damp(cam.pos.y, Math.max(py, groundY(px, pz) + 0.5), smooth, dt);
   cam.pos.z = damp(cam.pos.z, pz, smooth, dt);
-  cam.look.x = damp(cam.look.x, tx, 0.000002, dt);
-  cam.look.y = damp(cam.look.y, ty, 0.000002, dt);
-  cam.look.z = damp(cam.look.z, tz, 0.000002, dt);
+  cam.look.x = damp(cam.look.x, tx, 0.00009, dt);
+  cam.look.y = damp(cam.look.y, ty, 0.00009, dt);
+  cam.look.z = damp(cam.look.z, tz, 0.00009, dt);
 
   camera.position.copy(cam.pos);
   if (cam.shake > 0.001) {
@@ -5086,97 +5089,88 @@ function bindInput() {
   });
   document.addEventListener('pointerlockchange', () => { pointerLocked = document.pointerLockElement === ui.gl; });
 
-  // MAF-WORLD-CTRL-V2
-  // ---- touch : 1 doigt = deplacement (joystick flottant), 2 doigts = comme Google Maps
-  //      pincer = zoom, pivoter = tourner la vue, glisser haut/bas ensemble = incliner (vue 3D)
+  // MAF-WORLD-CAMERA-FLUID-V1 : deux pouces independants.
+  // Moitie gauche = joystick de marche. Moitie droite = regard libre, 1re / 3e personne.
   const ZOOM_MAX = 120;
   const sz = ui.stickZone;
-  const ptrs = new Map();
-  let g = null;
-  const normAng = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+  const rightTouches = new Map();
+  let rightPinch = null;
   const stickOff = () => {
     touchState.stickId = null; touchState.vx = 0; touchState.vy = 0; touchState.btn.run = false;
     ui.stickBase.style.opacity = '0'; ui.stickKnob.style.opacity = '0';
   };
-  const twoInfo = () => {
-    const it = ptrs.values(); const p = it.next().value, q = it.next().value;
-    return { d: Math.max(20, Math.hypot(q.x - p.x, q.y - p.y)), a: Math.atan2(q.y - p.y, q.x - p.x), cy: (p.y + q.y) / 2 };
+  const rightSnapshot = () => {
+    const values = Array.from(rightTouches.values());
+    if (values.length < 2) return null;
+    const a=values[0], b=values[1];
+    return {distance:Math.max(20,Math.hypot(a.x-b.x,a.y-b.y)),
+      cy:(a.y+b.y)/2};
   };
-  const newG = () => { const t = twoInfo(); t.d0 = t.d; t.a0 = t.a; t.cy0 = t.cy; t.mode = null; return t; };
   sz.addEventListener('pointerdown', e => {
     audioResume();
-    if (player.seating) {
-      if (touchState.lookId === null) {
-        touchState.lookId = e.pointerId; touchState.lx = e.clientX; touchState.ly = e.clientY;
-        sz.setPointerCapture(e.pointerId);
-      }
-      e.preventDefault();
-      return;
-    }
-    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (e.pointerType === 'mouse') return;
+    const right = player.seating || e.clientX >= innerWidth * 0.48;
     try { sz.setPointerCapture(e.pointerId); } catch (err) {}
-    if (ptrs.size === 1) {
-      touchState.stickId = e.pointerId; touchState.ox = e.clientX; touchState.oy = e.clientY;
-      ui.stickBase.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px)';
-      ui.stickKnob.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px)';
-      ui.stickBase.style.opacity = '1'; ui.stickKnob.style.opacity = '1';
-    } else if (ptrs.size === 2) {
-      stickOff(); g = newG();
+    if (right) {
+      rightTouches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if (touchState.lookId === null) touchState.lookId=e.pointerId;
+      touchState.lx=e.clientX;touchState.ly=e.clientY;
+      rightPinch=rightSnapshot();
+    } else if (touchState.stickId === null) {
+      touchState.stickId=e.pointerId;
+      touchState.ox=e.clientX;touchState.oy=e.clientY;
+      ui.stickBase.style.transform='translate('+e.clientX+'px,'+e.clientY+'px)';
+      ui.stickKnob.style.transform='translate('+e.clientX+'px,'+e.clientY+'px)';
+      ui.stickBase.style.opacity='1';ui.stickKnob.style.opacity='1';
     }
     e.preventDefault();
   });
   sz.addEventListener('pointermove', e => {
-    if (player.seating) {
-      if (e.pointerId === touchState.lookId) {
-        lookAccum.x += (e.clientX - touchState.lx) * TOUCH_SENS;
-        lookAccum.y += (e.clientY - touchState.ly) * TOUCH_SENS;
-        touchState.lx = e.clientX; touchState.ly = e.clientY;
-      }
-      e.preventDefault();
-      return;
-    }
-    const pt = ptrs.get(e.pointerId);
-    if (!pt) return;
-    pt.x = e.clientX; pt.y = e.clientY;
-    if (ptrs.size >= 2) {
-      if (!g) { g = newG(); return; }
-      const n = twoInfo();
-      if (!g.mode) {
-        // on attend un vrai geste (12 px) pour choisir : incliner OU zoomer/tourner, sans melanger
-        const pinch = Math.abs(n.d - g.d0);
-        const twist = Math.abs(normAng(n.a - g.a0)) * g.d0 * 0.5;
-        const tilt = Math.abs(n.cy - g.cy0);
-        if (Math.max(pinch, twist, tilt) > 12) g.mode = (tilt > pinch && tilt > twist) ? 'tilt' : 'zoom';
-        g.d = n.d; g.a = n.a; g.cy = n.cy;
-        e.preventDefault(); return;
-      }
-      if (g.mode === 'tilt') {
-        lookAccum.y += (n.cy - g.cy) * 0.009;
+    if (e.pointerType === 'mouse') return;
+    if (rightTouches.has(e.pointerId)) {
+      const prev=rightTouches.get(e.pointerId);
+      const dx=e.clientX-prev.x, dy=e.clientY-prev.y;
+      prev.x=e.clientX;prev.y=e.clientY;
+      if (rightTouches.size >= 2 && !player.seating) {
+        const snapshot=rightSnapshot();
+        if (rightPinch && snapshot) {
+          const ratio=rightPinch.distance/snapshot.distance;
+          cam.zoomU=clamp(cam.zoomU*ratio,1,ZOOM_MAX);
+          cam.recenter=0;
+          lookAccum.y+=(snapshot.cy-rightPinch.cy)*TOUCH_SENS*.7;
+        }
+        rightPinch=snapshot;
       } else {
-        const dz = g.d / n.d;
-        cam.zoomU = clamp(cam.zoomU * dz, 1, ZOOM_MAX); cam.recenter = 0;
-        lookAccum.x -= normAng(n.a - g.a);
-        if (dz > 1 && cam.zoomU < 20 && cam.pitch > -0.95) cam.pitch = Math.max(-0.95, cam.pitch - Math.log(dz) * 0.35);
+        lookAccum.x+=dx*TOUCH_SENS;
+        lookAccum.y+=dy*TOUCH_SENS;
+        rightPinch=null;
       }
-      g.d = n.d; g.a = n.a; g.cy = n.cy;
     } else if (e.pointerId === touchState.stickId) {
-      let dx = e.clientX - touchState.ox, dy = e.clientY - touchState.oy;
-      const d = Math.hypot(dx, dy), max = 60;
-      if (d > max) { dx = dx / d * max; dy = dy / d * max; }
-      const live = d >= 6;
-      touchState.vx = live ? dx / max : 0; touchState.vy = live ? dy / max : 0;
-      touchState.btn.run = d >= max * 0.9;
-      ui.stickKnob.style.transform = 'translate(' + (touchState.ox + dx) + 'px,' + (touchState.oy + dy) + 'px)';
+      let dx=e.clientX-touchState.ox, dy=e.clientY-touchState.oy;
+      const d=Math.hypot(dx,dy), max=60;
+      if(d>max){dx=dx/d*max;dy=dy/d*max;}
+      const live=d>=6;
+      touchState.vx=live?dx/max:0;
+      touchState.vy=live?dy/max:0;
+      touchState.btn.run=d>=max*.9;
+      ui.stickKnob.style.transform='translate('+(touchState.ox+dx)+'px,'+(touchState.oy+dy)+'px)';
     }
     e.preventDefault();
   });
-  const endPtr = e => {
-    if (e.pointerId === touchState.lookId) touchState.lookId = null;
-    ptrs.delete(e.pointerId);
+  const endPtr=e=>{
     if (e.pointerId === touchState.stickId) stickOff();
-    if (ptrs.size < 2) g = null;
+    rightTouches.delete(e.pointerId);
+    if (e.pointerId === touchState.lookId) touchState.lookId=rightTouches.size ? rightTouches.keys().next().value : null;
+    rightPinch=rightSnapshot();
+    if (touchState.lookId !== null) {
+      const p=rightTouches.get(touchState.lookId);
+      if(p){touchState.lx=p.x;touchState.ly=p.y;}
+    }
   };
-  sz.addEventListener('pointerup', endPtr); sz.addEventListener('pointercancel', endPtr);
+  sz.addEventListener('pointerup',endPtr);
+  sz.addEventListener('pointercancel',endPtr);
+  sz.addEventListener('lostpointercapture',endPtr);
+  addEventListener('blur',()=>{stickOff();rightTouches.clear();rightPinch=null;touchState.lookId=null;});
   ui.gl.addEventListener('wheel', e => {
     e.preventDefault();
     if (player.seating) return;
