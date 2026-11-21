@@ -5833,9 +5833,29 @@ const BB_TYPES = {
 const BB_CELL = 0.5, BB_RANGE = 24;   // cases de 0,5 m, grille 49 x 49 autour du joueur
 const bb = { tpls: {}, loading: {}, boards: [], cur: null, place: null, ui: null, syncing: false, nextSync: 0, canPlace: false };
 const bbFmt = n => n.toFixed(2).replace('.', ',');
+const bbHeight = v => Number.isFinite(Number(v)) ? Math.min(2.5, Math.max(1, Number(v))) : 1;
+// La geometrie de l'image est independante du modele, afin de ne pas agrandir les pieds.
+function bbScaleScreen(model, factor) {
+  if (factor === 1) return;
+  model.traverse(o => {
+    if (!o.isMesh || !o.userData.bbScreen) return;
+    const geo = o.geometry.clone();
+    geo.computeBoundingBox();
+    const bottom = geo.boundingBox.min.y;
+    // La partie basse reste alignee, la photo grandit vers le haut.
+    geo.scale(1, factor, 1);
+    geo.translate(0, bottom * (1 - factor), 0);
+    o.geometry = geo;
+    o.userData.bbHeightGeometry = true;
+  });
+}
+function bbDisposeScaled(model) {
+  if (!model) return;
+  model.traverse(o => { if (o.isMesh && o.userData.bbHeightGeometry) o.geometry.dispose(); });
+}
 
 function bbPaintDefault(b) {
-  const T = BB_TYPES[b.type], g = b.ctx, W = T.px, H = T.py;
+  const T = BB_TYPES[b.type], g = b.ctx, W = b.canvas.width, H = b.canvas.height;
   g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
   g.strokeStyle = '#d5d9e0'; g.lineWidth = 12; g.strokeRect(6, 6, W - 12, H - 12);
   const big = Math.min(H * 0.3, W / 4.2);
@@ -5851,7 +5871,7 @@ async function bbSetPhoto(b, file) {
   const T = BB_TYPES[b.type], url = URL.createObjectURL(file);
   try {
     const img = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = url; });
-    const W = T.px, H = T.py;
+    const W = b.canvas.width, H = b.canvas.height;
     const s = Math.max(W / img.naturalWidth, H / img.naturalHeight); // la photo s'adapte au panneau (recadrage centre)
     const w = img.naturalWidth * s, h = img.naturalHeight * s;
     b.ctx.fillStyle = '#ffffff'; b.ctx.fillRect(0, 0, W, H);
@@ -5927,9 +5947,11 @@ function bbLoadTemplate(type) {
 function bbCreateBoard(r) {
   const T = BB_TYPES[r.type], model = bb.tpls[r.type].clone(true);
   const canvas = document.createElement('canvas');
-  canvas.width = T.px; canvas.height = T.py;
+  const screenHeight = bbHeight(r.screenHeight);
+  bbScaleScreen(model, screenHeight);
+  canvas.width = T.px; canvas.height = Math.round(T.py * screenHeight);
   const b = { id: r.id || null, type: r.type, x: r.x, z: r.z, rot: r.rot, mine: !!r.mine, canEdit: r.canEdit !== false, canDelete: !!r.canDelete,
-    version: r.version == null ? -1 : r.version, link: r.link || "", hasImage: !!r.has_image, model, canvas, ctx: canvas.getContext('2d'), tex: null, mats: [] };
+    version: r.version == null ? -1 : r.version, screenHeight, link: r.link || "", hasImage: !!r.has_image, model, canvas, ctx: canvas.getContext('2d'), tex: null, mats: [] };
   b.tex = new THREE.CanvasTexture(canvas);
   b.tex.flipY = false; b.tex.colorSpace = THREE.SRGBColorSpace; b.tex.anisotropy = 4;
   if (T.screen.kind === 'wrap') b.tex.wrapS = THREE.RepeatWrapping;
@@ -5946,7 +5968,7 @@ function bbCreateBoard(r) {
 
 function bbRemoveBoard(b) {
   scene.remove(b.model);
-  b.mats.forEach(m => m.dispose()); b.tex.dispose();
+  b.mats.forEach(m => m.dispose()); b.tex.dispose(); bbDisposeScaled(b.model);
   bb.boards = bb.boards.filter(x => x !== b);
   if (bb.cur === b) bb.cur = null;
 }
@@ -5990,6 +6012,10 @@ async function bbSync() {
         if (Math.hypot(playerX() - r.x, playerZ() - r.z) > 220) continue;   // seulement les panneaux proches
         if (!BB_TYPES[r.type] || !(await bbLoadTemplate(r.type))) continue;
         b = bbCreateBoard(r); b.version = -1;
+      }
+      // Si le serveur a change la hauteur entre deux synchronisations, reconstruire la forme.
+      if (Math.abs(bbHeight(r.screenHeight) - b.screenHeight) > .001) {
+        bbRemoveBoard(b); b = bbCreateBoard(r); b.version = -1;
       }
       b.mine = r.mine; b.canEdit = r.canEdit !== false; b.canDelete = !!r.canDelete; b.link = r.link || ""; b.hasImage = !!r.has_image;
       if (r.version !== b.version) {
@@ -6058,7 +6084,7 @@ function bbEnterPlace(type) {
   const outline = new THREE.LineSegments(og, new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false }));
   outline.renderOrder = 999; outline.frustumCulled = false; outline.visible = false;
   scene.add(mesh); scene.add(outline);
-  bb.place = { cx, cz, baseY, n, mesh, outline, valid, sel: null, rot: 0, ok: false, type, ghost: null, ghostType: '', manual: false };
+  bb.place = { cx, cz, baseY, n, mesh, outline, valid, sel: null, rot: 0, ok: false, type, ghost: null, ghostType: '', ghostHeight: 0, screenHeight: bbHeight(Number(bb.ui.heightRange.value)), manual: false };
   bbPaintCells(); bbSyncRotUI();
   bb.ui.hint.textContent = 'Touche une case au sol (vert = libre, rouge = bloqué). Seul le pied du panneau compte.';
   bb.ui.overlay.hidden = false; bb.ui.panel.hidden = false; bb.ui.btn.hidden = true;
@@ -6090,9 +6116,12 @@ function bbUpdateSel() {
   p.outline.visible = true;
   // Apercu du vrai panneau, pour voir exactement ou il regarde.
   const tpl = bb.tpls[p.type];
-  if (tpl && p.ghostType !== p.type) {
-    if (p.ghost) scene.remove(p.ghost);
-    p.ghost = tpl.clone(true); p.ghostType = p.type; scene.add(p.ghost);
+  if (tpl && (p.ghostType !== p.type || p.ghostHeight !== p.screenHeight)) {
+    if (p.ghost) { scene.remove(p.ghost); bbDisposeScaled(p.ghost); }
+    p.ghost = tpl.clone(true);
+    bbScaleScreen(p.ghost, p.screenHeight);
+    p.ghostType = p.type; p.ghostHeight = p.screenHeight;
+    scene.add(p.ghost);
   }
   if (p.ghost) { p.ghost.position.set(x, groundY(x, z), z); p.ghost.rotation.y = p.rot + BB_TYPES[p.type].yaw; }
   bb.ui.hint.textContent = p.ok ? 'Emplacement libre. Règle l’orientation puis « Placer ici ».' : 'Pied bloqué (mur, route ou autre panneau) : choisis une autre case.';
@@ -6117,7 +6146,7 @@ function bbPick(clientX, clientY) {
 
 function bbEndPlace() {
   const p = bb.place; if (!p) return;
-  scene.remove(p.mesh); scene.remove(p.outline); if (p.ghost) scene.remove(p.ghost);
+  scene.remove(p.mesh); scene.remove(p.outline); if (p.ghost) { scene.remove(p.ghost); bbDisposeScaled(p.ghost); }
   p.mesh.geometry.dispose(); p.mesh.material.dispose(); p.outline.geometry.dispose(); p.outline.material.dispose();
   bb.place = null;
   bb.ui.overlay.hidden = true; bb.ui.panel.hidden = true;
@@ -6136,6 +6165,24 @@ function bbSetRot(deg) {
   bbSyncRotUI(); bbUpdateSel();
 }
 function bbRotBy(d) { const p = bb.place; if (p) bbSetRot(p.rot * 180 / Math.PI + d); }
+function bbHeightInit() {
+  const U = bb.ui;
+  const box = document.createElement('div');
+  box.className = 'bb-height';
+  box.style.cssText = 'margin:4px 0 10px;color:#f3ebff;font-weight:600';
+  box.innerHTML = '<label for="bb-screen-height">Hauteur de l’image : <output>100 %</output></label>'
+    + '<input id="bb-screen-height" type="range" min="100" max="250" step="25" value="100" '
+    + 'style="display:block;width:100%;height:30px;touch-action:pan-x" aria-label="Hauteur de la surface publicitaire" />'
+    + '<small style="font-weight:400;color:#d9d3ee">Agrandit seulement l’image vers le haut (pas le pied du panneau).</small>';
+  U.panel.insertBefore(box, U.panel.querySelector('.bb-row'));
+  U.heightRange = box.querySelector('input');
+  U.heightLabel = box.querySelector('output');
+  U.heightRange.addEventListener('input', () => {
+    const h = bbHeight(Number(U.heightRange.value) / 100);
+    U.heightLabel.textContent = Math.round(h * 100) + ' %';
+    if (bb.place) { bb.place.screenHeight = h; bbUpdateSel(); }
+  });
+}
 function bbRotInit() {
   const U = bb.ui, panel = U.panel, row = panel.querySelector('.bb-row');
   const st = document.createElement('style');
@@ -6159,10 +6206,10 @@ async function bbConfirmPlace() {
   if (!MP.ready || !bb.canPlace) { bb.ui.hint.textContent = 'Pose réservée au compte propriétaire 99.'; return; }
   if (!p.sel) { bb.ui.hint.textContent = 'Touche d’abord un carré au sol.'; return; }
   if (!p.ok) { bb.ui.hint.textContent = 'Emplacement bloqué : choisis un carré libre.'; return; }
-  const r = { type: p.type, x: p.sel.x, z: p.sel.z, rot: p.rot, mine: true };
+  const r = { type: p.type, x: p.sel.x, z: p.sel.z, rot: p.rot, screenHeight: p.screenHeight, mine: true };
   bb.ui.busy = true;
   try {
-    if (MP.ready) { const s = await bbApi('', 'POST', { type: r.type, x: r.x, z: r.z, rot: r.rot }); r.id = s.id; r.version = s.version; }
+    if (MP.ready) { const s = await bbApi('', 'POST', { type: r.type, x: r.x, z: r.z, rot: r.rot, screenHeight: r.screenHeight }); r.id = s.id; r.version = s.version; }
     bbEndPlace();
     bb.cur = bbCreateBoard(r);
     toast('Panneau placé ✔ Approche-toi pour y mettre ta pub.');
@@ -6174,8 +6221,8 @@ async function bbConfirmPlace() {
 function bbOpenDialog() {
   const b = bb.cur; if (!b || !b.canEdit || !b.id || !MP.ready) return;
   const T = BB_TYPES[b.type], U = bb.ui;
-  U.info.innerHTML = '<b>' + T.name + '</b><br>Écran : <b>' + bbFmt(T.wM) + ' × ' + bbFmt(T.hM) + ' m</b>.<br>'
-    + 'Image idéale : <b>' + T.px + ' × ' + T.py + ' px</b>, JPG ou PNG. Une autre taille sera recadrée au centre pour remplir l’écran.'
+  U.info.innerHTML = '<b>' + T.name + '</b><br>Écran : <b>' + bbFmt(T.wM) + ' × ' + bbFmt(T.hM * b.screenHeight) + ' m</b> (hauteur ×' + b.screenHeight.toFixed(1) + ').<br>'
+    + 'Image idéale : <b>' + b.canvas.width + ' × ' + b.canvas.height + ' px</b>, JPG ou PNG. Une autre taille sera recadrée au centre pour remplir l’écran.'
     + (T.screen.kind === 'wrap' ? '<br>La même affiche est répétée sur les 3 faces de la colonne.' : '');
   U.msg.textContent = '';
   U.editing = b; U.linkField.value = b.link || '';
@@ -6292,6 +6339,7 @@ function bbBuildUI() {
     + Object.keys(BB_TYPES).map(k => '<option value="' + k + '">' + BB_TYPES[k].name + ' · écran ' + bbFmt(BB_TYPES[k].wM) + ' × ' + bbFmt(BB_TYPES[k].hM) + ' m</option>').join('')
     + '</select><p data-h></p><div class="bb-row"><button type="button" class="main" data-a="ok">✔ Placer ici</button>'
     + '<button type="button" data-a="rot">↻ Tourner</button><button type="button" data-a="no">✖ Annuler</button></div>';
+  bbHeightInit();
   U.hint = U.panel.querySelector('[data-h]'); U.sel = U.panel.querySelector('[data-t]');
   U.panel.addEventListener('click', e => {
     const a = e.target.dataset && e.target.dataset.a;
