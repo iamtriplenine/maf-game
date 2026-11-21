@@ -2324,26 +2324,14 @@ function generateWorld(seed) {
     im.instanceMatrix.needsUpdate = true; G.add(im); inst.lens = im;
     world.lenses = lenses;
   }
-  // parked cars: body (tinted) + trim (never tinted)
-  {
-    const p = { w: 1.86, l: 4.3, ride: 0.34, bodyH: 0.72, cabH: 0.62, cabW: 0.9, cabF: 0.26, cabB: 0.74, wheelR: 0.33 };
-    const bodyMat = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 58, specular: 0x8f9aa2, vertexColors: true });
-    const im = instanced(carShellGeo(p), bodyMat, parked.length, true);
-    const it = instanced(carTrimGeo(p), MATS.dark, parked.length);
-    im.count = it.count = parked.length; im.castShadow = true; it.castShadow = true;
-    const cc = new THREE.Color();
-    parked.forEach((o, k) => {
-      setInst(im, k, o.x, CURB_H * 0, o.z, 1, 1, 1, o.ry);
-      setInst(it, k, o.x, 0, o.z, 1, 1, 1, o.ry);
-      cc.setHSL(o.c, 0.35 + (o.c * 7 % 1) * 0.4, 0.35 + (o.c * 13 % 1) * 0.42);
-      im.setColorAt(k, cc);
-      const hw = (Math.abs(Math.sin(o.ry)) > 0.5) ? p.l / 2 : p.w / 2;
-      const hl = (Math.abs(Math.sin(o.ry)) > 0.5) ? p.w / 2 : p.l / 2;
-      addCollider(o.x - hw, o.z - hl, o.x + hw, o.z + hl, 1.5, 3);
-    });
-    im.instanceMatrix.needsUpdate = true; it.instanceMatrix.needsUpdate = true;
-    if (im.instanceColor) im.instanceColor.needsUpdate = true;
-    G.add(im); G.add(it);
+  // MAF-TOWN-VEHICLES-V1: keep the parking locations and collision geometry,
+  // but render the Shuriken GLB models rather than the old box-shaped shells.
+  world.townParked = parked;
+  for (const o of parked) {
+    const p = { w: 1.86, l: 4.3 };
+    const hw = Math.abs(Math.sin(o.ry)) > .5 ? p.l / 2 : p.w / 2;
+    const hl = Math.abs(Math.sin(o.ry)) > .5 ? p.w / 2 : p.l / 2;
+    addCollider(o.x - hw, o.z - hl, o.x + hw, o.z + hl, 1.5, 3);
   }
 
   // ---------- distant headlands so the horizon is not empty ---------------
@@ -3095,6 +3083,127 @@ function updateCamera(dt, input) {
   camera.lookAt(cam.look.x, cam.look.y, cam.look.z);
 }
 
+/* MAF-TOWN-VEHICLES-V1 - Decorative vehicles, not the drivable fleet.
+   Cached shared geometry means every copy is a single draw call, instead
+   of the many separate parts in the original GLBs. */
+const TOWN_CARS = [
+  'silver-family-sedan','family-suv','pearl-white-minivan','blue-pickup-truck',
+  'red-wedge-sports-car','baby-blue-convertible','low-poly-hatchback',
+  'low-poly-delivery-van','pastel-mini-ev','stretch-limousine',
+  'low-poly-garbage-truck','low-poly-tow-truck','pastel-ice-cream-truck',
+  'low-poly-camper-rv','low-poly-golf-cart','armoured-cash-van',
+  'low-poly-monster-truck','open-wheel-racer','orange-go-kart',
+  'mint-motor-scooter','lime-dirt-bike','food-delivery-scooter'
+];
+const TOWN_SPECIAL = ['low-poly-speedboat','yellow-rescue-helicopter'];
+const townTemplates = new Map();
+const townTrafficModels = [];
+const townDecor = new THREE.Group();
+let townLoadStarted = false, townEpoch = 0;
+function townModelLength(name) {
+  if (name.includes('scooter') || name.includes('dirt-bike')) return 2.1;
+  if (name.includes('go-kart') || name.includes('golf-cart')) return 2.8;
+  if (name.includes('truck') || name.includes('van') || name.includes('camper') || name.includes('limousine')) return 5.5;
+  if (name.includes('speedboat')) return 6.2;
+  if (name.includes('helicopter')) return 7.0;
+  return 4.25;
+}
+function townSpawn(name, x, z, yaw, yLift = 0) {
+  const template = townTemplates.get(name);
+  if (!template) return null;
+  const m = new THREE.Mesh(template.geometry, template.material);
+  const scale = townModelLength(name) / template.length;
+  m.scale.setScalar(scale);
+  m.position.set(x, groundY(x, z) + yLift, z);
+  m.rotation.y = yaw;
+  m.castShadow = false;
+  m.receiveShadow = false;
+  townDecor.add(m);
+  return m;
+}
+function townPopulate() {
+  if (!townTemplates.size || !world.group) return;
+  ++townEpoch;
+  townDecor.clear();
+  townTrafficModels.length = 0;
+  const names = TOWN_CARS.filter(n => townTemplates.has(n));
+  if (!names.length) return;
+  const parked = world.townParked || [];
+  const mobile = navigator.maxTouchPoints > 0 && innerWidth < 900;
+  // Limit draw calls on phones. No cube cars are left visible.
+  const cap = mobile ? 70 : 170;
+  const stride = Math.max(1, Math.ceil(parked.length / cap));
+  for (let i = 0; i < parked.length; i += stride) {
+    const p = parked[i], name = names[(i * 7 + Math.floor(i / 7)) % names.length];
+    townSpawn(name, p.x, p.z, p.ry);
+  }
+  for (let i = 0; i < traffic.cars.length; i++) {
+    const c = traffic.cars[i], name = names[(i * 5 + 3) % names.length];
+    townTrafficModels[i] = townSpawn(name, c.x, c.z, c.yaw);
+  }
+  // Stationary boats on the sand, deliberately away from the road and villas.
+  if (townTemplates.has('low-poly-speedboat')) {
+    for (const [x, dz, yaw] of [[-190, -9, .38],[-65, -13, -.6],[115, -10, 1.05]]) {
+      townSpawn('low-poly-speedboat', x, SHORE_Z + dz, yaw, 0.07);
+    }
+  }
+  // The helicopter is a static scenic prop for now, never drivable.
+  if (townTemplates.has('yellow-rescue-helicopter')) {
+    townSpawn('yellow-rescue-helicopter', roadX(1) + 17, BEACH_Z + 7, -.5, .1);
+  }
+}
+async function townLoadVehicles() {
+  if (townLoadStarted) return;
+  townLoadStarted = true;
+  try {
+    const [{ GLTFLoader }, { mergeGeometries }] = await Promise.all([
+      import('three/addons/loaders/GLTFLoader.js'),
+      import('three/addons/utils/BufferGeometryUtils.js')
+    ]);
+    const loader = new GLTFLoader();
+    const mobile = navigator.maxTouchPoints > 0 && innerWidth < 900;
+    const names = [...TOWN_CARS.slice(0, mobile ? 12 : TOWN_CARS.length), ...TOWN_SPECIAL];
+    // Load sequentially to avoid saturating mobile GPUs and network connections.
+    for (const name of names) {
+      try {
+        const gltf = await loader.loadAsync(new URL('./town-vehicles/' + name + '.glb', document.baseURI).href);
+        gltf.scene.updateMatrixWorld(true);
+        const bounds = new THREE.Box3().setFromObject(gltf.scene);
+        const size = bounds.getSize(new THREE.Vector3());
+        const center = bounds.getCenter(new THREE.Vector3());
+        const geos = [];
+        gltf.scene.traverse(obj => {
+          if (!obj.isMesh || !obj.geometry) return;
+          const g = obj.geometry.clone();
+          // Merge only position, normal and per-vertex material colour.
+          for (const attr of Object.keys(g.attributes)) {
+            if (attr !== 'position' && attr !== 'normal') g.deleteAttribute(attr);
+          }
+          if (!g.getAttribute('normal')) g.computeVertexNormals();
+          g.applyMatrix4(obj.matrixWorld);
+          g.translate(-center.x, -bounds.min.y, -center.z);
+          const n = g.getAttribute('position').count;
+          const colors = new Float32Array(n * 3);
+          const color = (Array.isArray(obj.material) ? obj.material[0] : obj.material)?.color || new THREE.Color(0xffffff);
+          for (let i = 0; i < n; i++) {
+            colors[i*3] = color.r; colors[i*3+1] = color.g; colors[i*3+2] = color.b;
+          }
+          g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+          if (g.index) { const flat = g.toNonIndexed(); g.dispose(); geos.push(flat); }
+          else geos.push(g);
+        });
+        const geometry = mergeGeometries(geos, false);
+        geos.forEach(g => g.dispose());
+        if (!geometry) continue;
+        const material = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true, side: THREE.DoubleSide });
+        townTemplates.set(name, { geometry, material, length: Math.max(size.z, 1) });
+        if ([4, 8, 12, 18, 24].includes(townTemplates.size)) townPopulate();
+      } catch (err) { console.warn('Town vehicle unavailable:', name, err); }
+    }
+    townPopulate();
+  } catch (err) { console.warn('Town vehicle kit unavailable:', err); }
+}
+
 /* ------------------------------------------------------- 6 ambient traffic */
 const GREEN_MS = 12500, AMBER_MS = 2400;
 const traffic = { cars: [], body: null, trim: null, phaseId: -1 };
@@ -3133,6 +3242,7 @@ function initTraffic(n, seed) {
   traffic.body = instanced(carShellGeo(p), bodyMat, n, true);
   traffic.trim = instanced(carTrimGeo(p), MATS.dark, n);
   traffic.body.castShadow = true; traffic.trim.castShadow = true;
+  traffic.body.visible = false; traffic.trim.visible = false; // old cube cars hidden
   traffic.body.count = 0; traffic.trim.count = 0;
   const R = mulberry32(seed ^ 0xabc123);
   const cc = new THREE.Color();
@@ -3219,15 +3329,16 @@ function stepTraffic(dt, clockMs) {
   }
 }
 function applyTrafficMeshes() {
-  const o = _dummy.obj;
-  for (let k = 0; k < traffic.cars.length; k++) {
-    const c = traffic.cars[k];
-    o.position.set(c.x, 0, c.z); o.rotation.set(0, c.yaw, 0); { const sc = c.police ? 0.0001 : 1; o.scale.set(sc, sc, sc); } o.updateMatrix();
-    traffic.body.setMatrixAt(k, o.matrix); traffic.trim.setMatrixAt(k, o.matrix);
+  const models = townTrafficModels;
+  for (let k = 0; k < models.length; k++) {
+    const mesh = models[k], c = traffic.cars[k];
+    if (!mesh || !c) continue;
+    mesh.position.set(c.x, groundY(c.x, c.z), c.z);
+    mesh.rotation.y = c.yaw;
+    mesh.visible = !c.police;
   }
-  traffic.body.instanceMatrix.needsUpdate = true;
-  traffic.trim.instanceMatrix.needsUpdate = true;
 }
+
 
 /* --------------------------------------------------------- pedestrians */
 const peds = { list: [], body: null, parts: null };
@@ -5427,6 +5538,7 @@ function rebuildCity(seed) {
     });
   }
   scene.add(generateWorld(seed));
+  townPopulate(); // refresh parked cars after world regeneration
   buildMinimapBase();
   traffic.phaseId = -1;
   // vehicles back to their default spots on the fresh street plan
@@ -6110,6 +6222,8 @@ function main() {
   const heavy = !(navigator.maxTouchPoints > 0 && window.innerWidth < 900);
   initTraffic((heavy ? 26 : 14) + (heavy ? 8 : 5), seed); polMark(2); // MAF-WORLD-POLICE-V2 : 2 voitures de police seulement
   scene.add(traffic.body); scene.add(traffic.trim);
+  scene.add(townDecor);
+  townLoadVehicles();
   initPeds(heavy ? 46 : 22, seed);
   scene.add(peds.body); scene.add(peds.parts);
   scene.add(buildMarker());
