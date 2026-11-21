@@ -1192,15 +1192,16 @@ const FOOD_SEATS = [
   y: FASTFOOD.y+0.51*FASTFOOD.scale, z: FASTFOOD.z+z*FASTFOOD.scale,
   yaw: yaw*Math.PI/180 }));
 VILLA_SEATS.push(...FOOD_SEATS);
-const WORLD_MAP_PLACES = [
-  { label: 'Villa \u{1F3AF} Tir au but', x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale },
-  { label: 'Fastfood 🍔', x: FASTFOOD.x, z: FASTFOOD.z+8*FASTFOOD.scale }
-];
 const villa = { model: null, loading: false, retryAt: 0, rocks: [], ray: null, hits: [] };
 const villaLighting = { rig: null, loading: false, retryAt: 0 };
 /* MAF-VILLA2-V1 (etape 1/3) : 2e villa (jeu de Ludo) a cote de la villa du Tir au but.
    Etape 1 : villa visible + murs/meubles du rez-de-chaussee. Etape 2 : escaliers + etage. Etape 3 : hologrammes Ludo. */
 const VILLA2 = { x: VILLA.x - 44.6, y: VILLA.y, z: VILLA.z - 2.4, scale: 0.8, hx: 17.6, hz: 17.8 };
+const WORLD_MAP_PLACES = [
+  { label: 'Villa 🎯 Tir au but', x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale },
+  { label: 'Villa 🎲 Ludo', x: VILLA2.x, z: VILLA2.z - 12.7 * VILLA2.scale },
+  { label: 'Fastfood 🍔', x: FASTFOOD.x, z: FASTFOOD.z + 8 * FASTFOOD.scale }
+];
 const villa2 = { model: null, loading: false, retryAt: 0 };
 /* MAF-VILLA2-V2 (etape 2/3) : etage + escaliers. Les hauteurs de sol viennent de villa-modern-floors.json
    (grille 0,25 m : chaque case liste les hauteurs de marche/dalle). On prend la plus haute atteignable depuis les pieds. */
@@ -3897,6 +3898,197 @@ function hubDraw(now) {
   ui.worldHubButton.hidden = !usable || HUB.open;
 }
 
+
+/* MAF-VILLA2-LUDO-HUB-V1 : villa Ludo autonome ; mêmes routes /api/rooms que Game.
+   Aucun changement dans les règles, le moteur Ludo, la villa Tir au but ou le backend. */
+const LUDO_HUB = {
+  x: VILLA2.x, z: VILLA2.z - 12.7 * VILLA2.scale - 3.4,
+  group: null, sign: null, pads: [], button: null, panel: null,
+  open: false, mode: 'menu', busy: false, seq: 0, stake: '500',
+  alerts: null, prev: new Map(), skip: new Set(), errors: {}, polling: false, entering: false
+};
+function ludoHubTexture(title, sub, icon, w = 768, h = 288) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(19,13,43,.85)'; g.fillRect(6, 6, w-12, h-12);
+  g.strokeStyle = '#c69aff'; g.lineWidth = 9; g.shadowColor = '#b77bff'; g.shadowBlur = 22;
+  g.strokeRect(10, 10, w-20, h-20); g.shadowBlur = 0;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = `700 ${Math.round(h*.25)}px system-ui`; g.fillStyle = '#fff'; g.fillText(icon, w/2, h*.25);
+  g.font = `800 ${Math.round(h*.21)}px system-ui`; g.fillText(title, w/2, h*.56);
+  g.font = `600 ${Math.round(h*.13)}px system-ui`; g.fillStyle = '#ffe09a'; g.fillText(sub, w/2, h*.79);
+  return hubTex(c);
+}
+function ludoHubInit() {
+  if (LUDO_HUB.group) return;
+  const h = LUDO_HUB, gy = groundY(h.x, h.z), group = new THREE.Group();
+  group.name = 'ludo-villa-hub'; h.group = group;
+  const sign = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: ludoHubTexture('MAISON LUDO', 'Salons · Duels · Joueurs', '🎲'),
+    transparent: true, depthWrite: false, fog: false, toneMapped: false
+  }));
+  sign.scale.set(10.5, 3.94, 1); sign.position.set(h.x, gy + 11.5, h.z);
+  sign.renderOrder = 10; h.sign = sign; group.add(sign);
+  const beamGeo = new THREE.CylinderGeometry(.11, .11, 11.5, 8, 1, true);
+  const beamMat = new THREE.MeshBasicMaterial({color: 0xc69aff, opacity:.38, transparent:true,
+    blending:THREE.AdditiveBlending, depthWrite:false, fog:false});
+  for (const dx of [-5.5,5.5]) { const beam = new THREE.Mesh(beamGeo,beamMat);
+    beam.position.set(h.x+dx,gy+5.75,h.z); group.add(beam); }
+  for (const def of [{id:'create',dx:-1.3,title:'CRÉER',icon:'➕'},
+                     {id:'join',dx:1.3,title:'REJOINDRE',icon:'👥'}]) {
+    const x=h.x+def.dx, z=h.z;
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(2.1,2.1),new THREE.MeshBasicMaterial({
+      map:ludoHubTexture(def.title,'un salon',def.icon,256,256),transparent:true,
+      depthWrite:false,fog:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-2}));
+    mesh.rotation.set(-Math.PI/2,0,Math.PI);
+    mesh.position.set(x,groundY(x,z)+.06,z); mesh.renderOrder=5; group.add(mesh);
+    h.pads.push({def,mesh,x,z});
+  }
+  scene.add(group);
+  const style=document.createElement('style');
+  style.textContent='#worldLudoHubButton{position:absolute;left:50%;bottom:calc(142px + env(safe-area-inset-bottom));'+
+    'transform:translateX(-50%);z-index:23;background:#25183feF;color:#fff;border:1px solid #c69aff;'+
+    'border-radius:20px;padding:12px 22px;font:700 14px system-ui;cursor:pointer}'+
+    '#worldLudoHubButton[hidden],#worldLudoHubPanel[hidden]{display:none!important}'+
+    '#worldLudoHubPanel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);'+
+    'z-index:35;width:min(92vw,420px);max-height:78vh;overflow:auto;color:white;'+
+    'background:rgba(18,12,35,.97);border:1px solid #c69aff;border-radius:18px;'+
+    'padding:18px;box-shadow:0 10px 40px #0009;font:14px system-ui}'+
+    '#worldLudoHubPanel button{min-height:40px;border-radius:10px;border:1px solid #c69aff;'+
+    'background:#443061;color:white;padding:7px 12px;cursor:pointer;margin:3px}'+
+    '#worldLudoHubPanel input{width:100%;box-sizing:border-box;padding:12px;margin:8px 0;'+
+    'border-radius:9px;border:1px solid #c69aff;background:#1a1330;color:white}'+
+    '#worldLudoHubPanel .ludo-room{padding:10px;margin:8px 0;border:1px solid #7953ac;border-radius:10px}'+
+    '#worldLudoHubPanel button:disabled{opacity:.5}'+
+    '#worldLudoHubAlerts{position:absolute;top:calc(64px + env(safe-area-inset-top));left:10px;'+
+    'z-index:28;max-width:300px;color:white;font:13px system-ui}'+
+    '#worldLudoHubAlerts .ludo-card{background:#201734f5;border:1px solid #c69aff;'+
+    'border-radius:12px;padding:12px;margin-bottom:8px}'+
+    '#worldLudoHubAlerts button{border:1px solid #c69aff;background:#443061;color:white;'+
+    'border-radius:8px;padding:8px;min-height:36px;margin:3px}';
+  document.head.appendChild(style);
+  h.button=hubEl('button','', '🎲 Salons Ludo'); h.button.id='worldLudoHubButton';
+  h.button.type='button'; h.button.hidden=true; document.body.appendChild(h.button);
+  h.button.onclick=()=>{audioResume();ludoHubOpen();};
+  h.panel=hubEl('section'); h.panel.id='worldLudoHubPanel'; h.panel.hidden=true;
+  document.body.appendChild(h.panel);
+  h.alerts=hubEl('div'); h.alerts.id='worldLudoHubAlerts'; document.body.appendChild(h.alerts);
+  addEventListener('keydown',e=>{if(e.key==='Escape'&&h.open)ludoHubClose();});
+  setInterval(()=>{void ludoHubPoll();},5000);
+  setTimeout(()=>{void ludoHubPoll();},1700);
+  addEventListener('focus',()=>{void ludoHubPoll();});
+}
+function ludoHubCanUse() {
+  return player.mode==='walk'&&!player.seating&&!menuOpen()&&
+    !ui.worldMapDialog.open&&!ui.worldStatusDialog.open&&
+    Math.hypot(player.x-LUDO_HUB.x,player.z-LUDO_HUB.z)<4.5;
+}
+function ludoHubClose(){LUDO_HUB.open=false;LUDO_HUB.panel.hidden=true;LUDO_HUB.seq++;}
+function ludoHubOpen(){if(!ludoHubCanUse())return;
+  LUDO_HUB.open=true;LUDO_HUB.panel.hidden=false;
+  try{if(document.pointerLockElement)document.exitPointerLock();}catch(e){}
+  ludoHubRender('menu');
+}
+function ludoHubSay(msg,bad=false){const p=LUDO_HUB.panel.querySelector('.ludo-note');
+  if(p){p.textContent=msg;p.style.color=bad?'#ff9292':'#ffe09a';}}
+function ludoHubRender(mode){
+  const h=LUDO_HUB;h.mode=mode;h.seq++;h.panel.textContent='';
+  h.panel.appendChild(hubEl('h3','','🎲 Maison du Ludo'));
+  h.panel.appendChild(hubBtn('✕ Fermer','',()=>ludoHubClose()));
+  h.panel.appendChild(hubBtn('➕ Créer un salon','',()=>ludoHubRender('create')));
+  h.panel.appendChild(hubBtn('👥 Rejoindre','',()=>ludoHubRender('join')));
+  const content=hubEl('div','ludo-content');h.panel.appendChild(content);
+  h.panel.appendChild(hubEl('p','ludo-note',''));
+  if(mode==='create'){
+    content.appendChild(hubEl('p','','Duel Ludo à 2 joueurs. Même salon et même mise que dans Game.'));
+    content.appendChild(hubEl('label','','Mise par joueur (100 à 1 000 000 F CFA)'));
+    const input=hubEl('input');input.type='text';input.inputMode='numeric';input.maxLength=7;
+    input.value=h.stake;input.addEventListener('input',()=>{input.value=input.value.replace(/\D/g,'').slice(0,7);h.stake=input.value;});
+    for(const ev of ['keydown','keyup'])input.addEventListener(ev,e=>e.stopPropagation());
+    content.appendChild(input);
+    content.appendChild(hubBtn('Créer mon salon','',async b=>{
+      if(h.busy)return;const stake=Number(h.stake);
+      if(!/^\d+$/.test(h.stake)||!Number.isSafeInteger(stake)||stake<100||stake>1000000){ludoHubSay('Mise invalide.',true);return;}
+      h.busy=true;b.disabled=true;
+      try{const d=await hubApi('','POST',{game:'ludo',stake});ludoHubRender('join');
+        ludoHubSay('Salon créé !'+(d.room?.code?' Code : '+d.room.code:''));}
+      catch(e){ludoHubSay(e.message,true);}finally{h.busy=false;b.disabled=false;}
+    }));
+  }else if(mode==='join'){
+    content.appendChild(hubEl('p','','Salons Ludo ouverts :'));
+    void ludoHubLoad(h.seq);
+  }else{content.appendChild(hubEl('p','','Marche sur un hologramme pour créer ou rejoindre un duel Ludo.'));}
+}
+async function ludoHubLoad(seq){
+  let rooms;try{rooms=((await hubApi('')).rooms||[]).filter(r=>r.game==='ludo');}
+  catch(e){if(LUDO_HUB.seq===seq)ludoHubSay(e.message,true);return;}
+  if(!LUDO_HUB.open||LUDO_HUB.mode!=='join'||LUDO_HUB.seq!==seq)return;
+  const content=LUDO_HUB.panel.querySelector('.ludo-content');content.textContent='';
+  if(!rooms.length){content.appendChild(hubEl('p','','Aucun salon ouvert. Crée le premier !'));return;}
+  for(const r of rooms){
+    const row=hubEl('div','ludo-room');row.appendChild(hubEl('strong','',(r.host?.pseudo||'Joueur')+' · '+hubMoney(r.stake)));
+    if(r.is_host)row.appendChild(hubEl('p','','Ton salon'));
+    else if(r.is_guest)row.appendChild(hubEl('p','','Demande envoyée'));
+    else if(r.status!=='open'||r.host_busy)row.appendChild(hubEl('p','','Indisponible'));
+    else row.appendChild(hubBtn('Rejoindre','',async b=>{
+      if(LUDO_HUB.busy)return;LUDO_HUB.busy=true;b.disabled=true;
+      try{await hubApi('/'+r.id+'/join','POST');ludoHubSay('Demande envoyée. La mise sera prélevée à l’acceptation.');}
+      catch(e){ludoHubSay(e.message,true);}finally{LUDO_HUB.busy=false;b.disabled=false;}
+    }));
+    content.appendChild(row);
+  }
+}
+function ludoHubEnter(r){if(LUDO_HUB.entering)return;LUDO_HUB.entering=true;
+  try{window.parent.postMessage({mafWorldOpenRoom:{id:r.id}},window.location.origin);}catch(e){}
+  setTimeout(()=>{LUDO_HUB.entering=false;},5000);
+}
+async function ludoHubAction(r,action){
+  try{const d=await hubApi('/'+r.id+'/'+action,'POST');
+    if(action==='accept')ludoHubEnter(d.room||r);
+    else{LUDO_HUB.errors[r.id]='';await ludoHubPoll(true);}}
+  catch(e){LUDO_HUB.errors[r.id]=e.message;await ludoHubPoll(true);}
+}
+async function ludoHubPoll(force=false){
+  const h=LUDO_HUB;if(!MP.ready||document.hidden||h.polling||!h.alerts)return;
+  h.polling=true;let rooms;
+  try{rooms=((await hubApi('/mine/all')).rooms||[]).filter(r=>r.game==='ludo');}
+  catch(e){return;}finally{h.polling=false;}
+  const ids=new Set(rooms.map(r=>r.id));for(const id of h.prev.keys())if(!ids.has(id))h.prev.delete(id);
+  h.alerts.textContent='';
+  for(const r of rooms){
+    const previous=h.prev.get(r.id);
+    if(previous==='pending'&&['ready','playing'].includes(r.status)&&(r.is_host||r.is_guest))ludoHubEnter(r);
+    h.prev.set(r.id,r.status);
+    if(r.status!=='pending'||(!r.is_host&&!r.is_guest))continue;
+    const card=hubEl('div','ludo-card');
+    card.appendChild(hubEl('strong','',r.is_host?'🎲 Demande de duel Ludo':'⏳ Demande Ludo envoyée'));
+    card.appendChild(hubEl('p','',r.is_host?(r.guest?.pseudo||'Un joueur')+' veut jouer contre toi.':'En attente de '+(r.host?.pseudo||'l’hôte')+'.'));
+    if(h.errors[r.id])card.appendChild(hubEl('p','',h.errors[r.id]));
+    if(r.is_host){card.appendChild(hubBtn('Accepter','',()=>{void ludoHubAction(r,'accept');}));
+      card.appendChild(hubBtn('Refuser','',()=>{void ludoHubAction(r,'decline');}));}
+    else card.appendChild(hubBtn('Annuler','',()=>{void ludoHubAction(r,'leave');}));
+    h.alerts.appendChild(card);
+  }
+  if(h.open&&h.mode==='join')void ludoHubLoad(h.seq);
+}
+function ludoHubDraw(now){
+  const h=LUDO_HUB;if(!h.group)return;
+  const d=Math.hypot(player.x-h.x,player.z-h.z);h.group.visible=d<300;
+  if(!h.group.visible){h.button.hidden=true;if(h.open)ludoHubClose();return;}
+  h.sign.position.y=groundY(h.x,h.z)+11.5+Math.sin(now/1000*1.4)*.18;
+  const use=ludoHubCanUse();let pad=null;
+  for(const p of h.pads){const near=Math.hypot(player.x-p.x,player.z-p.z)<1.15;
+    p.mesh.scale.setScalar(near?1.14:1+Math.sin(now/1000*3+p.x)*.035);
+    p.mesh.material.opacity=use?1:.75;
+    if(near)pad=p;
+  }
+  if(h.open&&(!use||d>8))ludoHubClose();
+  h.button.textContent=pad?(pad.def.id==='create'?'➕ Créer un salon Ludo':'👥 Rejoindre Ludo'):'🎲 Salons Ludo';
+  h.button.hidden=!use||h.open;
+  if(pad&&!h.open)h.button.onclick=()=>{audioResume();ludoHubOpen();ludoHubRender(pad.def.id);};
+  else h.button.onclick=()=>{audioResume();ludoHubOpen();};
+}
+
 function canEatAtFastFood() {
   const lx = (player.x - FASTFOOD.x) / FASTFOOD.scale;
   const lz = (player.z - FASTFOOD.z) / FASTFOOD.scale;
@@ -4535,7 +4727,7 @@ function bindInput() {
     if (e.pointerType === 'mouse') {
       if (pointerLocked && e.button === 0) {
         const target = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-        if (target?.matches('.world-status-bubble, .world-seat-button, #worldStandButton, #worldEatButton, #worldHubButton, #worldHubPanel button')) { target.click(); return; }
+        if (target?.matches('.world-status-bubble, .world-seat-button, #worldStandButton, #worldEatButton, #worldHubButton, #worldHubPanel button, #worldLudoHubButton, #worldLudoHubPanel button, #worldLudoHubAlerts button')) { target.click(); return; }
       }
       dragging = true; dragX = e.clientX; dragY = e.clientY;
       if (!pointerLocked && !IS_TOUCH) { try { ui.gl.requestPointerLock(); } catch (err) {} }
@@ -5812,7 +6004,7 @@ function frame() {
   updateObjArrow();
 
   renderer.render(scene, camera);
-  try { drawVillaSeatButtons(); drawFoodButton(); hubDraw(now); mpDrawStatuses(); } catch (e) { dbgFail('hud', e); }
+  try { drawVillaSeatButtons(); drawFoodButton(); hubDraw(now); ludoHubDraw(now); mpDrawStatuses(); } catch (e) { dbgFail('hud', e); }
 }
 
 function governQuality() {
@@ -5921,6 +6113,7 @@ function main() {
   scene.add(peds.body); scene.add(peds.parts);
   scene.add(buildMarker());
   try { buildPenaltyHub(); } catch (e) { dbgFail('hub', e); }
+  try { ludoHubInit(); } catch (e) { dbgFail('ludo-hub', e); }
   try { hubAlertsStart(); } catch (e) { dbgFail('hub3', e); }
 
   _mark('actors');
