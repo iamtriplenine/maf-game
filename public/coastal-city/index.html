@@ -5836,23 +5836,79 @@ const bb = { tpls: {}, loading: {}, boards: [], cur: null, place: null, ui: null
 const bbFmt = n => n.toFixed(2).replace('.', ',');
 const bbHeight = v => Number.isFinite(Number(v)) ? Math.min(2.5, Math.max(1, Number(v))) : 1;
 // La geometrie de l'image est independante du modele, afin de ne pas agrandir les pieds.
+// Agrandissement PHYSIQUE de la face publicitaire (et de son cadre) vers le haut.
+// Le support/les pieds du modele GLB gardent leurs dimensions d'origine.
 function bbScaleScreen(model, factor) {
-  if (factor === 1) return;
+  if (factor <= 1.0001) return;
   model.traverse(o => {
     if (!o.isMesh || !o.userData.bbScreen) return;
-    const geo = o.geometry.clone();
+    const geo = o.geometry.clone(); // ne jamais deformer le modele partage
     geo.computeBoundingBox();
-    const bottom = geo.boundingBox.min.y;
-    // La partie basse reste alignee, la photo grandit vers le haut.
+    const original = geo.boundingBox.clone();
+    const bottom = original.min.y;
     geo.scale(1, factor, 1);
     geo.translate(0, bottom * (1 - factor), 0);
+    geo.computeBoundingBox();
     o.geometry = geo;
     o.userData.bbHeightGeometry = true;
+    const b = geo.boundingBox;
+    const width = b.max.x - b.min.x, tall = b.max.y - b.min.y, depth = b.max.z - b.min.z;
+    if (tall < .01) return;
+    // Colonne d'affiches circulaire : un cerclage haut suit la nouvelle hauteur.
+    if (width > .02 && depth > .02 && Math.min(width, depth) > .22 * Math.max(width, depth)) {
+      const radius = Math.max(width, depth) / 2 + .025;
+      const rimGeo = new THREE.TorusGeometry(radius, Math.max(.018, radius * .035), 7, 44);
+      const rim = new THREE.Mesh(rimGeo, new THREE.MeshStandardMaterial({color:0x829cb6,metalness:.75,roughness:.28}));
+      rim.rotation.x = Math.PI / 2;
+      rim.position.set((b.min.x+b.max.x)/2,b.max.y,(b.min.z+b.max.z)/2);
+      rim.userData.bbAddedFrame = true;
+      o.add(rim);
+      return;
+    }
+    // Ecrans plans : quatre baguettes 3D entourent toute la NOUVELLE surface.
+    const thick = Math.max(.025, Math.min(.085, Math.min(Math.max(width,depth),tall) * .025));
+    const mat = new THREE.MeshStandardMaterial({color:0x62788e,metalness:.78,roughness:.28});
+    const centerY = (b.min.y+b.max.y)/2;
+    const frontZ = b.max.z + .014;
+    const frontX = b.max.x + .014;
+    const planeXY = width >= depth;
+    const screenWidth = planeXY ? width : depth;
+    const cx=(b.min.x+b.max.x)/2, cz=(b.min.z+b.max.z)/2;
+    if (screenWidth < .01) { mat.dispose(); return; }
+    const framePart = (w,h,px,py,pz) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,thick),mat);
+      mesh.position.set(px,py,pz);
+      mesh.userData.bbAddedFrame = true;
+      o.add(mesh);
+    };
+    if (planeXY) {
+      framePart(screenWidth+thick*2,thick,cx,b.max.y+thick/2,frontZ);
+      framePart(screenWidth+thick*2,thick,cx,b.min.y-thick/2,frontZ);
+      framePart(thick,tall+thick*2,b.min.x-thick/2,centerY,frontZ);
+      framePart(thick,tall+thick*2,b.max.x+thick/2,centerY,frontZ);
+    } else {
+      // Ecran dont la normale locale est X : barres orientees dans le plan Z/Y.
+      const frameX = frontX;
+      const rail = (w,h,zz,yy) => {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(thick,h,w),mat);
+        mesh.position.set(frameX,yy,zz);
+        mesh.userData.bbAddedFrame=true;
+        o.add(mesh);
+      };
+      rail(screenWidth+thick*2,thick,cz,b.max.y+thick/2);
+      rail(screenWidth+thick*2,thick,cz,b.min.y-thick/2);
+      rail(thick,tall+thick*2,b.min.z-thick/2,centerY);
+      rail(thick,tall+thick*2,b.max.z+thick/2,centerY);
+    }
   });
 }
 function bbDisposeScaled(model) {
   if (!model) return;
-  model.traverse(o => { if (o.isMesh && o.userData.bbHeightGeometry) o.geometry.dispose(); });
+  model.traverse(o => {
+    if (!o.isMesh) return;
+    if (o.userData.bbHeightGeometry || o.userData.bbAddedFrame) o.geometry.dispose();
+    if (o.userData.bbAddedFrame && o.material) o.material.dispose();
+  });
 }
 
 function bbPaintDefault(b) {
@@ -6085,7 +6141,7 @@ function bbEnterPlace(type) {
   const outline = new THREE.LineSegments(og, new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false }));
   outline.renderOrder = 999; outline.frustumCulled = false; outline.visible = false;
   scene.add(mesh); scene.add(outline);
-  bb.place = { cx, cz, baseY, n, mesh, outline, valid, sel: null, rot: 0, ok: false, type, ghost: null, ghostType: '', ghostHeight: 0, screenHeight: bbHeight(Number(bb.ui.heightRange.value)), manual: false };
+  bb.place = { cx, cz, baseY, n, mesh, outline, valid, sel: null, rot: 0, ok: false, type, ghost: null, ghostType: '', ghostHeight: 0, screenHeight: bbHeight(Number(bb.ui.heightRange.value) / 100), manual: false };
   bbPaintCells(); bbSyncRotUI();
   bb.ui.hint.textContent = 'Touche une case au sol (vert = libre, rouge = bloqué). Seul le pied du panneau compte.';
   bb.ui.overlay.hidden = false; bb.ui.panel.hidden = false; bb.ui.btn.hidden = true;
