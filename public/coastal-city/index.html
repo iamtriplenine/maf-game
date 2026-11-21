@@ -568,8 +568,8 @@
     var s = document.getElementById('spinner'), m = document.getElementById('bootMsg');
     if (s) s.style.display = 'none';
     if (m) {
-      m.innerHTML = (msg || 'Could not load the 3D engine (Three.js) from the network.<br>' +
-        'This page needs one online visit to fetch it; after that your browser cache keeps it around.') +
+      m.innerHTML = (msg || 'Le moteur Three.js ne peut pas demarrer.<br>' +
+        'Verifie les fichiers du moteur et la console du navigateur.') +
         '<br><button onclick="location.reload()">Retry</button>' +
         '<span class="small" style="display:block;margin:14px auto 0;max-width:430px">' +
         'Tip: save this file to your device (Ctrl/\u2318+S) and open that copy \u2014 it is a single ' +
