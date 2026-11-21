@@ -239,6 +239,13 @@
   /* ---------- touch controls ---------- */
   #touch{position:fixed;inset:0;z-index:19;pointer-events:none}
   #stickZone{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:auto;touch-action:none}
+  /* Joystick deplacement : repere visuel en bas a droite, zone tactile 40% x 20%. */
+  #stickZone::after{content:'DÉPLACER';position:absolute;right:calc(20% - 37px);bottom:calc(10% - 37px);
+    width:74px;height:74px;border-radius:50%;box-sizing:border-box;pointer-events:none;
+    display:grid;place-items:center;font:700 10px/1 system-ui,sans-serif;letter-spacing:.4px;
+    color:rgba(255,255,255,.75);background:rgba(20,40,57,.18);border:1px solid rgba(255,255,255,.25);
+    box-shadow:inset 0 0 15px rgba(255,255,255,.06)}
+
   #stickBase{position:absolute;width:132px;height:132px;border-radius:50%;border:2px solid rgba(255,255,255,.3);
     background:rgba(6,16,26,.36);left:0;top:0;margin:-66px 0 0 -66px;opacity:0;transition:opacity .14s;pointer-events:none}
   #stickKnob{position:absolute;width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.5);
@@ -5106,88 +5113,82 @@ function bindInput() {
     if (p && nowMs() - p.t < 320) bbClickAd(e.clientX, e.clientY);
   });
   ui.stickZone.addEventListener('pointercancel', e => bbTapStarts.delete(e.pointerId));
-  // MAF-WORLD-CAMERA-FLUID-V1 : deux pouces independants.
-  // Moitie gauche = joystick de marche. Moitie droite = regard libre, 1re / 3e personne.
+  // MAF-WORLD-JOYSTICK-DROITE-V1 : seule la zone inferieure droite (40% x 20%)
+  // controle la marche. Tout le reste de l'ecran oriente le regard.
   const ZOOM_MAX = 120;
   const sz = ui.stickZone;
-  const rightTouches = new Map();
-  let rightPinch = null;
+  const lookTouches = new Map();
+  let lookPinch = null;
+  const inMoveZone = e => e.clientX >= innerWidth * 0.60 && e.clientY >= innerHeight * 0.80;
   const stickOff = () => {
     touchState.stickId = null; touchState.vx = 0; touchState.vy = 0; touchState.btn.run = false;
     ui.stickBase.style.opacity = '0'; ui.stickKnob.style.opacity = '0';
   };
-  const rightSnapshot = () => {
-    const values = Array.from(rightTouches.values());
+  const lookSnapshot = () => {
+    const values = Array.from(lookTouches.values());
     if (values.length < 2) return null;
-    const a=values[0], b=values[1];
-    return {distance:Math.max(20,Math.hypot(a.x-b.x,a.y-b.y)),
-      cy:(a.y+b.y)/2};
+    const a = values[0], b = values[1];
+    return { distance: Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)), cy: (a.y + b.y) / 2 };
   };
   sz.addEventListener('pointerdown', e => {
     audioResume();
     if (e.pointerType === 'mouse') return;
-    const right = player.seating || e.clientX >= innerWidth * 0.48;
     try { sz.setPointerCapture(e.pointerId); } catch (err) {}
-    if (right) {
-      rightTouches.set(e.pointerId,{x:e.clientX,y:e.clientY});
-      if (touchState.lookId === null) touchState.lookId=e.pointerId;
-      touchState.lx=e.clientX;touchState.ly=e.clientY;
-      rightPinch=rightSnapshot();
-    } else if (touchState.stickId === null) {
-      touchState.stickId=e.pointerId;
-      touchState.ox=e.clientX;touchState.oy=e.clientY;
-      ui.stickBase.style.transform='translate('+e.clientX+'px,'+e.clientY+'px)';
-      ui.stickKnob.style.transform='translate('+e.clientX+'px,'+e.clientY+'px)';
-      ui.stickBase.style.opacity='1';ui.stickKnob.style.opacity='1';
+    // Si le joystick est deja pris, le deuxieme doigt peut tourner la camera.
+    if (!player.seating && touchState.stickId === null && inMoveZone(e)) {
+      touchState.stickId = e.pointerId;
+      touchState.ox = e.clientX; touchState.oy = e.clientY;
+      ui.stickBase.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px)';
+      ui.stickKnob.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px)';
+      ui.stickBase.style.opacity = '1'; ui.stickKnob.style.opacity = '1';
+    } else {
+      lookTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touchState.lookId === null) touchState.lookId = e.pointerId;
+      lookPinch = lookSnapshot();
     }
     e.preventDefault();
   });
   sz.addEventListener('pointermove', e => {
     if (e.pointerType === 'mouse') return;
-    if (rightTouches.has(e.pointerId)) {
-      const prev=rightTouches.get(e.pointerId);
-      const dx=e.clientX-prev.x, dy=e.clientY-prev.y;
-      prev.x=e.clientX;prev.y=e.clientY;
-      if (rightTouches.size >= 2 && !player.seating) {
-        const snapshot=rightSnapshot();
-        if (rightPinch && snapshot) {
-          const ratio=rightPinch.distance/snapshot.distance;
-          cam.zoomU=clamp(cam.zoomU*ratio,1,ZOOM_MAX);
-          cam.recenter=0;
-          lookAccum.y+=(snapshot.cy-rightPinch.cy)*TOUCH_SENS*.7;
+    if (e.pointerId === touchState.stickId) {
+      let dx = e.clientX - touchState.ox, dy = e.clientY - touchState.oy;
+      const d = Math.hypot(dx, dy), max = 60;
+      if (d > max) { dx = dx / d * max; dy = dy / d * max; }
+      const live = d >= 6;
+      touchState.vx = live ? dx / max : 0;
+      touchState.vy = live ? dy / max : 0;
+      touchState.btn.run = d >= max * .9;
+      ui.stickKnob.style.transform = 'translate(' + (touchState.ox + dx) + 'px,' + (touchState.oy + dy) + 'px)';
+    } else if (lookTouches.has(e.pointerId)) {
+      const prev = lookTouches.get(e.pointerId);
+      const dx = e.clientX - prev.x, dy = e.clientY - prev.y;
+      prev.x = e.clientX; prev.y = e.clientY;
+      if (lookTouches.size >= 2 && !player.seating) {
+        const snapshot = lookSnapshot();
+        if (lookPinch && snapshot) {
+          cam.zoomU = clamp(cam.zoomU * (lookPinch.distance / snapshot.distance), 1, ZOOM_MAX);
+          cam.recenter = 0;
+          lookAccum.y += (snapshot.cy - lookPinch.cy) * TOUCH_SENS * .7;
         }
-        rightPinch=snapshot;
+        lookPinch = snapshot;
       } else {
-        lookAccum.x+=dx*TOUCH_SENS;
-        lookAccum.y+=dy*TOUCH_SENS;
-        rightPinch=null;
+        lookAccum.x += dx * TOUCH_SENS;
+        lookAccum.y += dy * TOUCH_SENS;
+        lookPinch = null;
       }
-    } else if (e.pointerId === touchState.stickId) {
-      let dx=e.clientX-touchState.ox, dy=e.clientY-touchState.oy;
-      const d=Math.hypot(dx,dy), max=60;
-      if(d>max){dx=dx/d*max;dy=dy/d*max;}
-      const live=d>=6;
-      touchState.vx=live?dx/max:0;
-      touchState.vy=live?dy/max:0;
-      touchState.btn.run=d>=max*.9;
-      ui.stickKnob.style.transform='translate('+(touchState.ox+dx)+'px,'+(touchState.oy+dy)+'px)';
     }
     e.preventDefault();
   });
-  const endPtr=e=>{
+  const endPtr = e => {
     if (e.pointerId === touchState.stickId) stickOff();
-    rightTouches.delete(e.pointerId);
-    if (e.pointerId === touchState.lookId) touchState.lookId=rightTouches.size ? rightTouches.keys().next().value : null;
-    rightPinch=rightSnapshot();
-    if (touchState.lookId !== null) {
-      const p=rightTouches.get(touchState.lookId);
-      if(p){touchState.lx=p.x;touchState.ly=p.y;}
-    }
+    lookTouches.delete(e.pointerId);
+    if (e.pointerId === touchState.lookId) touchState.lookId = lookTouches.size ? lookTouches.keys().next().value : null;
+    lookPinch = lookSnapshot();
   };
-  sz.addEventListener('pointerup',endPtr);
-  sz.addEventListener('pointercancel',endPtr);
-  sz.addEventListener('lostpointercapture',endPtr);
-  addEventListener('blur',()=>{stickOff();rightTouches.clear();rightPinch=null;touchState.lookId=null;});
+  sz.addEventListener('pointerup', endPtr);
+  sz.addEventListener('pointercancel', endPtr);
+  sz.addEventListener('lostpointercapture', endPtr);
+  addEventListener('blur', () => { stickOff(); lookTouches.clear(); lookPinch = null; touchState.lookId = null; });
   ui.gl.addEventListener('wheel', e => {
     e.preventDefault();
     if (player.seating) return;
