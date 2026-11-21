@@ -10,8 +10,8 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    "three": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/examples/jsm/"
   }
 }
 </script>
@@ -579,7 +579,7 @@
   };
   var wd = setInterval(function () {
     if (window.__ccBooted || shown) { clearInterval(wd); return; }
-    if (Date.now() - t0 > 12000) { clearInterval(wd); window.__ccShowBootError(); }
+    if (Date.now() - t0 > 30000) { clearInterval(wd); window.__ccShowBootError(); }
   }, 500);
 })();
 </script>
