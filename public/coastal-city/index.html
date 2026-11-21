@@ -1200,7 +1200,8 @@ const VILLA2 = { x: VILLA.x - 44.6, y: VILLA.y, z: VILLA.z - 2.4, scale: 0.8, hx
 const WORLD_MAP_PLACES = [
   { label: 'Tir au but', icon: '⚽', x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale },
   { label: 'Ludo', icon: '🎲', x: VILLA2.x, z: VILLA2.z - 12.7 * VILLA2.scale },
-  { label: 'Fastfood', icon: '🍔', x: FASTFOOD.x, z: FASTFOOD.z + 8 * FASTFOOD.scale }
+  { label: 'Fastfood', icon: '🍔', x: FASTFOOD.x, z: FASTFOOD.z + 8 * FASTFOOD.scale },
+  { label: 'Place des défis', icon: '⚔️', x: 0, z: 31 }
 ];
 const villa2 = { model: null, loading: false, retryAt: 0 };
 /* MAF-VILLA2-V2 (etape 2/3) : etage + escaliers. Les hauteurs de sol viennent de villa-modern-floors.json
@@ -2134,9 +2135,9 @@ function generateWorld(seed) {
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     const dc = Math.hypot(bi - (BLOCKS_X - 1) / 2, bj - (BLOCKS_Z - 1) / 2);
     const r = R();
-    let type = 'build';
-    if (r < 0.10 && dc > 1.1) type = 'park';
-    else if (r < 0.19 && dc > 1.4) type = 'lot';
+    let type = (bi === 3 && bj === 3) ? 'challenge-plaza' : 'build';
+    if (type !== 'challenge-plaza' && r < 0.10 && dc > 1.1) type = 'park';
+    else if (type !== 'challenge-plaza' && r < 0.19 && dc > 1.4) type = 'lot';
 
     // sidewalk delivery points around the block ring
     for (let k = 0; k < 6; k++) {
@@ -2151,6 +2152,11 @@ function generateWorld(seed) {
       world.doors.push({ x: dx2, z: dz2 });
     }
 
+    if (type === 'challenge-plaza') {
+      // Bloc central reserve : pas d'immeubles, ni voitures stationnees.
+      world.parks.push({ x: cx, z: cz });
+      continue;
+    }
     if (type === 'park') {
       parkPatches.push([x0 - 1, z0 - 1, x1 + 1, z1 + 1]);
       world.parks.push({ x: cx, z: cz });
@@ -4089,6 +4095,157 @@ function ludoHubDraw(now){
   else h.button.onclick=()=>{audioResume();ludoHubOpen();};
 }
 
+
+/* MAF-PLACE-DEFIS-V1 : point de rassemblement central, sans dependance externe.
+   Salons : memes routes /api/rooms et memes traitements d'invitation que les villas. */
+const PLAZA = { x: 0, z: 31, group: null, sign: null, button: null, panel: null,
+  open: false, busy: false, mode: 'lobby', rooms: [], lastPoll: 0, seq: 0 };
+function plazaInit() {
+  if (PLAZA.group) return;
+  const g = new THREE.Group(); g.name = 'maf-place-defis';
+  const y = CURB_H + 0.03;
+  const floor = new THREE.Mesh(new THREE.CylinderGeometry(15, 15, 0.08, 48),
+    new THREE.MeshLambertMaterial({color:0x223956}));
+  floor.position.set(PLAZA.x,y,PLAZA.z); floor.receiveShadow = true;g.add(floor);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(11.4,0.18,8,64),
+    new THREE.MeshBasicMaterial({color:0x6fefff}));
+  ring.rotation.x = Math.PI/2;ring.position.set(PLAZA.x,y+0.1,PLAZA.z);g.add(ring);
+  const inner = new THREE.Mesh(new THREE.TorusGeometry(6.3,0.13,6,48),
+    new THREE.MeshBasicMaterial({color:0xdd9cff}));
+  inner.rotation.x=Math.PI/2;inner.position.set(PLAZA.x,y+0.12,PLAZA.z);g.add(inner);
+  const sign = new THREE.Sprite(new THREE.SpriteMaterial({
+    map:ludoHubTexture('PLACE DES DÉFIS','⚽ Tir au but  •  🎲 Ludo','⚔️'),
+    transparent:true,depthWrite:false,fog:false,toneMapped:false
+  }));
+  sign.position.set(PLAZA.x,y+8,PLAZA.z);sign.scale.set(14,5.25,1);
+  sign.renderOrder=12;g.add(sign);PLAZA.sign=sign;
+  for (const dx of [-7,7]) {
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,7,8),
+      new THREE.MeshBasicMaterial({color:0x64ebfa,transparent:true,opacity:.4,depthWrite:false}));
+    beam.position.set(PLAZA.x+dx,y+3.5,PLAZA.z);g.add(beam);
+  }
+  PLAZA.group=g;scene.add(g);
+  const style=document.createElement('style');style.textContent=
+    '#mafPlazaButton{position:absolute;left:50%;bottom:calc(190px + env(safe-area-inset-bottom));'+
+    'transform:translateX(-50%);z-index:24;padding:12px 16px;border-radius:22px;'+
+    'border:1px solid #81f5fa;background:rgba(7,25,43,.92);color:#fff;font:700 14px system-ui;'+
+    'cursor:pointer;box-shadow:0 0 22px #4ae9fd77;pointer-events:auto}'+
+    '#mafPlazaButton[hidden],#mafPlazaPanel[hidden]{display:none!important}'+
+    '#mafPlazaPanel{position:fixed;z-index:35;left:50%;top:50%;transform:translate(-50%,-50%);'+
+    'width:min(94vw,490px);max-height:82vh;overflow:auto;box-sizing:border-box;padding:18px;'+
+    'border:1px solid #84edfa;border-radius:20px;background:#0a2030f5;color:white;'+
+    'box-shadow:0 12px 60px #0009;font:14px system-ui;pointer-events:auto}'+
+    '#mafPlazaPanel h2{margin:0 0 7px;font-size:21px}'+
+    '#mafPlazaPanel p{color:#d3e6ef}'+
+    '#mafPlazaPanel button{margin:4px;padding:10px 12px;border-radius:12px;'+
+    'border:1px solid #75e8fa;background:#17445b;color:#fff;cursor:pointer}'+
+    '#mafPlazaPanel button:disabled{opacity:.5;cursor:wait}'+
+    '#mafPlazaPanel .plaza-room{padding:10px;border:1px solid #365c72;border-radius:12px;margin:8px 0}'+
+    '#mafPlazaPanel input,#mafPlazaPanel select{max-width:100%;padding:9px;margin:6px 0;'+
+    'background:#102c40;color:white;border:1px solid #5db1c8;border-radius:9px}';
+  document.head.appendChild(style);
+  PLAZA.button=hubEl('button','', '⚔️ Place des défis');
+  PLAZA.button.id='mafPlazaButton';PLAZA.button.type='button';PLAZA.button.hidden=true;
+  document.getElementById('hud').appendChild(PLAZA.button);
+  PLAZA.button.onclick=()=>{audioResume();plazaOpen();};
+  PLAZA.panel=hubEl('section');PLAZA.panel.id='mafPlazaPanel';PLAZA.panel.hidden=true;
+  PLAZA.panel.setAttribute('role','dialog');PLAZA.panel.setAttribute('aria-label','Place des défis');
+  document.body.appendChild(PLAZA.panel);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&PLAZA.open)plazaClose();});
+}
+function plazaNear() {
+  return player.mode==='walk'&&!player.seating&&!menuOpen()&&
+    !ui.worldMapDialog.open&&!ui.worldStatusDialog.open&&
+    Math.hypot(player.x-PLAZA.x,player.z-PLAZA.z)<17;
+}
+function plazaClose() {
+  PLAZA.open=false;PLAZA.panel.hidden=true;PLAZA.seq++;
+}
+function plazaOpen() {
+  if (!plazaNear()) return;
+  PLAZA.open=true;PLAZA.panel.hidden=false;
+  try{if(document.pointerLockElement)document.exitPointerLock();}catch(e){}
+  plazaRender('lobby');
+}
+function plazaMessage(msg, bad=false) {
+  const el=PLAZA.panel.querySelector('.plaza-message');
+  if(el){el.textContent=msg;el.style.color=bad?'#ff9f9f':'#ffe09a';}
+}
+function plazaRender(mode) {
+  const p=PLAZA; p.mode=mode;const seq=++p.seq;
+  p.panel.textContent='';
+  p.panel.appendChild(hubEl('h2','', '⚔️ Place centrale des défis'));
+  p.panel.appendChild(hubBtn('✕ Fermer','',plazaClose));
+  p.panel.appendChild(hubEl('p','','Rencontre les joueurs et entre dans les salons existants.'));
+  const nav=hubEl('div');
+  nav.appendChild(hubBtn('Salons ouverts','',()=>plazaRender('lobby')));
+  nav.appendChild(hubBtn('Créer un salon','',()=>plazaRender('create')));
+  p.panel.appendChild(nav);
+  const body=hubEl('div','plaza-content');p.panel.appendChild(body);
+  p.panel.appendChild(hubEl('p','plaza-message',''));
+  if(mode==='create') {
+    const game=hubEl('select');
+    for(const [value,name] of [['ludo','🎲 Ludo'],['penalty','⚽ Tir au but']]){
+      const option=document.createElement('option');option.value=value;option.textContent=name;game.appendChild(option);
+    }
+    body.appendChild(hubEl('p','','Choisis le jeu, puis la mise (100 à 1 000 000 F CFA).'));
+    body.appendChild(game);
+    const stake=hubEl('input');stake.type='number';stake.min='100';stake.max='1000000';stake.step='1';stake.value='500';
+    const shots=hubEl('select');
+    for(const n of [3,5,10]){const option=document.createElement('option');option.value=String(n);option.textContent=n+' tirs';shots.appendChild(option);}
+    const shotLabel=hubEl('label','','Nombre de tirs : ');shotLabel.appendChild(shots);
+    const toggle=()=>{shotLabel.hidden=game.value!=='penalty';};game.onchange=toggle;toggle();
+    body.appendChild(stake);body.appendChild(shotLabel);
+    for(const input of [game,stake,shots])for(const ev of ['keydown','keyup'])input.addEventListener(ev,e=>e.stopPropagation());
+    body.appendChild(hubBtn('➕ Créer mon salon','',async b=>{
+      const amount=Number(stake.value);
+      if(!Number.isSafeInteger(amount)||amount<100||amount>1000000){plazaMessage('Mise invalide.',true);return;}
+      if(p.busy)return;p.busy=true;b.disabled=true;
+      try{const data={game:game.value,stake:amount};if(game.value==='penalty')data.shots=Number(shots.value);
+        const res=await hubApi('','POST',data);
+        plazaRender('lobby');plazaMessage('Salon créé'+(res.room?.code?' · Code : '+res.room.code:'')+'.');
+      }catch(e){plazaMessage(e.message||'Création impossible.',true);}finally{p.busy=false;b.disabled=false;}
+    }));
+  } else {
+    body.appendChild(hubEl('p','','Recherche des salons en cours…'));
+    void plazaLoadRooms(seq);
+  }
+}
+async function plazaLoadRooms(seq) {
+  let rooms;
+  try{rooms=((await hubApi('')).rooms||[]).filter(r=>r.game==='ludo'||r.game==='penalty');}
+  catch(e){if(PLAZA.open&&PLAZA.seq===seq)plazaMessage(e.message,true);return;}
+  if(!PLAZA.open||PLAZA.seq!==seq||PLAZA.mode!=='lobby')return;
+  const body=PLAZA.panel.querySelector('.plaza-content');body.textContent='';
+  body.appendChild(hubEl('p','',rooms.length+' salon(s) · Tournois à venir'));
+  if(!rooms.length)body.appendChild(hubEl('p','','Aucun salon pour le moment. Crée le premier défi !'));
+  for(const r of rooms){
+    const row=hubEl('div','plaza-room');
+    row.appendChild(hubEl('strong','',(r.game==='ludo'?'🎲 Ludo':'⚽ Tir au but')+' · '+(r.host?.pseudo||'Joueur')));
+    row.appendChild(hubEl('div','',hubMoney(r.stake)+(r.game==='penalty'?' · '+r.shots+' tirs':'')));
+    if(r.is_host)row.appendChild(hubEl('small','','Ton salon'));
+    else if(r.is_guest)row.appendChild(hubEl('small','','Demande envoyée'));
+    else if(r.status==='open'&&!r.host_busy)row.appendChild(hubBtn('Rejoindre','',async b=>{
+      if(PLAZA.busy)return;PLAZA.busy=true;b.disabled=true;
+      try{await hubApi('/'+r.id+'/join','POST');plazaMessage('Demande envoyée. En attente d’acceptation.');
+      }catch(e){plazaMessage(e.message||'Demande impossible.',true);}finally{PLAZA.busy=false;b.disabled=false;}
+    }));
+    else row.appendChild(hubEl('small','','Indisponible'));
+    body.appendChild(row);
+  }
+}
+function plazaDraw(now) {
+  if(!PLAZA.group)return;
+  const d=Math.hypot(player.x-PLAZA.x,player.z-PLAZA.z);
+  PLAZA.group.visible=d<280;
+  if(PLAZA.group.visible)PLAZA.sign.position.y=CURB_H+8+Math.sin(now/950)*.14;
+  if(PLAZA.open&&(!plazaNear()||d>22))plazaClose();
+  PLAZA.button.hidden=!plazaNear()||PLAZA.open;
+  if(PLAZA.open&&PLAZA.mode==='lobby'&&now-PLAZA.lastPoll>7000){
+    PLAZA.lastPoll=now;void plazaLoadRooms(PLAZA.seq);
+  }
+}
+
 function canEatAtFastFood() {
   const lx = (player.x - FASTFOOD.x) / FASTFOOD.scale;
   const lz = (player.z - FASTFOOD.z) / FASTFOOD.scale;
@@ -4728,7 +4885,7 @@ function bindInput() {
     if (e.pointerType === 'mouse') {
       if (pointerLocked && e.button === 0) {
         const target = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-        if (target?.matches('.world-status-bubble, .world-seat-button, #worldStandButton, #worldEatButton, #worldHubButton, #worldHubPanel button, #worldLudoHubButton, #worldLudoHubPanel button, #worldLudoHubAlerts button')) { target.click(); return; }
+        if (target?.matches('.world-status-bubble, .world-seat-button, #worldStandButton, #worldEatButton, #worldHubButton, #worldHubPanel button, #worldLudoHubButton, #worldLudoHubPanel button, #worldLudoHubAlerts button, #mafPlazaButton, #mafPlazaPanel button')) { target.click(); return; }
       }
       dragging = true; dragX = e.clientX; dragY = e.clientY;
       if (!pointerLocked && !IS_TOUCH) { try { ui.gl.requestPointerLock(); } catch (err) {} }
@@ -6005,7 +6162,7 @@ function frame() {
   updateObjArrow();
 
   renderer.render(scene, camera);
-  try { drawVillaSeatButtons(); drawFoodButton(); hubDraw(now); ludoHubDraw(now); mpDrawStatuses(); } catch (e) { dbgFail('hud', e); }
+  try { drawVillaSeatButtons(); drawFoodButton(); hubDraw(now); ludoHubDraw(now); plazaDraw(now); mpDrawStatuses(); } catch (e) { dbgFail('hud', e); }
 }
 
 function governQuality() {
@@ -6115,6 +6272,7 @@ function main() {
   scene.add(buildMarker());
   try { buildPenaltyHub(); } catch (e) { dbgFail('hub', e); }
   try { ludoHubInit(); } catch (e) { dbgFail('ludo-hub', e); }
+  try { plazaInit(); } catch (e) { dbgFail('plaza', e); }
   try { hubAlertsStart(); } catch (e) { dbgFail('hub3', e); }
 
   _mark('actors');
