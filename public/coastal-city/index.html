@@ -5842,63 +5842,79 @@ function bbScaleScreen(model, factor) {
   if (factor <= 1.0001) return;
   model.traverse(o => {
     if (!o.isMesh || !o.userData.bbScreen) return;
-    const geo = o.geometry.clone(); // ne jamais deformer le modele partage
+    const geo = o.geometry.clone(); // chaque panneau conserve sa geometrie independante
     geo.computeBoundingBox();
     const original = geo.boundingBox.clone();
-    const bottom = original.min.y;
-    geo.scale(1, factor, 1);
-    geo.translate(0, bottom * (1 - factor), 0);
+    const dx = original.max.x - original.min.x;
+    const dy = original.max.y - original.min.y;
+    const dz = original.max.z - original.min.z;
+    // IMPORTANT : le panneau lowpoly utilise local Z comme hauteur (son noeud
+    // GLB est pivote de 90 degres). Agrandir Y n'affectait PAS sa surface image.
+    // Le grand panneau, l'abribus et la colonne utilisent Y normalement.
+    const verticalZ = dy < .01 && dz > .01;
+    const axis = verticalZ ? 'z' : 'y';
+    const bottom = verticalZ ? original.min.z : original.min.y;
+    if (verticalZ) {
+      geo.scale(1, 1, factor);
+      geo.translate(0, 0, bottom * (1 - factor));
+    } else {
+      geo.scale(1, factor, 1);
+      geo.translate(0, bottom * (1 - factor), 0);
+    }
     geo.computeBoundingBox();
     o.geometry = geo;
     o.userData.bbHeightGeometry = true;
     const b = geo.boundingBox;
-    const width = b.max.x - b.min.x, tall = b.max.y - b.min.y, depth = b.max.z - b.min.z;
+    const width = b.max.x - b.min.x;
+    const tall = b.max[axis] - b.min[axis];
+    const depth = verticalZ ? b.max.y - b.min.y : b.max.z - b.min.z;
     if (tall < .01) return;
-    // Colonne d'affiches circulaire : un cerclage haut suit la nouvelle hauteur.
-    if (width > .02 && depth > .02 && Math.min(width, depth) > .22 * Math.max(width, depth)) {
+    const mat = new THREE.MeshStandardMaterial({ color: 0x74899e, metalness: .7, roughness: .3 });
+    const thick = Math.max(.022, Math.min(.09, Math.min(Math.max(width, depth), tall) * .025));
+    const cx = (b.min.x + b.max.x) / 2;
+    const cz = (b.min.z + b.max.z) / 2;
+    const cy = (b.min.y + b.max.y) / 2;
+    const addFrame = (w, h, d, x, y, z) => {
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      frame.position.set(x, y, z);
+      frame.userData.bbAddedFrame = true;
+      o.add(frame);
+    };
+    if (verticalZ) {
+      // Lowpoly : la surface est dans le plan X/Z local, lui-meme pivote
+      // vers le plan horizontal/vertical du monde par le GLB.
+      // Les montants et traverses s'allongent selon Z, comme l'image.
+      const surfaceY = cy;
+      addFrame(width + 2 * thick, thick, thick, cx, surfaceY, b.max.z + thick / 2);
+      addFrame(width + 2 * thick, thick, thick, cx, surfaceY, b.min.z - thick / 2);
+      addFrame(thick, thick, tall + 2 * thick, b.min.x - thick / 2, surfaceY, cz);
+      addFrame(thick, thick, tall + 2 * thick, b.max.x + thick / 2, surfaceY, cz);
+    } else if (width > .02 && depth > .02 && Math.min(width, depth) > .22 * Math.max(width, depth)) {
+      // Colonne cylindrique : l'anneau superieur suit le nouveau sommet.
+      mat.dispose();
       const radius = Math.max(width, depth) / 2 + .025;
-      const rimGeo = new THREE.TorusGeometry(radius, Math.max(.018, radius * .035), 7, 44);
-      const rim = new THREE.Mesh(rimGeo, new THREE.MeshStandardMaterial({color:0x829cb6,metalness:.75,roughness:.28}));
+      const rim = new THREE.Mesh(
+        new THREE.TorusGeometry(radius, Math.max(.018, radius * .035), 7, 44),
+        new THREE.MeshStandardMaterial({ color: 0x829cb6, metalness: .75, roughness: .28 })
+      );
       rim.rotation.x = Math.PI / 2;
-      rim.position.set((b.min.x+b.max.x)/2,b.max.y,(b.min.z+b.max.z)/2);
+      rim.position.set(cx, b.max.y, cz);
       rim.userData.bbAddedFrame = true;
       o.add(rim);
-      return;
-    }
-    // Ecrans plans : quatre baguettes 3D entourent toute la NOUVELLE surface.
-    const thick = Math.max(.025, Math.min(.085, Math.min(Math.max(width,depth),tall) * .025));
-    const mat = new THREE.MeshStandardMaterial({color:0x62788e,metalness:.78,roughness:.28});
-    const centerY = (b.min.y+b.max.y)/2;
-    const frontZ = b.max.z + .014;
-    const frontX = b.max.x + .014;
-    const planeXY = width >= depth;
-    const screenWidth = planeXY ? width : depth;
-    const cx=(b.min.x+b.max.x)/2, cz=(b.min.z+b.max.z)/2;
-    if (screenWidth < .01) { mat.dispose(); return; }
-    const framePart = (w,h,px,py,pz) => {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,thick),mat);
-      mesh.position.set(px,py,pz);
-      mesh.userData.bbAddedFrame = true;
-      o.add(mesh);
-    };
-    if (planeXY) {
-      framePart(screenWidth+thick*2,thick,cx,b.max.y+thick/2,frontZ);
-      framePart(screenWidth+thick*2,thick,cx,b.min.y-thick/2,frontZ);
-      framePart(thick,tall+thick*2,b.min.x-thick/2,centerY,frontZ);
-      framePart(thick,tall+thick*2,b.max.x+thick/2,centerY,frontZ);
+    } else if (width >= depth) {
+      // Surfaces classiques dans le plan X/Y.
+      const frontZ = b.max.z + .014;
+      addFrame(width + 2 * thick, thick, thick, cx, b.max.y + thick / 2, frontZ);
+      addFrame(width + 2 * thick, thick, thick, cx, b.min.y - thick / 2, frontZ);
+      addFrame(thick, tall + 2 * thick, thick, b.min.x - thick / 2, cy, frontZ);
+      addFrame(thick, tall + 2 * thick, thick, b.max.x + thick / 2, cy, frontZ);
     } else {
-      // Ecran dont la normale locale est X : barres orientees dans le plan Z/Y.
-      const frameX = frontX;
-      const rail = (w,h,zz,yy) => {
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(thick,h,w),mat);
-        mesh.position.set(frameX,yy,zz);
-        mesh.userData.bbAddedFrame=true;
-        o.add(mesh);
-      };
-      rail(screenWidth+thick*2,thick,cz,b.max.y+thick/2);
-      rail(screenWidth+thick*2,thick,cz,b.min.y-thick/2);
-      rail(thick,tall+thick*2,b.min.z-thick/2,centerY);
-      rail(thick,tall+thick*2,b.max.z+thick/2,centerY);
+      // Surfaces dont la normale locale est X : hauteur Y, largeur Z.
+      const frontX = b.max.x + .014;
+      addFrame(thick, thick, depth + 2 * thick, frontX, b.max.y + thick / 2, cz);
+      addFrame(thick, thick, depth + 2 * thick, frontX, b.min.y - thick / 2, cz);
+      addFrame(thick, tall + 2 * thick, thick, frontX, cy, b.min.z - thick / 2);
+      addFrame(thick, tall + 2 * thick, thick, frontX, cy, b.max.z + thick / 2);
     }
   });
 }
