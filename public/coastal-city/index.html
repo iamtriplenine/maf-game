@@ -5068,6 +5068,9 @@ function bindInput() {
   addEventListener('blur', () => keys.clear());
 
   // desktop look: pointer lock when you click the world, drag-look otherwise
+  ui.gl.addEventListener('click', e => {
+    if (e.button === 0 && !pointerLocked && e.target === ui.gl) bbClickAd(e.clientX, e.clientY);
+  });
   ui.gl.addEventListener('pointerdown', e => {
     audioResume();
     if (e.pointerType === 'mouse') {
@@ -5089,6 +5092,20 @@ function bindInput() {
   });
   document.addEventListener('pointerlockchange', () => { pointerLocked = document.pointerLockElement === ui.gl; });
 
+  // Les taps courts sur la surface du panneau sont distincts des gestes camera/joystick.
+  const bbTapStarts = new Map();
+  ui.stickZone.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'mouse') bbTapStarts.set(e.pointerId, { x: e.clientX, y: e.clientY, t: nowMs() });
+  });
+  ui.stickZone.addEventListener('pointermove', e => {
+    const p = bbTapStarts.get(e.pointerId);
+    if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 9) bbTapStarts.delete(e.pointerId);
+  });
+  ui.stickZone.addEventListener('pointerup', e => {
+    const p = bbTapStarts.get(e.pointerId); bbTapStarts.delete(e.pointerId);
+    if (p && nowMs() - p.t < 320) bbClickAd(e.clientX, e.clientY);
+  });
+  ui.stickZone.addEventListener('pointercancel', e => bbTapStarts.delete(e.pointerId));
   // MAF-WORLD-CAMERA-FLUID-V1 : deux pouces independants.
   // Moitie gauche = joystick de marche. Moitie droite = regard libre, 1re / 3e personne.
   const ZOOM_MAX = 120;
@@ -5912,7 +5929,7 @@ function bbCreateBoard(r) {
   const canvas = document.createElement('canvas');
   canvas.width = T.px; canvas.height = T.py;
   const b = { id: r.id || null, type: r.type, x: r.x, z: r.z, rot: r.rot, mine: !!r.mine, canEdit: r.canEdit !== false, canDelete: !!r.canDelete,
-    version: r.version == null ? -1 : r.version, model, canvas, ctx: canvas.getContext('2d'), tex: null, mats: [] };
+    version: r.version == null ? -1 : r.version, link: r.link || "", hasImage: !!r.has_image, model, canvas, ctx: canvas.getContext('2d'), tex: null, mats: [] };
   b.tex = new THREE.CanvasTexture(canvas);
   b.tex.flipY = false; b.tex.colorSpace = THREE.SRGBColorSpace; b.tex.anisotropy = 4;
   if (T.screen.kind === 'wrap') b.tex.wrapS = THREE.RepeatWrapping;
@@ -5956,7 +5973,7 @@ async function bbPushImage(b) {
   let q = 0.88, url = b.canvas.toDataURL('image/jpeg', q);
   while (url.length > 1500000 && q > 0.45) { q -= 0.12; url = b.canvas.toDataURL('image/jpeg', q); }
   const r = await bbApi('/' + b.id + '/image', 'PUT', { image: url });
-  b.version = r.version;
+  b.version = r.version; b.hasImage = true;
 }
 
 async function bbSync() {
@@ -5974,7 +5991,7 @@ async function bbSync() {
         if (!BB_TYPES[r.type] || !(await bbLoadTemplate(r.type))) continue;
         b = bbCreateBoard(r); b.version = -1;
       }
-      b.mine = r.mine; b.canEdit = r.canEdit !== false; b.canDelete = !!r.canDelete;
+      b.mine = r.mine; b.canEdit = r.canEdit !== false; b.canDelete = !!r.canDelete; b.link = r.link || ""; b.hasImage = !!r.has_image;
       if (r.version !== b.version) {
         b.version = r.version;
         if (r.has_image) await bbLoadRemoteImage(b, r.version).catch(() => {}); else bbPaintDefault(b);
@@ -6161,6 +6178,7 @@ function bbOpenDialog() {
     + 'Image idéale : <b>' + T.px + ' × ' + T.py + ' px</b>, JPG ou PNG. Une autre taille sera recadrée au centre pour remplir l’écran.'
     + (T.screen.kind === 'wrap' ? '<br>La même affiche est répétée sur les 3 faces de la colonne.' : '');
   U.msg.textContent = '';
+  U.editing = b; U.linkField.value = b.link || '';
   U.dlg.querySelector('[data-a="del"]').hidden = !b.canDelete;
   U.dlg.hidden = false;
 }
@@ -6179,6 +6197,9 @@ function bbBuildUI() {
     + '.bb-card h3{margin:0 0 8px;font-size:17px}.bb-card p{margin:6px 0;color:#c9c4dd}'
     + '.bb-card button{width:100%;margin-top:10px;padding:.8em;border-radius:10px;border:1px solid rgba(198,138,255,.5);background:#1a1433;color:#fff;font:600 14px system-ui,sans-serif}'
     + '.bb-card button.main{background:#7b3fe4;border-color:#7b3fe4}.bb-card button.del{border-color:rgba(255,100,100,.6);color:#ffb4b4}'
+    + '.bb-card .bb-link-input{width:100%;box-sizing:border-box;padding:11px;margin:6px 0 3px;background:rgba(255,255,255,.08);border:1px solid rgba(198,138,255,.5);border-radius:10px;color:#fff;font:14px system-ui,sans-serif}'
+    + '.bb-card .bb-link-label{display:block;margin-top:10px;font:600 13px system-ui,sans-serif;color:#ddd5ff}'
+    + '.bb-view-img{display:block;width:100%;max-height:40vh;object-fit:contain;border-radius:10px;margin:10px 0}'
     + '.bb-btn[hidden],.bb-ov[hidden],.bb-panel[hidden],.bb-dlg[hidden],.bb-card button[hidden]{display:none}';
   document.head.appendChild(st);
   const U = bb.ui = { busy: false };
@@ -6187,34 +6208,67 @@ function bbBuildUI() {
   U.btn.textContent = '🖼️ Mettre ma pub sur le panneau';
   U.btn.onclick = bbOpenDialog;
   document.body.appendChild(U.btn);
+  U.viewBtn = document.createElement('button');
+  U.viewBtn.type = 'button'; U.viewBtn.className = 'bb-btn'; U.viewBtn.hidden = true;
+  U.viewBtn.textContent = '🔗 Voir la publicité';
+  U.viewBtn.style.bottom = 'calc(204px + env(safe-area-inset-bottom,0px))';
+  U.viewBtn.onclick = () => bbOpenAd(bb.cur);
+  document.body.appendChild(U.viewBtn);
   U.input = document.createElement('input');
   U.input.type = 'file'; U.input.accept = 'image/*'; U.input.hidden = true;
   U.input.onchange = async () => {
     const f = U.input.files && U.input.files[0]; U.input.value = '';
-    const b = bb.cur;
+    const b = U.editing;
     if (!f || !b) return;
+    const pendingLink = U.linkField.value.trim();
+    if (pendingLink && !bbSafeLink(pendingLink)) { U.msg.textContent = 'Lien invalide : commence par https:// ou http://'; return; }
     U.msg.textContent = 'Chargement…';
     if (!(await bbSetPhoto(b, f))) { U.msg.textContent = 'Image illisible, essaie un JPG ou PNG.'; return; }
     if (b.id && MP.ready) {
       try { await bbPushImage(b); } catch (e) { U.msg.textContent = 'Affichée ici mais non enregistrée : ' + (e.message || 'erreur'); return; }
     }
+    if (b.id && MP.ready) {
+      try { const saved = await bbApi('/' + b.id + '/link', 'PUT', { link: pendingLink }); b.link = saved.link; }
+      catch (error) { U.msg.textContent = 'Photo enregistrée mais lien non enregistré : ' + error.message; return; }
+    }
     U.dlg.hidden = true;
-    toast('Pub enregistrée sur le panneau ✔');
+    toast('Pub et lien enregistrés ✔');
   };
   document.body.appendChild(U.input);
   U.dlg = document.createElement('div');
   U.dlg.className = 'bb-dlg'; U.dlg.hidden = true;
   U.dlg.innerHTML = '<div class="bb-card"><h3>Panneau publicitaire</h3><p data-i></p>'
+    + '<label class="bb-link-label" for="bbExternalLink">Lien externe (facultatif)</label>'
+    + '<input id="bbExternalLink" class="bb-link-input" type="url" inputmode="url" maxlength="2048" placeholder="https://exemple.com" autocomplete="url">'
+    + '<button type="button" data-a="save-link">💾 Enregistrer le lien</button>'
     + '<button type="button" class="main" data-a="pick">Choisir une photo</button>'
     + '<button type="button" data-a="reset">Remettre « À LOUER »</button>'
     + '<button type="button" class="del" data-a="del">Retirer ce panneau</button>'
     + '<button type="button" data-a="close">Fermer</button><p data-m></p></div>';
   U.info = U.dlg.querySelector('[data-i]'); U.msg = U.dlg.querySelector('[data-m]');
+  U.linkField = U.dlg.querySelector('#bbExternalLink');
+  U.viewDlg = document.createElement('div'); U.viewDlg.className = 'bb-dlg'; U.viewDlg.hidden = true;
+  U.viewDlg.innerHTML = '<div class="bb-card"><h3>Publicité</h3><img class="bb-view-img" alt="Image de la publicité">'
+    + '<button type="button" class="main" data-open>🔗 Ouvrir le lien externe</button>'
+    + '<button type="button" data-close>Fermer</button></div>';
+  U.viewDlg.querySelector('[data-close]').onclick = () => { U.viewDlg.hidden = true; };
+  U.viewDlg.querySelector('[data-open]').onclick = () => {
+    const link = U.viewing?.link; if (!bbSafeLink(link)) return;
+    window.open(link, '_blank', 'noopener,noreferrer');
+  };
+  document.body.appendChild(U.viewDlg);
   U.dlg.addEventListener('click', async e => {
-    const a = e.target.dataset && e.target.dataset.a, b = bb.cur;
+    const a = e.target.dataset && e.target.dataset.a, b = U.editing;
     if (a === 'pick') U.input.click();
+    else if (a === 'save-link' && b) {
+      const link = U.linkField.value.trim();
+      if (link && !bbSafeLink(link)) { U.msg.textContent = 'Lien invalide : commence par https:// ou http://'; return; }
+      U.msg.textContent = 'Enregistrement du lien…';
+      try { const r = await bbApi('/' + b.id + '/link', 'PUT', { link }); b.link = r.link; U.msg.textContent = 'Lien enregistré ✔'; }
+      catch (er) { U.msg.textContent = er.message || 'Lien non enregistré.'; }
+    }
     else if (a === 'reset' && b) {
-      bbPaintDefault(b);
+      bbPaintDefault(b); b.link = ''; b.hasImage = false;
       if (b.id && MP.ready) { try { const r = await bbApi('/' + b.id + '/image', 'PUT', { image: null }); b.version = r.version; } catch (er) { U.msg.textContent = er.message; return; } }
       U.dlg.hidden = true;
     }
@@ -6258,6 +6312,36 @@ function bbBuildUI() {
   if (menuBtn) menuBtn.onclick = bbStartPlace;
 }
 
+function bbSafeLink(input) {
+  if (typeof input !== 'string' || input.length > 2048) return false;
+  try { const url = new URL(input); return (url.protocol === 'https:' || url.protocol === 'http:') && !!url.hostname && !url.username && !url.password; }
+  catch (e) { return false; }
+}
+function bbOpenAd(b) {
+  if (!b || !b.hasImage || !bbSafeLink(b.link) || !bb.ui || !bb.ui.viewDlg) return;
+  bb.ui.viewing = b;
+  bb.ui.viewDlg.querySelector('img').src = b.canvas.toDataURL('image/jpeg', .8);
+  bb.ui.viewDlg.hidden = false;
+  if (pointerLocked) { try { document.exitPointerLock(); } catch (e) {} }
+}
+// Clic souris sur la vraie surface 3D du panneau (pas sur les autres parties du modele).
+function bbClickAd(clientX, clientY) {
+  if (!bb.ui || !bb.ui.viewDlg.hidden || bb.place || !MP.ready) return false;
+  const screens = [];
+  for (const b of bb.boards) {
+    if (!b.id || !b.hasImage || !bbSafeLink(b.link) || Math.hypot(playerX()-b.x, playerZ()-b.z)>28) continue;
+    b.model.traverse(o => { if (o.isMesh && o.userData.bbScreen) { o.userData.bbId = b.id; screens.push(o); } });
+  }
+  if (!screens.length) return false;
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(clientX/innerWidth*2-1, 1-clientY/innerHeight*2), camera);
+  const hit = ray.intersectObjects(screens, false)[0];
+  if (!hit || hit.distance > 32) return false;
+  const b = bb.boards.find(x => x.id === hit.object.userData.bbId);
+  if (!b) return false;
+  bbOpenAd(b); return true;
+}
+
 function bbTick(now) {
   if (!bb.ui) bbBuildUI();
   if (MP.ready && !bb.syncing && now >= bb.nextSync) bbSync();
@@ -6271,6 +6355,8 @@ function bbTick(now) {
   }
   if (best) bb.cur = best;
   bb.ui.btn.hidden = !(best && !bb.place && player.mode === 'walk' && !menuOpen() && bb.ui.dlg.hidden);
+  bb.ui.viewBtn.hidden = !(best && best.hasImage && bbSafeLink(best.link) && !bb.place && player.mode === 'walk' && !menuOpen() && bb.ui.dlg.hidden);
+
 }
 /* ==================== FIN PANNEAUX PUBLICITAIRES ==================== */
 
