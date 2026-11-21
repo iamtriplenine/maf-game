@@ -6636,7 +6636,9 @@ function mpSyncParkedCars(list, selfId) {
 }
 function mpParkedTick() {
   let visible=0;
-  for (const car of mpParkedCars.values()) {
+  for (const [id, car] of mpParkedCars) {
+    // Ne pas afficher deux fois le meme vehicule si le joueur est present.
+    if (MP.remotes.get(id)?.parked) { if (car.mesh) car.mesh.visible=false; continue; }
     const close=Math.hypot(car.x-camera.position.x,car.z-camera.position.z)<170 && visible<MP_PARKED_MAX_3D;
     if (!close) { if (car.mesh) car.mesh.visible=false; continue; }
     visible++;
@@ -6703,8 +6705,12 @@ function mpSend() {
     seat: seating?.seat.id ?? null,
     // La voiture reste synchronisee apres la sortie, meme si son proprietaire marche.
     car: veh ? {type:veh.t.id,x:veh.x,z:veh.z,yaw:veh.yaw} :
-      (MP.lastOwnedCar ? {type:MP.lastOwnedCar.t.id,x:MP.lastOwnedCar.x,
-        z:MP.lastOwnedCar.z,yaw:MP.lastOwnedCar.yaw} : null),
+      ((MP.lastOwnedCar || MP.porsche) ? {
+        type:(MP.lastOwnedCar || MP.porsche).t.id,
+        x:(MP.lastOwnedCar || MP.porsche).x,
+        z:(MP.lastOwnedCar || MP.porsche).z,
+        yaw:(MP.lastOwnedCar || MP.porsche).yaw
+      } : null),
     carId: MP.carId || null,
     wantParked: nowMs()>= (MP.parkedNextAt||0),
     voice: true, voiceClient: worldChat.client, voiceDone
@@ -7547,6 +7553,10 @@ function mpApply(list) {
     const status = typeof p.status === 'string' ? p.status : '';
     if (r.statusBubble.textContent !== status) r.statusBubble.textContent = status;
     r.tx = p.x; r.tz = p.z; r.tyaw = p.yaw; r.mv = !!p.mv; r.veh = !!p.veh; r.carId = typeof p.carId === 'string' ? p.carId : null;
+    // Voiture garee : position distincte du joueur, conservee quand il s'eloigne.
+    const parked = p.parked;
+    r.parked = !r.veh && parked && Number.isFinite(parked.x) && Number.isFinite(parked.z) &&
+      Number.isFinite(parked.yaw) ? parked : null;
     r.seat = !r.veh && Number.isInteger(p.seat) ? VILLA_SEATS[p.seat - 1] || null : null;
   }
   for (const id of Array.from(MP.remotes.keys())) {
@@ -7770,21 +7780,31 @@ function mmPorscheIcon(ctx, toS, W, H, round) {
 
 // Un autre joueur au volant : on voit une Porsche (le modele partage, jamais recharge).
 function mpRemoteCar(r, gy) {
-  const near = Math.hypot(r.x - camera.position.x, r.z - camera.position.z) < 120;
-  if (!(r.veh && near)) { if (r.car) r.car.visible = false; return; }
-  const wantId = CAR_DEFS[r.carId] ? r.carId : CAR_DEFAULT;
+  // Au volant : suivre le joueur. A pied : garder sa voiture a sa place de parking.
+  const parked = !r.veh ? r.parked : null;
+  const x = parked ? parked.x : r.x;
+  const z = parked ? parked.z : r.z;
+  const yaw = parked ? parked.yaw : r.yaw;
+  const near = Math.hypot(x - camera.position.x, z - camera.position.z) < 120;
+  if ((!r.veh && !parked) || !near) { if (r.car) r.car.visible = false; return; }
+  const wantId = CAR_DEFS[parked?.carId] ? parked.carId :
+    (CAR_DEFS[r.carId] ? r.carId : CAR_DEFAULT);
   if (r.car && r.carModelId !== wantId) { scene.remove(r.car); r.car = null; }
   if (!r.car && !r.carLoading && nowMs() >= (r.carRetry || 0)) {
     r.carLoading = true;
-    mpCarModel(wantId).then(w => {
+    const requestedId = wantId;
+    mpCarModel(requestedId).then(w => {
       r.carLoading = false;
       if (!w || MP.remotes.get(r.id) !== r) { if (!w) r.carRetry = nowMs() + 5000; return; }
-      r.carModelId = wantId;
+      // Si le joueur change de voiture pendant le chargement, ne pas afficher l'ancien modele.
+      const current = r.veh ? r.carId : r.parked?.carId;
+      if (current !== requestedId) return;
+      r.carModelId = requestedId;
       r.car = w.clone(true);
       scene.add(r.car);
     });
   }
-  if (r.car) { r.car.visible = true; r.car.position.set(r.x, gy, r.z); r.car.rotation.y = r.yaw; }
+  if (r.car) { r.car.visible = true; r.car.position.set(x, groundY(x, z), z); r.car.rotation.y = yaw; }
 }
 
 /* MAF-WORLD-CARS-V3 (serveur) + MAF-WORLD-CARS-V2 : changement de voiture (Porsche / Lamborghini) + patrouilles de police.
