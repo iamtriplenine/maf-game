@@ -19,6 +19,8 @@ function mountGlass() {
     ['#btnWorldTools', { ...transparent, radius: 999, surface: 'convex_circle' }],
     ['#btnMenu', { ...transparent, radius: 999, surface: 'convex_circle' }],
     ['#btnWorldChat', { ...transparent, radius: 999, surface: 'convex_circle' }],
+    ['#worldComms', { ...transparent, radius: 16, bezelWidth: 12, interactive: false }],
+    ['#btnWorldMic', { ...transparent, radius: 13, bezelWidth: 10, pressScale: 1.03, stretch: 0.00005, maxStretch: 0.045 }],
   ];
   for (const [selector, config] of options) {
     const element = document.querySelector(selector);
