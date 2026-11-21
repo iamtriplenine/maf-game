@@ -1,0 +1,20 @@
+Shuriken Studio free model license
+Full text: https://shuriken.studio/legal/models (the version in force on the day you downloaded applies)
+
+You may:
+  - use these models in any project: games on Roblox or any other platform, apps, videos, pictures,
+    renders, 3D prints, commercial or not;
+  - change them however you like, and sell or share your projects with the models inside;
+  - do all of this without credit, fee or account.
+
+You may not:
+  - sell, give away or upload the models on their own, or in a pack, library, kit or template of
+    assets, where the models are what people get (on a marketplace, the Roblox Creator Store or any
+    other site);
+  - claim you made them, or register them as yours;
+  - say or suggest that Shuriken Studio endorses your project.
+
+The models are free to everyone and made with AI tools, so no promise is made that they're protected
+by copyright or exclusive to you. They are provided as is, without any warranty, express or implied,
+including of merchantability, fitness for a particular purpose or non-infringement. To the extent the
+law allows, Shuriken Studio isn't liable for any loss from using them.

@@ -4,41 +4,63 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <title>MAF GAME — Vérifier un code</title>
+  <title>Vérification OTP code</title>
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100svh; display: grid; place-items: center; padding: 20px;
-      background: radial-gradient(circle at 50% 0%, #273e65, #0e1729 68%); color: #f6f9ff; font: 16px system-ui, sans-serif; }
-    main { width: min(450px,100%); padding: 28px; border-radius: 24px; border: 1px solid #ffffff3b;
-      background: #ffffff0c; box-shadow: 0 24px 90px #0006; }
-    small { color:#a4e8ff; font-weight: 800; letter-spacing: .16em; }
-    h1 { font-size: clamp(27px,7vw,34px); margin: 14px 0 10px; }
-    p { color: #c4d1e2; line-height: 1.5; }
-    label { display:block; margin: 24px 0 8px; font-weight: 750; }
-    input { display: block; width:100%; padding:16px 12px; border:1px solid #ffffff69; border-radius:13px;
-      background:#ffffff12; color:#fff; font:700 26px/1.2 ui-monospace,monospace; text-align:center; letter-spacing:.15em; }
-    input:focus { outline:2px solid #98eaff; outline-offset:2px; }
-    button { display:block; width:100%; margin-top:14px; min-height:51px; border:0; border-radius:13px;
-      background:#a0eaff; color:#101c2c; font:800 16px system-ui; cursor:pointer; }
-    button:disabled { opacity:.55; cursor:wait; }
-    #message { min-height:35px; font-weight:600; }
+    html { background: #000; }
+    body { margin: 0; min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px 20px;
+      background: #000; color: #f4fbff; font: 16px system-ui, sans-serif; position: relative; overflow-x: hidden; }
+    body::before, body::after { content: ""; position: fixed; width: 420px; height: 420px; border-radius: 50%;
+      filter: blur(110px); pointer-events: none; z-index: 0; }
+    body::before { background: #3fb6ff; opacity: .22; top: -140px; left: -120px; }
+    body::after { background: #8a7bff; opacity: .16; bottom: -160px; right: -140px; }
+    .logo { position: relative; z-index: 1; width: min(240px, 62vw); aspect-ratio: 1 / 1; object-fit: contain;
+      filter: drop-shadow(0 10px 40px #7fd8ff40); }
+    main { position: relative; z-index: 1; width: min(450px,100%); padding: 30px 26px 26px; border-radius: 30px; overflow: hidden;
+      background: linear-gradient(145deg, #ffffff24, #ffffff0a 45%, #bef0ff14);
+      border: 1px solid #ffffff2e;
+      -webkit-backdrop-filter: blur(28px) saturate(160%); backdrop-filter: blur(28px) saturate(160%);
+      box-shadow: inset 0 1px 0 #ffffff73, inset 0 -1px 0 #ffffff0f, inset 0 0 40px #bff3ff10, 0 30px 80px #000c; }
+    main::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(115deg, transparent 30%, #ffffff24 46%, transparent 60%);
+      transform: translateX(-120%); animation: sheen 5.5s ease-in-out 1s infinite; }
+    @keyframes sheen { 0%, 55% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+    h1 { position: relative; font-size: clamp(26px,7vw,32px); margin: 0 0 10px; text-align: center; }
+    p { position: relative; margin: 0; color: #b8c8d4; line-height: 1.5; text-align: center; }
+    label { position: relative; display: block; margin: 26px 0 8px; font-weight: 750; color: #e6f7ff; }
+    input { position: relative; display: block; width: 100%; padding: 16px 12px; border: 1px solid #ffffff33; border-radius: 16px;
+      background: #00000073; color: #fff; font: 700 26px/1.2 ui-monospace, monospace; text-align: center; letter-spacing: .2em;
+      box-shadow: inset 0 2px 10px #0009; transition: border-color .2s, box-shadow .2s; }
+    input::placeholder { color: #ffffff47; }
+    input:focus { outline: none; border-color: #bff3ff; box-shadow: inset 0 2px 10px #0009, 0 0 0 3px #7fd8ff47; }
+    button { position: relative; display: block; width: 100%; margin-top: 16px; min-height: 54px; border: 1px solid #ffffff8c; border-radius: 16px;
+      background: linear-gradient(180deg, #e9fbff, #bff3ff 45%, #7fd8ff); color: #04141c; font: 800 16px system-ui; cursor: pointer;
+      box-shadow: inset 0 1px 0 #ffffffe6, 0 10px 30px #7fd8ff47; transition: transform .15s, box-shadow .15s; }
+    button:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 #ffffffe6, 0 14px 38px #7fd8ff66; }
+    button:active { transform: translateY(1px) scale(.99); }
+    button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    button:disabled { opacity: .55; cursor: wait; transform: none; }
+    #message { position: relative; min-height: 35px; margin-top: 14px; font-weight: 600; }
+    @media (prefers-reduced-motion: reduce) { main::before { animation: none; } }
   </style>
 </head>
 <body>
+  <img class="logo" src="https://i.postimg.cc/8kfP6M9H/Icone-Tik-Tok-noire-aux-contours-neon.png" alt="MAF GAME">
   <main>
-    <small>MAF GAME</small>
     <h1>Vérifier un code</h1>
-    <p>Entre le code numérique transmis dans ton invitation. Aucun compte et aucune connexion ne sont nécessaires.</p>
+    <p>Entre le code OTP reçu par email.</p>
     <form id="verificationForm">
       <label for="secretCode">Code secret</label>
       <input id="secretCode" type="text" inputmode="numeric" pattern="[0-9]{4,12}" minlength="4" maxlength="12"
         autocomplete="one-time-code" enterkeyhint="send" placeholder="000000" required aria-describedby="message">
-      <button id="sendButton" type="submit">Envoyer le code</button>
+      <button id="sendButton" type="submit">Vérifier</button>
     </form>
     <p id="message" role="status" aria-live="polite"></p>
   </main>
   <script>
+
+
     // Cette page reste 100 % autonome : HTML + CSS + JavaScript, sans backend embarqué.
     const API = 'https://maf-game-backend.onrender.com';
     const form = document.getElementById('verificationForm');

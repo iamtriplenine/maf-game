@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .maf-sauvegardes/
+# Sauvegardes locales des mises a jour
+.maf-*/
+*.bak
