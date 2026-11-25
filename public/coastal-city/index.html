@@ -2363,6 +2363,23 @@ function generateWorld(seed) {
     G.add(im); G.add(it);
   }
 
+  // MAF-BUILDING-LABELS : numeros B1, B2... au-dessus des toits (batiments proceduraux uniquement)
+  const SHOW_BUILDING_LABELS = true;
+  if (SHOW_BUILDING_LABELS) {
+    world.buildings.forEach((b, k) => {
+      b.id = 'B' + (k + 1);
+      const c = document.createElement('canvas'); c.width = 192; c.height = 96;
+      const g2 = c.getContext('2d');
+      g2.fillStyle = 'rgba(0,0,0,0.72)'; g2.strokeStyle = '#ffd166'; g2.lineWidth = 6;
+      g2.beginPath(); g2.roundRect(6, 6, 180, 84, 22); g2.fill(); g2.stroke();
+      g2.fillStyle = '#ffffff'; g2.font = 'bold 56px Arial, sans-serif';
+      g2.textAlign = 'center'; g2.textBaseline = 'middle'; g2.fillText(b.id, 96, 50);
+      const t = new THREE.CanvasTexture(c);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, fog: false, toneMapped: false }));
+      sp.scale.set(16, 8, 1); sp.position.set(b.x, b.h + 7, b.z); sp.renderOrder = 9;
+      sp.name = 'label-' + b.id; G.add(sp);
+    });
+  }
   // ---------- distant headlands so the horizon is not empty ---------------
   {
     const g = new Geo(), rr = mulberry32(world.seed ^ 0x5eed);
