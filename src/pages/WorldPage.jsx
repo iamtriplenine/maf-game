@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { IconGlobe } from "../components/Icons";
-import { currentSession, currentToken } from "../api/accounts";
+import { currentSession, currentToken, refreshSession } from "../api/accounts";
 import { API_URL } from "../api/config";
 import { SKINS } from "../characters/skins";
 import "../styles/nav.css";
@@ -86,6 +86,10 @@ export default function WorldPage() {
     // Le bouton de sortie est maintenant dans le menu du jeu (iframe) : il nous previent par message.
     const onMsg = (e) => {
       if (e.origin !== window.location.origin || !e.data) return;
+      if (e.data.mafWorldWalletChanged) {
+        void refreshSession(); // le solde reel a change dans le World : on met a jour le profil
+        return;
+      }
       if (e.data.mafWorldExit) {
         leave();
         return;

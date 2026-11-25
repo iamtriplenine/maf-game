@@ -127,6 +127,52 @@
   #worldStatusFeedback:empty{display:none}
   #worldStatusDialog button:disabled{opacity:.55;cursor:wait}
 
+  /* MAF-WORLD-WALLET : portefeuille World (Liquid Glass Apple) */
+  #stCash{pointer-events:auto;cursor:pointer;touch-action:manipulation;border-radius:8px;outline-offset:3px}
+  #stCash:focus-visible{outline:3px solid #ffd166}
+  #stCash .lbl{color:#ffe29a;opacity:.9}
+  #worldWalletDialog{width:min(92vw,380px);max-height:92vh;max-height:92dvh;padding:0;border:0;background:transparent;color:#f5f9ff;overflow:visible}
+  #worldWalletDialog::backdrop{background:rgba(4,10,18,.30)}
+  #wwCard{position:relative;padding:16px 16px 14px;border:1px solid rgba(255,255,255,.30);border-radius:22px;
+    background:rgba(10,18,32,.62);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);
+    font:600 13px/1.35 'Segoe UI',system-ui,sans-serif;text-shadow:0 1px 3px rgba(0,0,0,.8);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+  #wwCard.lga-glass{background-color:transparent !important}
+  .ww-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .ww-head h2{margin:0;font:700 17px/1.2 'Segoe UI',system-ui,sans-serif}
+  #wwClose{width:34px;height:34px;padding:0;border:1px solid rgba(255,255,255,.3);border-radius:50%;background:transparent;color:#fff;
+    font:400 20px/1 system-ui,sans-serif;cursor:pointer;touch-action:manipulation}
+  #wwClose.lga-glass{background-color:transparent !important}
+  .ww-bal{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  .ww-bal>div{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border-radius:12px;background:rgba(6,12,22,.28);border:1px solid rgba(255,255,255,.14)}
+  .ww-lbl{font:600 10px/1 'Segoe UI',system-ui,sans-serif;letter-spacing:1px;text-transform:uppercase;opacity:.75}
+  .ww-bal b{font:700 17px/1.1 'Segoe UI',system-ui,sans-serif}
+  #wwWorld{color:#8ce99a}
+  .ww-rate{margin:0 0 10px;padding:6px 10px;border-radius:10px;background:rgba(255,209,102,.16);border:1px solid rgba(255,209,102,.4);color:#ffe9b0;text-align:center;font:700 13px/1.3 'Segoe UI',system-ui,sans-serif}
+  #wwTabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;margin-bottom:10px;border-radius:14px;border:1px solid rgba(255,255,255,.22)}
+  #wwTabs button{padding:8px 6px;border:0;border-radius:10px;background:transparent;color:#eaf2fb;font:700 13px/1 'Segoe UI',system-ui,sans-serif;cursor:pointer;touch-action:manipulation}
+  #wwTabs button[aria-selected="true"]{background:rgba(255,209,102,.30);color:#fff}
+  .ww-field{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+  #wwAmount{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid rgba(255,255,255,.26);border-radius:12px;
+    background:rgba(4,12,22,.38);color:#fff;font:700 18px/1.2 system-ui,sans-serif;touch-action:manipulation;user-select:text;-webkit-user-select:text}
+  #wwAmount:focus-visible{outline:2px solid #ffd166;outline-offset:1px}
+  .ww-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .ww-chips button{flex:1 1 auto;min-width:54px;padding:7px 8px;border:1px solid rgba(255,255,255,.26);border-radius:999px;background:rgba(6,12,22,.28);
+    color:#fff;font:700 12px/1 'Segoe UI',system-ui,sans-serif;cursor:pointer;touch-action:manipulation}
+  .ww-result{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:10px 12px;margin-bottom:6px;border-radius:12px;
+    background:rgba(140,233,154,.13);border:1px solid rgba(140,233,154,.38)}
+  #wwResult{font:800 20px/1.1 'Segoe UI',system-ui,sans-serif;color:#b9f5c4}
+  .ww-small{margin:2px 0 8px;font:500 11px/1.35 'Segoe UI',system-ui,sans-serif;opacity:.85;min-height:0}
+  .ww-small:empty{display:none}
+  #wwMsg{margin:4px 0 8px;font:700 12px/1.35 'Segoe UI',system-ui,sans-serif}
+  #wwMsg:empty{display:none}
+  #wwMsg[data-kind="err"]{color:#ffadad}
+  #wwMsg[data-kind="ok"]{color:#b9f5c4}
+  #wwSubmit{width:100%;padding:13px 10px;border:1px solid rgba(255,255,255,.4);border-radius:999px;background:rgba(255,209,102,.34);color:#fff;
+    font:800 15px/1 'Segoe UI',system-ui,sans-serif;cursor:pointer;touch-action:manipulation}
+  #wwSubmit.lga-glass{background-color:transparent !important}
+  #wwSubmit:disabled{opacity:.5;cursor:default}
+  #wwCard button:focus-visible{outline:3px solid #ffd166;outline-offset:2px}
   #missionCard{left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%);padding:9px 15px;
     text-align:center;min-width:216px;max-width:min(94vw,430px)}
   #missionCard .mtitle{font:700 13px/1.3 'Segoe UI',system-ui;letter-spacing:.4px}
@@ -360,7 +406,7 @@
   <div id="worldStatusLayer"></div>
   <div id="statusBar" class="panel">
     <div class="st"><span class="lbl">Time</span><span class="val" id="clockVal">08:00</span></div>
-    <div class="st"><span class="lbl">Cash</span><span class="val" id="cashVal">$0</span></div>
+    <div class="st" id="stCash" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="worldWalletDialog" title="Portefeuille World"><span class="lbl">Cash +</span><span class="val" id="cashVal">$0</span></div>
     <div class="st"><span class="lbl">⚡ Énergie</span><span class="val" id="energyVal">40%</span></div>
     <div class="st"><span class="lbl" id="spdUnit">km/h</span><span class="val" id="spdVal">0</span></div>
     <span id="gearVal" class="hidden"></span>
@@ -479,6 +525,33 @@
     <button id="worldMapOverview" class="world-map-button" type="button" aria-label="Vue générale, nord en haut" title="Vue générale">◎</button>
     <button id="worldMapClear" class="world-map-button" type="button" disabled>Effacer le trajet</button>
   </footer>
+</dialog>
+
+<dialog id="worldWalletDialog" aria-labelledby="wwTitle">
+  <div id="wwCard">
+    <div class="ww-head">
+      <h2 id="wwTitle">Portefeuille World</h2>
+      <button id="wwClose" type="button" aria-label="Fermer">×</button>
+    </div>
+    <div class="ww-bal">
+      <div><span class="ww-lbl">Solde réel</span><b id="wwReal">…</b></div>
+      <div><span class="ww-lbl">Solde World</span><b id="wwWorld">…</b></div>
+    </div>
+    <p class="ww-rate" id="wwRate"></p>
+    <div id="wwTabs" role="tablist" aria-label="Type d’opération">
+      <button id="wwTabIn" type="button" role="tab" aria-selected="true">Recharger</button>
+      <button id="wwTabOut" type="button" role="tab" aria-selected="false">Retirer</button>
+    </div>
+    <label class="ww-field" for="wwAmount"><span id="wwLabel">Montant à recharger (F)</span>
+      <input id="wwAmount" type="text" inputmode="numeric" autocomplete="off" maxlength="9" placeholder="100">
+    </label>
+    <div class="ww-chips" id="wwChips"></div>
+    <div class="ww-result"><span class="ww-lbl" id="wwResultLbl">Tu reçois en jeu</span><b id="wwResult">–</b></div>
+    <p class="ww-small" id="wwDetail"></p>
+    <p id="wwMsg" role="status" aria-live="polite"></p>
+    <button id="wwSubmit" type="button" disabled>Recharger</button>
+    <p class="ww-small" id="wwMission" style="margin-top:8px"></p>
+  </div>
 </dialog>
 
 <dialog id="worldStatusDialog" class="sheet" aria-labelledby="worldStatusTitle">
@@ -4626,9 +4699,173 @@ function setPrompt(t) {
   ui.prompt.innerHTML = t;
   ui.prompt.classList.remove('hidden');
 }
+// MAF-WORLD-WALLET : portefeuille World lie au solde reel. Le taux et tous les calculs viennent du serveur ;
+// ici on ne fait qu'afficher et envoyer la demande (le serveur recalcule et verifie tout).
+const WW = { rate: 650, feeIn: 0, feeOut: 0, minIn: 100, minOut: 1, maxF: 1000000, balance: 0, world: null,
+  tab: 'in', all: false, busy: false, loading: false, loaded: false, nextTry: 0, key: null, glass: false };
+const wwEl = id => document.getElementById(id);
+const wwFmt = n => Math.trunc(Number(n) || 0).toLocaleString('fr-FR');
+function wwOnline() { try { return Boolean(MP.api && MP.token); } catch (e) { return false; } }
+function wwDisplayCash() {
+  try {
+    if (!WW.loaded && !WW.loading && Date.now() >= WW.nextTry && wwOnline()) wwLoad();
+    return WW.world === null ? mission.cash : WW.world;
+  } catch (e) { return 0; }
+}
+function wwUuid() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16)); b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+  const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+  return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+}
+async function wwCall(path, body) {
+  const r = await fetch(MP.api + '/api/world/wallet' + path, {
+    method: body ? 'POST' : 'GET', cache: 'no-store',
+    headers: Object.assign({ Authorization: 'Bearer ' + MP.token }, body ? { 'Content-Type': 'application/json' } : {}),
+    body: body ? JSON.stringify(body) : undefined });
+  let data = null; try { data = await r.json(); } catch (e) { /* reponse non JSON */ }
+  if (!r.ok) { const err = new Error((data && data.error) || ('Erreur ' + r.status)); err.status = r.status; throw err; }
+  return data;
+}
+function wwApply(d) {
+  WW.balance = Number(d.balance) || 0; WW.world = Number(d.world_cash) || 0;
+  if (d.rate) {
+    WW.rate = d.rate; WW.feeIn = d.fee_in_pct || 0; WW.feeOut = d.fee_out_pct || 0;
+    WW.minIn = d.min_in_f || 100; WW.minOut = d.min_out_f || 1; WW.maxF = d.max_f || 1000000;
+  }
+}
+async function wwLoad() {
+  if (WW.loading) return;
+  WW.loading = true;
+  try { wwApply(await wwCall('')); WW.loaded = true; }
+  catch (e) { WW.nextTry = Date.now() + 15000; }
+  finally { WW.loading = false; wwRender(); }
+}
+function wwParse() { const raw = wwEl('wwAmount').value.replace(/\D/g, ''); return raw ? Number(raw) : 0; }
+function wwSetMsg(kind, text) { const m = wwEl('wwMsg'); m.dataset.kind = kind || ''; m.textContent = text || ''; }
+function wwPlan() {
+  // Meme calcul que le serveur, uniquement pour l'affichage.
+  const f = wwParse();
+  if (WW.tab === 'in') {
+    const gain = Math.floor(f * WW.rate * (100 - WW.feeIn) / 100);
+    let err = '';
+    if (f > 0 && f < WW.minIn) err = 'Minimum ' + wwFmt(WW.minIn) + ' F';
+    else if (f > WW.maxF) err = 'Maximum ' + wwFmt(WW.maxF) + ' F';
+    else if (f > WW.balance) err = 'Solde réel insuffisant';
+    return { f, ok: f >= WW.minIn && !err, err, out: '$' + wwFmt(gain), detail: f > 0 ? wwFmt(f) + ' F seront retirés de ton solde réel.' : '' };
+  }
+  const cost = f * WW.rate, credit = Math.floor(f * (100 - WW.feeOut) / 100);
+  let err = '';
+  if (f > 0 && f < WW.minOut) err = 'Minimum ' + wwFmt(WW.minOut) + ' F';
+  else if (f > WW.maxF) err = 'Maximum ' + wwFmt(WW.maxF) + ' F';
+  else if (cost > (WW.world || 0)) err = 'Solde World insuffisant';
+  return { f, ok: f >= WW.minOut && !err, err, out: wwFmt(credit) + ' F', detail: f > 0 ? '$' + wwFmt(cost) + ' seront retirés de ton solde World.' : '' };
+}
+function wwRender() {
+  const d = wwEl('worldWalletDialog'); if (!d) return;
+  wwEl('wwReal').textContent = WW.loaded ? wwFmt(WW.balance) + ' F' : '…';
+  wwEl('wwWorld').textContent = WW.loaded ? '$' + wwFmt(WW.world) : '…';
+  const net = Math.floor(100 * WW.rate * (100 - WW.feeIn) / 100);
+  wwEl('wwRate').textContent = '100 F = $' + wwFmt(net);
+  const isIn = WW.tab === 'in';
+  wwEl('wwTabIn').setAttribute('aria-selected', String(isIn));
+  wwEl('wwTabOut').setAttribute('aria-selected', String(!isIn));
+  wwEl('wwLabel').textContent = isIn ? 'Montant à recharger (F)' : 'Montant à récupérer (F)';
+  wwEl('wwResultLbl').textContent = isIn ? 'Tu reçois en jeu' : 'Tu reçois sur ton solde réel';
+  wwEl('wwSubmit').textContent = isIn ? 'Recharger' : 'Retirer vers mon solde réel';
+  const p = wwPlan();
+  wwEl('wwResult').textContent = p.f > 0 ? p.out : '–';
+  const fee = isIn ? WW.feeIn : WW.feeOut;
+  wwEl('wwDetail').textContent = (p.err || p.detail) + (fee > 0 && p.f > 0 ? ' Frais : ' + fee + ' %.' : '');
+  wwEl('wwMission').textContent = (typeof mission !== 'undefined' && mission.cash > 0)
+    ? 'Gains de missions : $' + wwFmt(mission.cash) + ' (pas encore convertibles).' : '';
+  const online = wwOnline();
+  if (!online) wwSetMsg('err', 'Connecte-toi à ton compte pour utiliser le portefeuille.');
+  wwEl('wwAmount').disabled = !online;
+  wwEl('wwSubmit').disabled = !(online && WW.loaded && p.ok && !WW.busy);
+}
+function wwChips() {
+  const box = wwEl('wwChips'); box.textContent = '';
+  const list = WW.tab === 'in' ? [100, 500, 1000, 5000] : [100, 500, 1000, 'all'];
+  for (const v of list) {
+    const b = document.createElement('button'); b.type = 'button';
+    b.textContent = v === 'all' ? 'Tout' : wwFmt(v);
+    b.onclick = () => {
+      WW.key = null; WW.all = v === 'all';
+      const f = v === 'all' ? Math.floor((WW.world || 0) / WW.rate) : v;
+      wwEl('wwAmount').value = f > 0 ? String(f) : '';
+      wwSetMsg('', ''); wwRender();
+    };
+    box.appendChild(b);
+  }
+}
+function wwTab(t) {
+  WW.tab = t; WW.all = false; WW.key = null; wwEl('wwAmount').value = '';
+  wwSetMsg('', ''); wwChips(); wwRender();
+}
+function wwGlass() {
+  if (WW.glass) return;
+  const LG = window.LiquidGlassApple; if (!LG) return;
+  WW.glass = true;
+  const base = { surface: 'convex_squircle', scaleRatio: 1, glassThickness: 30, refractiveIndex: 1.55, blur: 0, bezelWidth: 14,
+    specularOpacity: 0.30, specularSaturation: 3, tintColor: '#ffffff', tintOpacity: 0.03,
+    innerShadowColor: 'rgba(255,255,255,.23)', innerShadowBlur: 12, innerShadowSpread: -5, outerShadowBlur: 14,
+    fallbackBlur: 10, maxOffsetRatio: 2, interactive: false };
+  const jobs = [
+    ['wwCard', { radius: 22 }],
+    ['wwClose', { radius: 999, surface: 'convex_circle', bezelWidth: 9, interactive: true, pressScale: 1.06 }],
+    ['wwTabs', { radius: 14, bezelWidth: 8 }],
+    ['wwSubmit', { radius: 999, bezelWidth: 12, tintColor: '#ffd166', tintOpacity: 0.34, interactive: true, pressScale: 1.04 }],
+  ];
+  for (const [id, cfg] of jobs) {
+    const el = wwEl(id); if (!el) continue;
+    try { LG.apply(el, Object.assign({}, base, cfg)); } catch (e) { console.warn('MAF World wallet glass', id, e); }
+  }
+}
+function wwOpen() {
+  const d = wwEl('worldWalletDialog'); if (!d || d.open) return;
+  keys.clear();
+  if (pointerLocked) { try { document.exitPointerLock(); } catch (e) { /* pas grave */ } }
+  WW.key = null; WW.all = false; wwEl('wwAmount').value = ''; wwSetMsg('', '');
+  wwChips(); wwRender();
+  d.showModal();
+  wwGlass();
+  if (wwOnline()) wwLoad();
+}
+async function wwSubmit() {
+  if (WW.busy) return;
+  const p = wwPlan(); if (!p.ok || !WW.loaded) return;
+  if (!WW.key) WW.key = wwUuid();
+  WW.busy = true; wwSetMsg('', 'Traitement…'); wwRender();
+  try {
+    const d = await wwCall('/convert', { direction: WW.tab, f: p.f, all: WW.tab === 'out' && WW.all, request_key: WW.key });
+    WW.key = null; WW.all = false; wwApply(d);
+    wwEl('wwAmount').value = '';
+    wwSetMsg('ok', WW.tab === 'in'
+      ? '✔ ' + wwFmt(d.f) + ' F → $' + wwFmt(d.world) + ' ajoutés à ton solde World.'
+      : '✔ $' + wwFmt(d.world) + ' → ' + wwFmt(d.f) + ' F ajoutés à ton solde réel.');
+    try { parent.postMessage({ mafWorldWalletChanged: true }, location.origin); } catch (e) { /* hors cadre */ }
+  } catch (e) {
+    if (e.status) { WW.key = null; wwSetMsg('err', e.message); }
+    else { wwSetMsg('err', 'Connexion impossible. Vérifie ton solde avant de réessayer.'); WW.loaded = false; WW.nextTry = 0; }
+  } finally { WW.busy = false; if (!WW.loaded) wwLoad(); wwRender(); }
+}
+(function wwBind() {
+  const on = (id, ev, fn) => { const el = wwEl(id); if (el) el.addEventListener(ev, fn); };
+  on('stCash', 'click', wwOpen);
+  on('stCash', 'keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); wwOpen(); } });
+  on('wwClose', 'click', () => wwEl('worldWalletDialog').close());
+  on('worldWalletDialog', 'click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+  on('wwTabIn', 'click', () => wwTab('in'));
+  on('wwTabOut', 'click', () => wwTab('out'));
+  on('wwAmount', 'input', () => { WW.key = null; WW.all = false; wwSetMsg('', ''); wwRender(); });
+  on('wwAmount', 'keydown', e => { if (e.key === 'Enter') { e.preventDefault(); wwSubmit(); } });
+  on('wwSubmit', 'click', wwSubmit);
+})();
+
 function updateHUD() {
   ui.clockVal.textContent = fmtClock(env.tod);
-  ui.cashVal.textContent = '$' + mission.cash;
+  ui.cashVal.textContent = '$' + wwFmt(wwDisplayCash());
   const remaining = Math.max(0, energy.value - (Date.now() - energy.at) * (100 / 86400000));
   ui.energyVal.textContent = Math.floor(remaining + 0.0001) + '%';
   ui.energyVal.style.color = remaining <= 20 ? '#ff8787' : '#ffd166';
@@ -5147,7 +5384,7 @@ function bindInput() {
   if (IS_TOUCH) ui.touch.classList.remove('hidden');
 
   addEventListener('keydown', e => {
-    if (ui.worldStatusDialog.open || ui.worldMapDialog.open || e.target === ui.worldChatText || e.repeat) return;
+    if (document.getElementById('worldWalletDialog')?.open || ui.worldStatusDialog.open || ui.worldMapDialog.open || e.target === ui.worldChatText || e.repeat) return;
     const k = e.code;
     if (k === 'Space' && (e.target === ui.minimapWrap || e.target === ui.worldStandButton ||
         e.target.matches?.('.world-seat-button'))) return;
