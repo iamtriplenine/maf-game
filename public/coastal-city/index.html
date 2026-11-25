@@ -2031,6 +2031,43 @@ function updateStreetLighting(night, x, z) {
   }
 }
 
+// MAF-DECOR-VEHICLES : vehicules decoratifs (images Kenney, sans collision) poses dans les parkings
+const DECOR = { list: [], mats: null, tex: null, ready: false };
+const DECOR_DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+const DECOR_ROWS = 4; // 0 taxi, 1 police, 2 ambulance, 3 benne
+function decorLoad() {
+  if (DECOR.tex) return;
+  DECOR.tex = new THREE.TextureLoader().load('vehicles/decor.png', t => {
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    DECOR.mats = [];
+    for (let r = 0; r < DECOR_ROWS; r++) {
+      DECOR.mats[r] = [];
+      for (let c = 0; c < 8; c++) {
+        const tc = t.clone(); tc.needsUpdate = true;
+        tc.repeat.set(1 / 8, 1 / DECOR_ROWS); tc.offset.set(c / 8, 1 - (r + 1) / DECOR_ROWS);
+        DECOR.mats[r][c] = new THREE.SpriteMaterial({ map: tc, transparent: true, alphaTest: 0.05, depthWrite: true });
+      }
+    }
+    DECOR.ready = true;
+  });
+}
+function decorCarsTick() {
+  if (!DECOR.list.length) return;
+  if (!DECOR.tex) { decorLoad(); return; }
+  if (!DECOR.ready) return;
+  const e = camera.matrixWorld.elements;
+  let rx = e[0], rz = e[2]; const l = Math.hypot(rx, rz) || 1; rx /= l; rz /= l;
+  const cx = camera.position.x, cz = camera.position.z;
+  for (const c of DECOR.list) {
+    const near = Math.abs(c.x - cx) < 260 && Math.abs(c.z - cz) < 260;
+    if (c.sp.visible !== near) c.sp.visible = near;
+    if (!near) continue;
+    const sx = c.hx * rx + c.hz * rz, sy = c.hx * rz - c.hz * rx;
+    const idx = (((Math.round(Math.atan2(sx, sy) / (Math.PI / 4))) % 8) + 8) % 8;
+    if (idx !== c.idx) { c.idx = idx; c.sp.material = DECOR.mats[c.row][idx]; }
+  }
+}
+
 function generateWorld(seed) {
   world.seed = seed >>> 0;
   const R = mulberry32(world.seed);
@@ -2380,6 +2417,25 @@ function generateWorld(seed) {
       sp.name = 'label-' + b.id; G.add(sp);
     });
   }
+  // MAF-DECOR-VEHICLES : placement dans les parkings uniquement (jamais sur la route), sans collision
+  {
+    DECOR.list.length = 0;
+    const rd = mulberry32(world.seed ^ 0xca5);
+    for (const lp of lotPatches) {
+      const x0 = lp[0], z0 = lp[1], x1 = lp[2], z1 = lp[3];
+      for (let rr = 0; rr < 2; rr++) for (let k = 0; k < 6; k++) {
+        if (DECOR.list.length >= 40 || rd() < 0.5) continue;
+        const px = lerp(x0 + 3, x1 - 3, (k + 0.5) / 6), pz = rr ? z1 - 4.4 : z0 + 4.4;
+        const q = rd(), row = q < 0.5 ? 0 : q < 0.72 ? 1 : q < 0.86 ? 2 : 3;
+        const ry = rr ? 0 : Math.PI;
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true }));
+        sp.center.set(0.5, 0); sp.scale.set(6.1, 6.1, 1); sp.position.set(px, CURB_H + 0.03, pz);
+        sp.visible = false; sp.name = 'decor-vehicle'; G.add(sp);
+        DECOR.list.push({ sp: sp, x: px, z: pz, hx: Math.sin(ry), hz: Math.cos(ry), row: row, idx: -1 });
+      }
+    }
+  }
+
   // ---------- distant headlands so the horizon is not empty ---------------
   {
     const g = new Geo(), rr = mulberry32(world.seed ^ 0x5eed);
@@ -6530,6 +6586,7 @@ function bbTick(now) {
 
 
 function frame() {
+  decorCarsTick();
   requestAnimationFrame(frame);
   const now = nowMs();
   let real = (now - lastT) / 1000;
