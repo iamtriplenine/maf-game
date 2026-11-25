@@ -2340,8 +2340,9 @@ function generateWorld(seed) {
     im.instanceMatrix.needsUpdate = true; G.add(im); inst.lens = im;
     world.lenses = lenses;
   }
-  // parked cars: body (tinted) + trim (never tinted)
-  {
+  // MAF-NO-PARKED-CARS : voitures garees factices retirees
+  parked.length = 0;
+  if (parked.length) {
     const p = { w: 1.86, l: 4.3, ride: 0.34, bodyH: 0.72, cabH: 0.62, cabW: 0.9, cabF: 0.26, cabB: 0.74, wheelR: 0.33 };
     const bodyMat = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 58, specular: 0x8f9aa2, vertexColors: true });
     const im = instanced(carShellGeo(p), bodyMat, parked.length, true);
