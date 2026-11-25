@@ -2031,43 +2031,64 @@ function updateStreetLighting(night, x, z) {
   }
 }
 
-// MAF-DECOR-VEHICLES : vehicules decoratifs (images Kenney, sans collision) poses dans les parkings
-const DECOR = { list: [], mats: null, tex: null, ready: false };
-const DECOR_DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-const DECOR_ROWS = 4; // 0 taxi, 1 police, 2 ambulance, 3 benne
-function decorLoad() {
-  if (DECOR.tex) return;
-  DECOR.tex = new THREE.TextureLoader().load('vehicles/decor.png', t => {
-    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-    DECOR.mats = [];
-    for (let r = 0; r < DECOR_ROWS; r++) {
-      DECOR.mats[r] = [];
-      for (let c = 0; c < 8; c++) {
-        const tc = t.clone(); tc.needsUpdate = true;
-        tc.repeat.set(1 / 8, 1 / DECOR_ROWS); tc.offset.set(c / 8, 1 - (r + 1) / DECOR_ROWS);
-        DECOR.mats[r][c] = new THREE.SpriteMaterial({ map: tc, transparent: true, alphaTest: 0.05, depthWrite: true });
-      }
-    }
-    DECOR.ready = true;
-  });
+// MAF-DECOR-3D : vehicules 3D decoratifs (kit low-poly CC0) poses dans les parkings, sans collision
+const DECOR3D = { list: [], tpls: {}, loading: null, group: null, MAX: 16 };
+const DECOR3D_MODELS = ['sedan', 'hatchback', 'suv', 'taxi', 'pickup', 'van', 'police_car', 'sports_car'];
+const DECOR3D_PAINTS = [0xb23a3a, 0x2f62c8, 0x2b2f36, 0xe8e8e8, 0x4f6a4a, 0x7a7f86, 0xd9a23a, 0x6b3fa0];
+function decor3dPrep(scene) {
+  // Mesure exacte du modele : centre en x/z et DESSOUS DES ROUES a y = 0 (jamais en l'air, jamais enfonce).
+  scene.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(scene);
+  const wrap = new THREE.Group();
+  scene.position.set(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2);
+  wrap.add(scene);
+  return wrap;
 }
-function decorCarsTick() {
-  if (!DECOR.list.length) return;
-  if (!DECOR.tex) { decorLoad(); return; }
-  if (!DECOR.ready) return;
-  const e = camera.matrixWorld.elements;
-  let rx = e[0], rz = e[2]; const l = Math.hypot(rx, rz) || 1; rx /= l; rz /= l;
-  const cx = camera.position.x, cz = camera.position.z;
-  for (const c of DECOR.list) {
-    const near = Math.abs(c.x - cx) < 260 && Math.abs(c.z - cz) < 260;
-    if (c.sp.visible !== near) c.sp.visible = near;
-    if (!near) continue;
-    const sx = c.hx * rx + c.hz * rz, sy = c.hx * rz - c.hz * rx;
-    const idx = (((Math.round(Math.atan2(sx, sy) / (Math.PI / 4))) % 8) + 8) % 8;
-    if (idx !== c.idx) { c.idx = idx; c.sp.material = DECOR.mats[c.row][idx]; }
+function decor3dSpawn() {
+  if (!DECOR3D.group) return;
+  for (const c of DECOR3D.list) {
+    if (c.obj || !DECOR3D.tpls[c.model]) continue;
+    const o = DECOR3D.tpls[c.model].clone(true);
+    o.traverse(m => {
+      if (!m.isMesh) return;
+      m.castShadow = true;
+      if (c.paint === null) return;
+      const arr = Array.isArray(m.material) ? m.material : [m.material];
+      const out = arr.map(mt => {
+        if (!/^Paint/i.test(mt.name)) return mt;
+        const nm = mt.clone(); nm.color.setHex(c.paint); return nm;
+      });
+      m.material = Array.isArray(m.material) ? out : out[0];
+    });
+    o.position.set(c.x, c.y, c.z); o.rotation.y = c.ry;
+    o.name = 'decor-vehicle'; c.obj = o; DECOR3D.group.add(o);
   }
 }
-
+function decor3dLoad() {
+  if (DECOR3D.loading) return DECOR3D.loading;
+  DECOR3D.loading = (async () => {
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const ld = new GLTFLoader();
+    await Promise.all(DECOR3D_MODELS.map(async n => {
+      try {
+        const g = await ld.loadAsync(new URL('./vehicles/' + n + '.glb', document.baseURI).href);
+        DECOR3D.tpls[n] = decor3dPrep(g.scene);
+      } catch (e) { console.warn('Vehicule decor indisponible :', n, e); }
+    }));
+    decor3dSpawn();
+  })();
+  return DECOR3D.loading;
+}
+function decor3dTick() {
+  if (!DECOR3D.list.length) return;
+  if (!DECOR3D.loading) { decor3dLoad(); return; }
+  const cx = camera.position.x, cz = camera.position.z;
+  for (const c of DECOR3D.list) {
+    if (!c.obj) continue;
+    const near = Math.abs(c.x - cx) < 230 && Math.abs(c.z - cz) < 230;
+    if (c.obj.visible !== near) c.obj.visible = near;
+  }
+}
 function generateWorld(seed) {
   world.seed = seed >>> 0;
   const R = mulberry32(world.seed);
@@ -2417,25 +2438,28 @@ function generateWorld(seed) {
       sp.name = 'label-' + b.id; G.add(sp);
     });
   }
-  // MAF-DECOR-VEHICLES : placement dans les parkings uniquement (jamais sur la route), sans collision
+  // MAF-DECOR-3D : placement dans les parkings uniquement (jamais sur la route), sans collision
   {
-    DECOR.list.length = 0;
+    DECOR3D.list.length = 0; DECOR3D.group = G;
     const rd = mulberry32(world.seed ^ 0xca5);
+    const lotY = CURB_H + 0.012; // meme hauteur exacte que la surface du parking
     for (const lp of lotPatches) {
       const x0 = lp[0], z0 = lp[1], x1 = lp[2], z1 = lp[3];
-      for (let rr = 0; rr < 2; rr++) for (let k = 0; k < 6; k++) {
-        if (DECOR.list.length >= 40 || rd() < 0.5) continue;
-        const px = lerp(x0 + 3, x1 - 3, (k + 0.5) / 6), pz = rr ? z1 - 4.4 : z0 + 4.4;
-        const q = rd(), row = q < 0.5 ? 0 : q < 0.72 ? 1 : q < 0.86 ? 2 : 3;
-        const ry = rr ? 0 : Math.PI;
-        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true }));
-        sp.center.set(0.5, 0); sp.scale.set(6.1, 6.1, 1); sp.position.set(px, CURB_H + 0.03, pz);
-        sp.visible = false; sp.name = 'decor-vehicle'; G.add(sp);
-        DECOR.list.push({ sp: sp, x: px, z: pz, hx: Math.sin(ry), hz: Math.cos(ry), row: row, idx: -1 });
+      const w = x1 - x0, d = z1 - z0;
+      if (w < 12 || d < 8) continue;
+      const cols = Math.min(6, Math.floor((w - 5) / 3.2));
+      const rowsZ = d >= 18 ? [z0 + 4.2, z1 - 4.2] : [(z0 + z1) / 2];
+      for (let r = 0; r < rowsZ.length; r++) for (let k = 0; k < cols; k++) {
+        if (DECOR3D.list.length >= DECOR3D.MAX || rd() < 0.45) continue;
+        const px = lerp(x0 + 2.5, x1 - 2.5, (k + 0.5) / cols);
+        const model = DECOR3D_MODELS[Math.floor(rd() * DECOR3D_MODELS.length)];
+        const keep = model === 'taxi' || model === 'police_car';
+        const paint = keep ? null : DECOR3D_PAINTS[Math.floor(rd() * DECOR3D_PAINTS.length)];
+        DECOR3D.list.push({ x: px, z: rowsZ[r], y: lotY, ry: (r === 1 || rowsZ.length === 1 ? 0 : Math.PI) + (rd() - 0.5) * 0.06, model: model, paint: paint, obj: null });
       }
     }
+    if (DECOR3D.loading) decor3dSpawn();
   }
-
   // ---------- distant headlands so the horizon is not empty ---------------
   {
     const g = new Geo(), rr = mulberry32(world.seed ^ 0x5eed);
@@ -6586,7 +6610,7 @@ function bbTick(now) {
 
 
 function frame() {
-  decorCarsTick();
+  decor3dTick();
   requestAnimationFrame(frame);
   const now = nowMs();
   let real = (now - lastT) / 1000;
