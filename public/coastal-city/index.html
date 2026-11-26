@@ -1447,7 +1447,7 @@ function villaGroundY(x, z, terrain) {
   return villa.hits.length ? Math.max(terrain, villa.hits[0].point.y) : terrain;
 }
 
-function groundY(x, z) {
+function groundY(x, z) { /*MAF-ISLAND-V1*/ { const gi = islandGround(x, z); if (gi !== null) return gi; }
   if (z >= BEACH_Z) {
     const t = clamp((z - BEACH_Z) / (SHORE_Z - BEACH_Z), 0, 1);
     return villaGroundY(x, z, lerp(CURB_H, -0.62, t * t * 0.7 + t * 0.3));
@@ -1482,6 +1482,191 @@ function clampToWorld(p) {
   p.z = clamp(p.z, -R, SHORE_Z + 8);
   return p;
 }
+
+/* MAF-ISLAND-V1 BEGIN (etape 1/2) : quartier tropical sur la mer.
+   Pont (kit Kenney "City Kit Roads") depuis la terrasse de la villa Tir au but, puis une ile de forme
+   irregulière : sable tropical + routes en bitume. Aucun changement du reste du monde.
+   Les modèles sont dans ./island-roads/ (GLB + Textures/colormap.png). */
+const ISL = (() => {
+  const T = 10, NB = 4, PHI = 0.12;                       // taille d'une tuile, tuiles du pont, rotation de l'ile
+  const S = { x: VILLA.x + 3.2 * VILLA.scale, z: VILLA.z + 9.955 * VILLA.scale }; // bord sud de la terrasse
+  const fx = Math.sin(PHI), fz = Math.cos(PHI);
+  const O = { x: S.x + (NB + 0.5) * T * fx, z: S.z + (NB + 0.5) * T * fz };       // centre de la tuile (0,0)
+  const cells = new Set(), key = (i, j) => i + ',' + j;
+  const seg = (i0, j0, i1, j1) => {
+    const di = Math.sign(i1 - i0), dj = Math.sign(j1 - j0);
+    let i = i0, j = j0; cells.add(key(i, j));
+    while (i !== i1 || j !== j1) { i += di; j += dj; cells.add(key(i, j)); }
+  };
+  // Boucle principale irrégulière + rue centrale + impasses (coordonnees de grille : i = est, j = sud).
+  seg(0, 0, 0, 9);
+  seg(0, 5, -6, 5); seg(-6, 5, -6, 10); seg(-6, 10, -3, 10); seg(-3, 10, -3, 13); seg(-3, 13, 4, 13);
+  seg(4, 13, 4, 10); seg(4, 10, 7, 10); seg(7, 10, 7, 5); seg(7, 5, 0, 5);
+  seg(-6, 8, -7, 8); seg(7, 8, 8, 8);
+  const bridge = [];
+  for (let k = 1; k <= NB; k++) bridge.push(key(0, -k));
+  return { T, NB, PHI, S, O, fx, fz, cells, key, bridge, group: null, loading: false, retryAt: 0,
+    ROAD_Y: 0.17, SAND_Y: 0.15, cx: 5, cz: 72, A: 115, B: 88, south: O.z + 175 };
+})();
+
+function islToLocal(x, z) {
+  const dx = x - ISL.O.x, dz = z - ISL.O.z, c = Math.cos(ISL.PHI), s = Math.sin(ISL.PHI);
+  return { x: dx * c - dz * s, z: dx * s + dz * c };
+}
+function islToWorld(lx, lz) {
+  const c = Math.cos(ISL.PHI), s = Math.sin(ISL.PHI);
+  return { x: ISL.O.x + lx * c + lz * s, z: ISL.O.z - lx * s + lz * c };
+}
+// "Distance" signée au rivage (en unités) : > 0 sur la terre, < 0 dans l'eau. Forme irrégulière.
+function islSd(lx, lz) {
+  const dx = (lx - ISL.cx) / ISL.A, dz = (lz - ISL.cz) / ISL.B, th = Math.atan2(dz, dx);
+  const n = 1 + 0.09 * Math.sin(3 * th + 1.0) + 0.06 * Math.sin(5 * th + 2.0) + 0.04 * Math.sin(2 * th);
+  const blob = (1 - Math.hypot(dx, dz) / n) * ISL.B;
+  const strip = Math.min(22 - Math.abs(lx), 13 - Math.abs(lz + 5));   // langue de sable au bout du pont
+  return Math.max(blob, strip);
+}
+function islSandY(sd) {
+  const t = smoothstep(-5, 6, sd);
+  return lerp(-0.7, ISL.SAND_Y, t);
+}
+const islInBridge = (l) => Math.abs(l.x) <= 5 && l.z >= -(ISL.NB * ISL.T + ISL.T / 2) && l.z <= -ISL.T / 2;
+// Hauteur du sol sur le pont / l'ile, ou null si le point est ailleurs (le monde habituel s'applique).
+function islandGround(x, z) {
+  if (z < ISL.S.z - 1) return null;
+  const l = islToLocal(x, z);
+  if (l.z > 200 || Math.abs(l.x) > 140) return null;
+  if (islInBridge(l)) return ISL.ROAD_Y + 0.06;
+  const sd = islSd(l.x, l.z);
+  if (sd < -6) return null;
+  const i = Math.round(l.x / ISL.T), j = Math.round(l.z / ISL.T);
+  if (ISL.cells.has(ISL.key(i, j)) && sd > 0) return ISL.ROAD_Y + 0.05;
+  return islSandY(sd);
+}
+function islandWalkable(x, z) {
+  const l = islToLocal(x, z);
+  return islInBridge(l) || islSd(l.x, l.z) > 2;
+}
+// Garde le joueur sur la terre ferme, le pont ou l'ile (remplace la limite "z <= bord de mer").
+function islandWalkClamp(p, zLim) {
+  if (p.z <= zLim || islandWalkable(p.x, p.z)) return;
+  const l = islToLocal(p.x, p.z), cand = [];
+  cand.push({ x: p.x, z: zLim });                                                   // terre ferme
+  { const b = islToWorld(clamp(l.x, -4.4, 4.4), clamp(l.z, -(ISL.NB * ISL.T + 4), -4)); cand.push(b); } // pont
+  { let q = { x: l.x, z: l.z };                                                      // ile : vers le centre
+    for (let k = 0; k < 3; k++) {
+      const sd = islSd(q.x, q.z); if (sd > 2.2) break;
+      const dx = ISL.cx - q.x, dz = ISL.cz - q.z, d = Math.hypot(dx, dz) || 1, st = Math.min(d, 2.6 - sd);
+      q = { x: q.x + dx / d * st, z: q.z + dz / d * st };
+    }
+    cand.push(islToWorld(q.x, q.z)); }
+  let best = cand[0], bd = Infinity;
+  for (let k = 0; k < cand.length; k++) {
+    const c = cand[k], d = Math.hypot(c.x - p.x, c.z - p.z);
+    const ok = k === 0 ? c.z <= zLim + 0.01 : islandWalkable(c.x, c.z);
+    if (ok && d < bd) { bd = d; best = c; }
+  }
+  p.x = best.x; p.z = best.z;
+}
+
+function islandDrawMinimap(g, w2s) {
+  const k = (OUTER * 2) ? (w2s(1) - w2s(0)) : 1;
+  g.save();
+  g.fillStyle = '#e3d3a4'; g.beginPath();
+  for (let a = 0; a <= 120; a++) {
+    const th = a / 120 * TAU, c = Math.cos(th), s = Math.sin(th);
+    let r = 6; for (; r < 260; r += 3) { const sd = islSd(ISL.cx + c * r * 1.15, ISL.cz + s * r * 0.88); if (sd < 0) break; }
+    const w = islToWorld(ISL.cx + c * r * 1.15, ISL.cz + s * r * 0.88);
+    a ? g.lineTo(w2s(w.x), w2s(w.z)) : g.moveTo(w2s(w.x), w2s(w.z));
+  }
+  g.closePath(); g.fill();
+  g.fillStyle = '#3c4045';
+  const draw = (i, j) => {
+    const h = ISL.T / 2, pts = [[-h, -h], [h, -h], [h, h], [-h, h]].map(([a, b]) => islToWorld(i * ISL.T + a, j * ISL.T + b));
+    g.beginPath(); pts.forEach((w, n) => n ? g.lineTo(w2s(w.x), w2s(w.z)) : g.moveTo(w2s(w.x), w2s(w.z))); g.closePath(); g.fill();
+  };
+  ISL.cells.forEach(c => { const [i, j] = c.split(',').map(Number); draw(i, j); });
+  for (let q = 1; q <= ISL.NB; q++) draw(0, -q);
+  g.restore();
+}
+
+// Choix de la pièce du kit et de sa rotation d'après les voisins (base : droite = E-O ; virage = S+O ; T = S+O+E ; bout = E).
+function islPiece(i, j) {
+  const has = (a, b) => ISL.cells.has(ISL.key(i + a, j + b)) || ISL.bridge.includes(ISL.key(i + a, j + b));
+  const D = [[1, 0], [0, 1], [-1, 0], [0, -1]];                 // E, S, O, N
+  const m = []; D.forEach((d, n) => { if (has(d[0], d[1])) m.push(n); });
+  if (!m.length) return null;
+  const base = m.length === 4 ? ['road-crossroad', [0, 1, 2, 3]] : m.length === 3 ? ['road-intersection', [1, 2, 0]] :
+    m.length === 1 ? ['road-end', [0]] : ((m[0] + 2) % 4 === m[1] ? ['road-straight', [0, 2]] : ['road-bend', [1, 2]]);
+  for (let k = 0; k < 4; k++) {
+    const r = base[1].map(b => (b - k + 4) % 4).sort().join();
+    if (r === m.slice().sort().join()) return { name: base[0], rot: k * Math.PI / 2 };
+  }
+  return { name: base[0], rot: 0 };
+}
+
+async function islandInit() {
+  if (ISL.group || ISL.loading || nowMs() < ISL.retryAt) return;
+  ISL.loading = true;
+  try {
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const ld = new GLTFLoader();
+    const names = ['road-straight', 'road-bend', 'road-intersection', 'road-crossroad', 'road-end', 'road-bridge', 'bridge-pillar-wide'];
+    const models = {};
+    await Promise.all(names.map(async n => {
+      const url = new URL('./island-roads/' + n + '.glb', document.baseURI);
+      models[n] = (await ld.loadAsync(url.href)).scene;
+    }));
+    const G = new THREE.Group(); G.name = 'tropical-island';
+    G.position.set(ISL.O.x, 0, ISL.O.z); G.rotation.y = ISL.PHI;
+    const put = (name, x, y, z, rot, sx, sy, sz) => {
+      const m = models[name].clone(true);
+      m.position.set(x, y, z); m.rotation.y = rot; m.scale.set(sx, sy, sz);
+      m.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
+      G.add(m); return m;
+    };
+    // Sable : maillage en relief doux, forme irrégulière.
+    {
+      const X0 = -135, X1 = 135, Z0 = -40, Z1 = 195, st = 3;
+      const nx = Math.round((X1 - X0) / st), nz = Math.round((Z1 - Z0) / st);
+      const pos = new Float32Array((nx + 1) * (nz + 1) * 3), uv = new Float32Array((nx + 1) * (nz + 1) * 2);
+      let p = 0, u = 0;
+      for (let b = 0; b <= nz; b++) for (let a = 0; a <= nx; a++) {
+        const x = X0 + a * st, z = Z0 + b * st, sd = islSd(x, z);
+        let y = islSandY(sd);
+        if (sd > 6) y += 0.04 * Math.sin(x * 0.21) * Math.cos(z * 0.17);
+        pos[p++] = x; pos[p++] = y; pos[p++] = z; uv[u++] = x / 10; uv[u++] = z / 10;
+      }
+      const idx = [];
+      for (let b = 0; b < nz; b++) for (let a = 0; a < nx; a++) {
+        const i0 = b * (nx + 1) + a, i1 = i0 + 1, i2 = i0 + nx + 1, i3 = i2 + 1;
+        idx.push(i0, i2, i1, i1, i2, i3);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      geo.setIndex(idx); geo.computeVertexNormals();
+      const mat = MATS.sand || new THREE.MeshLambertMaterial({ color: 0xe8d3a3 });
+      const sand = new THREE.Mesh(geo, mat); sand.receiveShadow = true; sand.name = 'island-sand'; G.add(sand);
+    }
+    // Routes en bitume (pieces du kit, tuile = T unites).
+    const T = ISL.T, Y = ISL.ROAD_Y;
+    ISL.cells.forEach(c => {
+      const [i, j] = c.split(',').map(Number), pc = islPiece(i, j);
+      if (pc) put(pc.name, i * T, Y, j * T, pc.rot, T, 2.5, T);
+    });
+    // Pont : tuiles "road-bridge" alignees sur l'axe nord-sud de l'ile, avec piliers.
+    for (let k = 1; k <= ISL.NB; k++) {
+      put('road-bridge', 0, Y, -k * T, Math.PI / 2, T, 3, T);
+      put('bridge-pillar-wide', -T / 2 + 1.2, Y - 3.4, -k * T, 0, T, 6.8, T);
+      put('bridge-pillar-wide', T / 2 - 1.2, Y - 3.4, -k * T, 0, T, 6.8, T);
+    }
+    scene.add(G); ISL.group = G;
+  } catch (e) {
+    ISL.retryAt = nowMs() + 15000; dbgFail('island', e);
+  }
+  ISL.loading = false;
+}
+/* MAF-ISLAND-V1 END */
 
 /* --------------------------------------------------- 2 world generation */
 const world = {
@@ -3210,7 +3395,7 @@ function stepPlayer(dt, input) {
   p.x = nx; p.z = nz;
   const R = OUTER - 26;
   p.x = clamp(p.x, -R, R);
-  p.z = clamp(p.z, -R, SHORE_Z + 4);
+  p.z = clamp(p.z, -R, R); islandWalkClamp(p, SHORE_Z + 4); /*MAF-ISLAND-V1*/
 
   villa2Hint = p.y; const gy = groundY(p.x, p.z); villa2Hint = -1e9;
   if (p.y <= gy) { p.y = gy; if (p.vy < 0) p.vy = 0; p.onGround = true; p.air = 0; }
@@ -4976,7 +5161,7 @@ function updateHUD() {
 }
 
 /* ------------------------------------------------------------ minimap */
-const WORLD_MAP_SOUTH = SHORE_Z + 30;
+const WORLD_MAP_SOUTH = Math.max(SHORE_Z + 30, ISL.south + 20); /*MAF-ISLAND-V1*/
 const WORLD_MAP_MAX_ZOOM = 12;
 const WORLD_MAP_HINT = 'Glisse pour explorer · Appuie pour tracer';
 const mm = {
@@ -4994,7 +5179,7 @@ function buildMinimapBase() {
   g.fillStyle = '#3f6f3c'; g.fillRect(0, 0, S, S);
   // beach + sea
   g.fillStyle = '#e3d3a4'; g.fillRect(0, w2s(BEACH_Z), S, S - w2s(BEACH_Z));
-  g.fillStyle = '#1d6f8c'; g.fillRect(0, w2s(SHORE_Z), S, S - w2s(SHORE_Z));
+  g.fillStyle = '#1d6f8c'; g.fillRect(0, w2s(SHORE_Z), S, S - w2s(SHORE_Z)); islandDrawMinimap(g, w2s); /*MAF-ISLAND-V1*/
   // city ground
   g.fillStyle = '#8d8a80';
   g.fillRect(w2s(CITY_X0), w2s(CITY_Z0), (CITY_X1 - CITY_X0) * mm.scale, (CITY_Z1 - CITY_Z0) * mm.scale);
@@ -5987,7 +6172,7 @@ function applySave(o, opts) {
     });
   }
   const p = o.player;
-  player.x = clamp(p.x, -OUTER, OUTER); player.z = clamp(p.z, -OUTER, SHORE_Z);
+  player.x = clamp(p.x, -OUTER, OUTER); player.z = clamp(p.z, -OUTER, OUTER - 26); islandWalkClamp(player, SHORE_Z); /*MAF-ISLAND-V1*/
   player.yaw = isFinite(p.yaw) ? p.yaw : 0;
   player.vx = player.vz = player.vy = 0;
   player.y = groundY(player.x, player.z);
@@ -7112,7 +7297,7 @@ function main() {
   try { buildPenaltyHub(); } catch (e) { dbgFail('hub', e); }
   try { ludoHubInit(); } catch (e) { dbgFail('ludo-hub', e); }
   try { plazaInit(); } catch (e) { dbgFail('plaza', e); }
-  try { beachLoungeInit(); } catch (e) { dbgFail('beach-lounge', e); }
+  try { beachLoungeInit(); } catch (e) { dbgFail('beach-lounge', e); } try { islandInit(); } catch (e) { dbgFail('island', e); } /*MAF-ISLAND-V1*/
   try { hubAlertsStart(); } catch (e) { dbgFail('hub3', e); }
 
   _mark('actors');
