@@ -1767,7 +1767,7 @@ const ISL_PROPS = [
   { name: 'island-beach-camp', file: 'camp-plage.glb', x: -68, z: 14, yaw: -2.934, bb: [-11, -8, 14, 10] },
   { name: 'island-lighthouse', file: 'phare-ile.glb', x: 60, z: 23, yaw: -0.408, bb: [-16, -22, 18, 16] }
 ];
-function islPropBlocked(x, z) {
+function islPropBlocked(x, z) { if (x > 10 && x < 74 && z > 70 && z < 142) return true; /*MAF-FARM-V1*/
   for (const P of ISL_PROPS) {
     const dx = x - P.x, dz = z - P.z, c = Math.cos(P.yaw), s = Math.sin(P.yaw);
     const u = dx * c - dz * s, v = dx * s + dz * c;
@@ -1804,7 +1804,7 @@ function islMergeStatic(holder, model) {
   });
   holder.remove(model); dead.forEach(d => d.dispose());
 }
-async function islandPropsInit(G) {
+async function islandPropsInit(G) { try { await islandFarmInit(G); } catch (e) { dbgFail('island-farm', e); } /*MAF-FARM-V1*/
   try {
     const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
     const ld = new GLTFLoader();
@@ -1834,6 +1834,83 @@ async function islandPropsInit(G) {
     buildColliderHash();
   } catch (e) { dbgFail('island-props', e); }
 }
+/* MAF-FARM-V1 BEGIN : ferme (kit MAF Farm, GLB autonomes) sur le bloc libre est de l'ile, entre les rues.
+   Repere local de l'ile (x est, z sud). Facades vers +z (vers le boulevard sud). */
+const ISL_FARM = {
+  x0: 17, x1: 67, z0: 78, z1: 136,
+  items: [
+    ['Barn', 26, 88], ['BigBarn', 42, 88], ['SmallBarn', 58, 88],
+    ['Windmill', 22, 106], ['Silo_House', 62, 106], ['Silo', 62, 118],
+    ['Well', 42, 110], ['WaterTower', 22, 124], ['ChickenCoop', 32, 128],
+    ['OpenBarn', 46, 126], ['TowerWindmill', 56, 130]
+  ]
+};
+async function islandFarmInit(G) {
+  const F = ISL_FARM, Y = ISL.SAND_Y + 0.05;
+  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+  const ld = new GLTFLoader();
+  const load = async n => (await ld.loadAsync(new URL('./island-farm/' + n + '.glb', document.baseURI).href)).scene;
+  const root = new THREE.Group(); root.name = 'island-farm'; G.add(root);
+  const flat = (name, cx, cz, w, d, y, color) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d),
+      new THREE.MeshLambertMaterial({ color, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    m.rotation.x = -Math.PI / 2; m.position.set(cx, y, cz); m.receiveShadow = true; m.name = name; root.add(m);
+  };
+  flat('farm-grass', 42, 106, 62, 70, Y, 0x6aa84f);
+  flat('farm-yard', 42, 114, 30, 32, Y + 0.012, 0xb58b5c);
+  flat('farm-path', 42, 140, 5, 8, Y + 0.012, 0xb58b5c);
+  ISL.farmBlades = [];
+  for (const [n, x, z] of F.items) {
+    try {
+      const model = await load(n);
+      const h = new THREE.Group(); h.name = 'farm-' + n; h.position.set(x, Y, z);
+      model.traverse(o => {
+        if (!o.isMesh) return;
+        o.castShadow = true; o.receiveShadow = true;
+        if (o.material) { o.material.roughness = 0.95; o.material.metalness = 0; }
+      });
+      h.add(model); root.add(h); G.updateMatrixWorld(true);
+      const body = model.getObjectByName(n + '_Body') || model;
+      const bx = new THREE.Box3().setFromObject(body);
+      addCollider(bx.min.x, bx.min.z, bx.max.x, bx.max.z, bx.max.y, 1);
+      const bl = model.getObjectByName('Blades'); if (bl) ISL.farmBlades.push(bl);
+    } catch (e) { dbgFail('island-farm-' + n, e); }
+  }
+  // Cloture : un seul InstancedMesh par modele, entree (portail) au milieu du cote sud.
+  try {
+    const fa = (await load('Fence')).getObjectByName('Fence_Body');
+    const fb = (await load('Fence2')).getObjectByName('Fence2_Body');
+    const nx = 9, nz = 10, wx = (F.x1 - F.x0) / nx, wz = (F.z1 - F.z0) / nz, segs = [];
+    for (let k = 0; k < nx; k++) {
+      const x = F.x0 + wx * (k + 0.5);
+      segs.push([x, F.z0, 0, wx]);
+      if (k !== 4) segs.push([x, F.z1, 0, wx]);
+    }
+    for (let k = 0; k < nz; k++) {
+      const z = F.z0 + wz * (k + 0.5);
+      segs.push([F.x0, z, Math.PI / 2, wz]); segs.push([F.x1, z, Math.PI / 2, wz]);
+    }
+    const lists = [[], []];
+    segs.forEach((s, i) => lists[i % 2].push(s));
+    const d = new THREE.Object3D();
+    [fa, fb].forEach((mesh, m) => {
+      if (!mesh || !lists[m].length) return;
+      const im = new THREE.InstancedMesh(mesh.geometry, mesh.material, lists[m].length);
+      lists[m].forEach(([x, z, yaw, w], i) => {
+        d.position.set(x, Y, z); d.rotation.set(0, yaw, 0); d.scale.set(w / 5.9, 1, 1); d.updateMatrix();
+        im.setMatrixAt(i, d.matrix);
+      });
+      im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; im.castShadow = true; im.receiveShadow = true;
+      im.name = 'farm-fence-' + m; root.add(im);
+    });
+    segs.forEach(([x, z, yaw, w]) => {
+      const c = islToWorld(x, z), a = ISL.PHI + yaw, ca = Math.abs(Math.cos(a)), sa = Math.abs(Math.sin(a));
+      const hx = ca * w / 2 + sa * 0.15, hz = sa * w / 2 + ca * 0.15;
+      addCollider(c.x - hx, c.z - hz, c.x + hx, c.z + hz, 1.1, 1);
+    });
+  } catch (e) { dbgFail('island-farm-fence', e); }
+}
+/* MAF-FARM-V1 END */
 /* MAF-ISLAND-PROPS-V1 END */
 /* MAF-ISLAND-V1 END */
 
@@ -7390,7 +7467,7 @@ function bbTick(now) {
 
 
 function frame() {
-  decor3dTick(); buildingLabelsTick();
+  decor3dTick(); buildingLabelsTick(); if (ISL.farmBlades) { const fbT = nowMs() * 0.0006; for (const fb of ISL.farmBlades) fb.rotation.z = fbT; } /*MAF-FARM-V1*/
   requestAnimationFrame(frame);
   const now = nowMs();
   let real = (now - lastT) / 1000;
