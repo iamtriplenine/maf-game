@@ -1763,6 +1763,7 @@ async function islandInit() {
    Coordonnees = repere local de l'ile (x est, z sud), yaw = rotation autour de Y.
    bb = emprise [x0, z0, x1, z1] du modele, utilisee pour ecarter les palmiers. */
 const ISL_PROPS = [
+  { name: 'island-tea-garden', file: 'jardin-the.glb', x: 106, z: 37, yaw: 0, bb: [-9, -8, 9, 8], solid: /(roofed-processing-house|nursery-shade-frame|worker-wash-station)/ },
   { name: 'island-beach-camp', file: 'camp-plage.glb', x: -68, z: 14, yaw: -2.934, bb: [-11, -8, 14, 10] },
   { name: 'island-lighthouse', file: 'phare-ile.glb', x: 60, z: 23, yaw: -0.408, bb: [-16, -22, 18, 16] }
 ];
@@ -1818,7 +1819,7 @@ async function islandPropsInit(G) {
         const root = model.children[0] || model, box = new THREE.Box3(), c = new THREE.Vector3();
         for (const o of root.children) {
           const nm = o.name.replace(/^\d+-/, '');
-          const solid = SOLID.test(nm), pole = POLE.test(nm);
+          const solid = SOLID.test(nm) || !!(P.solid && P.solid.test(nm)), pole = POLE.test(nm);
           const lamp = /lantern-post/.test(nm), fire = /campfire/.test(nm);
           if (!solid && !pole) continue;
           box.setFromObject(o); box.getCenter(c);
