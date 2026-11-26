@@ -55,7 +55,10 @@
   #topMenus{position:absolute;right:10px;top:calc(10px + env(safe-area-inset-top));z-index:2;display:flex;align-items:flex-start;gap:8px}
   .world-top-menu{display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:auto}
   .world-top-drop{display:flex;flex-direction:column;gap:8px;overflow:hidden;max-height:0;opacity:0;pointer-events:none;transition:max-height .22s ease,opacity .18s ease}
-  .world-top-menu.open .world-top-drop{max-height:380px;opacity:1;pointer-events:auto}
+  .world-top-menu.open .world-top-drop{max-height:calc(100vh - 76px - env(safe-area-inset-top));max-height:calc(100dvh - 76px - env(safe-area-inset-top));overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-width:none;opacity:1;pointer-events:auto} /*MAF-MENU-SCROLL-V1*/
+  .world-top-drop::-webkit-scrollbar{display:none}
+  .world-top-drop>*{flex:none}
+  @media (orientation:landscape){.world-top-menu.open .world-top-drop{padding-bottom:6px}}
   #topMenus button{min-width:44px;min-height:44px;width:44px;height:44px;border-radius:12px;
     border:1px solid rgba(255,255,255,.2);background:rgba(6,16,26,.66);color:#eaf2fb;font-size:17px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;padding:0}
