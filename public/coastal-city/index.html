@@ -491,6 +491,17 @@
         <span id="worldMicSeconds" aria-hidden="true">30</span>
       </button>
     </div>
+    <div id="worldActions" hidden>
+      <button id="btnWorldActions" type="button" aria-label="Actions" title="Actions" aria-expanded="false" aria-controls="worldActionsPanel">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>
+      </button>
+      <div id="worldActionsPanel" role="menu" aria-label="Actions du jeu" inert>
+        <button class="world-action" type="button" role="menuitem" data-action="send-money">
+          <span class="world-action-ico" aria-hidden="true">💸</span>
+          <span class="world-action-txt"><b>Envoyer de l'argent</b><small id="worldActionMoneyHint">Aucun joueur à proximité</small></span>
+        </button>
+      </div>
+    </div>
   </div>
 
   <div id="prompt" class="hidden"></div>
@@ -7298,6 +7309,7 @@ function mpSend() {
     .then(j => {
       MP.fails = 0; MP.gap = 600;
       mpShowOnline(j.onlineCount);
+      mpWorldNotices(j.notices);
       mpSyncParkedCars(j.parkedCars, j.me?.id);
       for (const id of voiceDone) worldVoice.done.delete(id);
       mpVoiceReceive(j.voices, j.chat);
@@ -8691,6 +8703,134 @@ async function boot() {
       String(err && err.message ? err.message : err).replace(/</g, '&lt;') + '</code>');
   }
 }
+/* MAF-WORLD-ACTIONS-V1 : bouton Actions (reste ouvert jusqu'au 2e clic) + detection des joueurs proches. */
+(function () {
+  const NEAR = 15;                                   // metres : distance pour interagir avec un joueur
+  const box = document.getElementById('worldActions');
+  const btn = document.getElementById('btnWorldActions');
+  const panel = document.getElementById('worldActionsPanel');
+  const hint = document.getElementById('worldActionMoneyHint');
+  if (!box || !btn || !panel || !hint) return;
+  function nearbyPlayers() {
+    if (typeof MP === 'undefined' || !MP.ready) return [];
+    const x = playerX(), z = playerZ(), out = [];
+    for (const r of MP.remotes.values()) {
+      if (r.parked) continue;
+      const d = Math.hypot(r.x - x, r.z - z);
+      if (d <= NEAR) out.push({ id: r.id, name: String(r.name || 'Joueur'), dist: d });
+    }
+    return out.sort((a, b) => a.dist - b.dist);
+  }
+  window.mafWorldNearbyPlayers = nearbyPlayers;      // reutilise par l'etape 2 (envoi d'argent)
+  function setOpen(open) {
+    btn.setAttribute('aria-expanded', String(open));
+    box.toggleAttribute('data-open', open);
+    panel.inert = !open;
+  }
+  btn.addEventListener('click', () => setOpen(btn.getAttribute('aria-expanded') !== 'true'));   // pas d'autre moyen de fermer
+  panel.addEventListener('click', e => {
+    const item = e.target.closest('.world-action');
+    if (!item) return;
+    const near = nearbyPlayers();
+    if (!near.length) { toast('Rapproche-toi d\u2019un joueur.'); return; }
+    const ev = new CustomEvent('maf-world-action', { cancelable: true, detail: { action: item.dataset.action, players: near } });
+    if (window.dispatchEvent(ev)) toast('Bient\u00f4t disponible.');                         // etape 2 : l'ecouteur prend la main
+  });
+  setInterval(() => {
+    const ready = typeof MP !== 'undefined' && !!MP.ready;
+    if (box.hidden === ready) box.hidden = !ready;
+    if (!ready) return;
+    const near = nearbyPlayers();
+    const text = near.length === 0 ? 'Aucun joueur à proximité'
+      : near.length === 1 ? near[0].name : near.length + ' joueurs à proximité';
+    if (hint.textContent !== text) hint.textContent = text;
+    panel.querySelector('.world-action').toggleAttribute('data-empty', near.length === 0);
+  }, 400);
+})();
+/* MAF-WORLD-SEND-V1 : envoi d'argent World a un joueur proche + avis de reception. */
+const mpSeenNotices = new Set();
+function mpWorldNotices(list) {
+  if (!Array.isArray(list)) return;
+  for (const n of list) {
+    if (!n || mpSeenNotices.has(n.id)) continue;
+    mpSeenNotices.add(n.id);
+    if (mpSeenNotices.size > 200) mpSeenNotices.delete(mpSeenNotices.values().next().value);
+    if (n.kind === 'money') {
+      toast('\u{1F4B8} ' + String(n.from || 'Un joueur').slice(0, 24) + ' t\u2019a envoy\u00e9 $' + wwFmt(n.amount), 'good');
+      try { wwLoad(); } catch (e) { /* solde recharge au prochain affichage */ }
+    }
+  }
+}
+(function () {
+  const root = document.getElementById('hud');
+  if (!root) return;
+  const SEND_MIN = 100, SEND_MAX = 1000000, QUICK = [1000, 10000, 50000];
+  const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+  const dlg = mk('div', 'world-send'); dlg.hidden = true;
+  dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-modal', 'true'); dlg.setAttribute('aria-label', 'Envoyer de l\u2019argent');
+  const card = mk('div', 'world-send-card');
+  const title = mk('h3', '', '\u{1F4B8} Envoyer de l\u2019argent');
+  const who = mk('select', 'world-send-who'); who.setAttribute('aria-label', 'Destinataire');
+  const bal = mk('div', 'world-send-bal');
+  const chips = mk('div', 'world-send-chips');
+  const input = mk('input', 'world-send-amount'); input.type = 'text'; input.inputMode = 'numeric'; input.autocomplete = 'off';
+  input.placeholder = 'Montant'; input.setAttribute('aria-label', 'Montant \u00e0 envoyer');
+  const msg = mk('div', 'world-send-msg'); msg.setAttribute('role', 'alert');
+  const row = mk('div', 'world-send-row');
+  const cancel = mk('button', 'world-send-cancel', 'Annuler'); cancel.type = 'button';
+  const go = mk('button', 'world-send-go', 'Envoyer'); go.type = 'button';
+  for (const v of QUICK) { const c = mk('button', 'world-send-chip', wwFmt(v)); c.type = 'button'; c.onclick = () => { input.value = wwFmt(v); refresh(); input.focus(); }; chips.appendChild(c); }
+  row.append(cancel, go); card.append(title, who, bal, chips, input, msg, row); dlg.appendChild(card); root.appendChild(dlg);
+  let key = null, busy = false;
+  const amount = () => { const r = input.value.replace(/\D/g, ''); return r ? Number(r) : 0; };
+  function refresh() {
+    const n = amount(), have = Number(WW.world) || 0;
+    bal.textContent = 'Ton solde World : $' + wwFmt(have);
+    let err = '';
+    if (n > 0 && n < SEND_MIN) err = 'Minimum $' + wwFmt(SEND_MIN);
+    else if (n > SEND_MAX) err = 'Maximum $' + wwFmt(SEND_MAX);
+    else if (n > have) err = 'Solde World insuffisant';
+    msg.textContent = err; msg.dataset.kind = err ? 'bad' : '';
+    go.disabled = busy || !who.value || n < SEND_MIN || !!err;
+  }
+  function close() { if (busy) return; dlg.hidden = true; key = null; }
+  function open(players) {
+    who.textContent = '';
+    for (const p of players) { const o = mk('option', '', p.name); o.value = String(p.id); who.appendChild(o); }
+    who.disabled = players.length < 2;
+    input.value = ''; msg.textContent = ''; key = wwUuid();
+    dlg.hidden = false; refresh();
+    try { wwLoad(); } catch (e) { /* ignore */ }
+    setTimeout(() => { refresh(); input.focus(); }, 60);
+  }
+  input.addEventListener('input', () => { const n = amount(); input.value = n ? wwFmt(n) : ''; refresh(); });
+  who.addEventListener('change', refresh);
+  cancel.onclick = close;
+  dlg.addEventListener('click', e => { if (e.target === dlg) close(); });
+  dlg.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') close(); if (e.key === 'Enter' && !go.disabled) go.click(); });
+  dlg.addEventListener('keyup', e => e.stopPropagation());
+  go.onclick = async () => {
+    const n = amount(), to = Number(who.value);
+    if (busy || !to || n < SEND_MIN) return;
+    busy = true; go.textContent = 'Envoi\u2026'; refresh();
+    const name = who.options[who.selectedIndex]?.textContent || 'ce joueur';
+    try {
+      const d = await wwCall('/send', { to, amount: n, request_key: key });
+      WW.world = Number(d.world_cash) || 0;
+      try { wwRender(); } catch (e) { /* fenetre portefeuille absente */ }
+      key = null; busy = false; dlg.hidden = true;
+      toast('\u2714 $' + wwFmt(n) + ' envoy\u00e9s \u00e0 ' + name, 'good');
+    } catch (e) {
+      msg.textContent = e.message || 'Envoi impossible.'; msg.dataset.kind = 'bad';
+      toast(e.message || 'Envoi impossible.', 'bad');
+    } finally { busy = false; go.textContent = 'Envoyer'; if (!dlg.hidden) refresh(); }
+  };
+  window.addEventListener('maf-world-action', e => {
+    if (e.detail?.action !== 'send-money') return;
+    e.preventDefault();                                  // remplace le toast "Bientot disponible" de l'etape 1
+    open(e.detail.players || []);
+  });
+})();
 boot();
 </script>
 </body>

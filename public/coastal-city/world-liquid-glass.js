@@ -19,6 +19,7 @@ function mountGlass() {
     ['#btnWorldTools', { ...transparent, radius: 999, surface: 'convex_circle' }],
     ['#btnMenu', { ...transparent, radius: 999, surface: 'convex_circle' }],
     ['#btnWorldChat', { ...transparent, radius: 999, surface: 'convex_circle' }],
+    ['#btnWorldActions', { ...transparent, radius: 999, surface: 'convex_circle', tintColor: '#ffb020', tintOpacity: 0.34, specularOpacity: 0.42 }],
     ['#worldComms', { ...transparent, radius: 16, bezelWidth: 12, interactive: false }],
     ['#btnWorldMic', { ...transparent, radius: 13, bezelWidth: 10, pressScale: 1.03, stretch: 0.00005, maxStretch: 0.045 }],
     ['#worldChatPanel', { ...transparent, radius: 18, glassThickness: 28, refractiveIndex: 1.55, bezelWidth: 13, specularOpacity: 0.33, tintOpacity: 0.009, fallbackBlur: 5, interactive: false }],
