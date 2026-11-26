@@ -6293,10 +6293,10 @@ function tryEnterExit() {
     for (const d of [3.2, 4.4]) { cands.push([v.x + sy * d, v.z + cy * d]); cands.push([v.x - sy * d, v.z - cy * d]); }
     let spot = null;
     for (const c of cands) {
-      if (Math.abs(c[0]) > OUTER - 30 || c[1] > SHORE_Z - 2) continue;
+      const onIsl = c[1] > SHORE_Z - 2; if (onIsl ? !islandWalkable(c[0], c[1], 1, 3) : Math.abs(c[0]) > OUTER - 30) continue; /*MAF-EXIT-ISLAND-V1*/
       if (!insideAnyCollider(c[0], c[1], 0.5)) { spot = c; break; }
     }
-    if (!spot) { const n = nearestRoadPoint(v.x, v.z); spot = [n.x, n.z]; }
+    if (!spot) { if (v.z > SHORE_Z - 2 && islandWalkable(v.x, v.z, 3, 1)) spot = [v.x + (-cy) * 2.2, v.z + sy * 2.2]; else { const n = nearestRoadPoint(v.x, v.z); spot = [n.x, n.z]; } } /*MAF-EXIT-ISLAND-V1*/
     player.x = spot[0]; player.z = spot[1];
     player.y = groundY(player.x, player.z) + 0.02;
     player.vx = 0; player.vz = 0; player.vy = 0; player.speed = 0; player.phase = 0;
