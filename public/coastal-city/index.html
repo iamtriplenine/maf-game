@@ -1350,6 +1350,52 @@ function addVilla2CollidersV1() {
     addCollider(x + x0 * scale, z + z0 * scale, x + x1 * scale, z + z1 * scale, y + top * scale, 1);
   }
 }
+/* MAF-VILLA2-LIGHTS-V1 : la maison Ludo n'avait aucune lumiere. Memes reglages que les luminaires de la villa Tir au but
+   (blanc chaud, portee 13, decay 1.3, intensite 20-28) ; elles passent par le groupe FIXE de lumieres (LIGHT_POOL) :
+   aucune lumiere ajoutee a la scene, donc aucune recompilation de shaders. Coordonnees : repere local du modele. */
+const VILLA2_LIGHTS = [
+  // rez-de-chaussee : [u, hauteur, v, intensite]
+  [-8.6, 2.85, -4.8, 26], [7.2, 2.85, -4.8, 28], [-8.6, 2.85, 2.6, 26],
+  [7.2, 2.85, 2.2, 28], [0.2, 2.85, -0.3, 22], [2.5, 2.85, 5.9, 20],
+  // etage
+  [-8.6, 6.1, -4.8, 26], [7.2, 6.1, -4.8, 28], [-8.6, 6.1, 2.6, 26],
+  [7.2, 6.1, 2.2, 28], [0.2, 6.1, -0.3, 22]
+];
+const villa2Lights = { list: null, color: null, mat: null, bounce: null };
+function villa2InitLights(model) {
+  if (villa2Lights.list) return;
+  const { x, y, z, scale } = VILLA2;
+  villa2Lights.color = new THREE.Color(1, 0.84, 0.7);
+  villa2Lights.list = VILLA2_LIGHTS.map(([u, h, v, i]) => ({ x: x + u * scale, y: y + h * scale, z: z + v * scale, i }));
+  // Plafonniers visibles : disques plats, allumes par le meme gradateur que les luminaires de la villa.
+  villa2Lights.mat = new THREE.MeshLambertMaterial({ color: 0x3a3028, emissive: 0xffe2b0, emissiveIntensity: 0 });
+  const disc = new THREE.CylinderGeometry(0.4, 0.4, 0.06, 16);
+  for (const [u, h, v] of VILLA2_LIGHTS) {
+    const m = new THREE.Mesh(disc, villa2Lights.mat);
+    m.position.set(u, h + 0.12, v);
+    model.add(m);
+  }
+  // Faible remplissage chaud sur les surfaces texturees, comme dans la villa Tir au but (coins et etage).
+  const bounce = new Set();
+  model.traverse(o => {
+    const mt = o.material;
+    if (!o.isMesh || !mt || !mt.map || mt.transparent || !mt.emissive || bounce.has(mt)) return;
+    mt.emissiveMap = mt.map; mt.emissive.setHex(0xffe9d4); mt.emissiveIntensity = 0; mt.needsUpdate = true;
+    bounce.add(mt);
+  });
+  villa2Lights.bounce = bounce;
+}
+// Eclairages exterieurs de nuit (hub Ludo, place des defis, beach lounge), memes teintes chaudes que les lampadaires.
+const NIGHT_SPOTS = { list: null, color: null };
+function nightSpotsInit() {
+  const defs = [
+    [LUDO_HUB.x - 3.2, LUDO_HUB.z + 1.5], [LUDO_HUB.x + 3.2, LUDO_HUB.z + 1.5],
+    [-5, 31], [5, 31], [-42, BEACH_Z + 16], [-38, BEACH_Z + 19]
+  ];
+  NIGHT_SPOTS.color = new THREE.Color(0xffd9a0);
+  NIGHT_SPOTS.list = defs.map(([px, pz]) => ({ x: px, y: groundY(px, pz) + 4.6, z: pz, i: 5.5 }));
+}
+
 async function loadVilla2() {
   villa2.loading = true;
   try {
@@ -1369,6 +1415,7 @@ async function loadVilla2() {
     scene.add(model);
     await villa2LoadFloors();
     villa2.model = model;
+    villa2InitLights(model);
     addVilla2Colliders();
     buildColliderHash();
   } catch (err) {
@@ -2105,6 +2152,21 @@ function updateStreetLighting(night, x, z) {
         if (!light._wp) { light.updateWorldMatrix(true, false); light._wp = new THREE.Vector3().setFromMatrixPosition(light.matrixWorld); }
         lpOffer(intensity * brightness * proximity, light._wp.x, light._wp.y, light._wp.z, light.color, light.distance, light.decay, x, z);
       }
+    }
+  }
+  const v2 = villa2Lights;                              // maison Ludo (MAF-VILLA2-LIGHTS-V1)
+  if (v2.list && villa2.model) {
+    const dist2 = Math.hypot(x - VILLA2.x, z - VILLA2.z);
+    const prox = 1 - smoothstep(60, 86, dist2), bright = lerp(0.38, 1, night);
+    v2.mat.emissiveIntensity = bright * 1.1;
+    for (const m of v2.bounce) m.emissiveIntensity = night * 0.14;
+    if (prox > 0) for (const sp of v2.list) lpOffer(sp.i * bright * prox, sp.x, sp.y, sp.z, v2.color, 13, 1.3, x, z);
+  }
+  if (night > 0.01 && typeof LUDO_HUB !== 'undefined') {   // exterieurs : hub Ludo, place des defis, beach lounge
+    if (!NIGHT_SPOTS.list) nightSpotsInit();
+    for (const sp of NIGHT_SPOTS.list) {
+      const d = Math.hypot(x - sp.x, z - sp.z);
+      if (d < 70) lpOffer(sp.i * night * (1 - smoothstep(40, 70, d)), sp.x, sp.y, sp.z, NIGHT_SPOTS.color, 16, 1.2, x, z);
     }
   }
   const S = _lp.S;
