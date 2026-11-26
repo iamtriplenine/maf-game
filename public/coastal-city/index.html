@@ -3720,22 +3720,22 @@ function stepPlayer(dt, input) {
   // MAF-WORLD-DIR-V1 : pousser vers le haut = avancer (le signe etait inverse)
   const dx = fwdX * mz + rgtX * mx;
   const dz = fwdZ * mz + rgtZ * mx;
-  const want = BOARD.riding ? (input.run ? BOARD.vMax : BOARD.vCruise) : (input.run ? RUN_SPD : WALK_SPD); /*MAF-HOVERBOARD-V1*/
+  const RIDEC = rideCur(); const want = RIDEC ? (input.run ? RIDEC.vMax : RIDEC.vCruise) : (input.run ? RUN_SPD : WALK_SPD); /*MAF-HOVERBOARD-V1*/
   const dmag = Math.hypot(dx, dz);
   const tvx = dmag > 0.01 ? (dx / dmag) * want * Math.min(1, dmag) : 0;
   const tvz = dmag > 0.01 ? (dz / dmag) * want * Math.min(1, dmag) : 0;
-  const accelRate = BOARD.riding ? 0.03 : (p.onGround ? 0.00002 : 0.02); /*MAF-HOVERBOARD-V1*/
+  const accelRate = RIDEC ? RIDEC.acc : (p.onGround ? 0.00002 : 0.02); /*MAF-HOVERBOARD-V1*/
   p.vx = damp(p.vx, tvx, accelRate, dt);
   p.vz = damp(p.vz, tvz, accelRate, dt);
 
   if (dmag > 0.05) {
     const targetYaw = Math.atan2(p.vx, p.vz);
-    p.yaw += angDelta(p.yaw, targetYaw) * (1 - Math.pow(BOARD.riding ? 0.04 : 0.00002, dt)); /*MAF-HOVERBOARD-V1*/
+    p.yaw += angDelta(p.yaw, targetYaw) * (1 - Math.pow(RIDEC ? RIDEC.yawK : 0.00002, dt)); /*MAF-HOVERBOARD-V1*/
   }
   p.speed = Math.hypot(p.vx, p.vz);
 
   // vertical
-  if (input.jump && p.onGround && !BOARD.riding) { p.vy = JUMP_V; p.onGround = false; sfxJump(); } /*MAF-HOVERBOARD-V1*/
+  if (input.jump && p.onGround && !RIDEC) { p.vy = JUMP_V; p.onGround = false; sfxJump(); } /*MAF-HOVERBOARD-V1*/
   p.vy -= GRAV * dt;
   p.y += p.vy * dt;
 
@@ -3759,7 +3759,7 @@ function stepPlayer(dt, input) {
 
   // footsteps
   p.phase += p.speed * dt * 2.05;
-  if (p.onGround && p.speed > 0.6 && !BOARD.riding) { /*MAF-HOVERBOARD-V1*/
+  if (p.onGround && p.speed > 0.6 && !RIDEC) { /*MAF-HOVERBOARD-V1*/
     const st = Math.floor(p.phase / Math.PI);
     if (st !== p._lastStep) { p._lastStep = st; sfxStep(p.speed / RUN_SPD, p.z > BEACH_Z - 2); }
   }
@@ -3769,13 +3769,13 @@ function animateCharacter(dt) {
   const g = player.mesh; if (!g || !g.visible) return;
   const u = g.userData;
   g.position.set(player.x, player.y, player.z);
-  g.rotation.y = player.yaw; if (BOARD.riding || BOARD.dismT >= 0) boardPoseApply(g); else if (g.rotation.x || g.rotation.z) { g.rotation.x = 0; g.rotation.z = 0; } /*MAF-HOVERBOARD-V1*/
+  g.rotation.y = player.yaw; if (rideShow()) boardPoseApply(g); else if (g.rotation.x || g.rotation.z) { g.rotation.x = 0; g.rotation.z = 0; } /*MAF-HOVERBOARD-V1*/
   if (MP.me && MP.me.model) {   // MAF-WORLD-MYSKIN-V1 : mon propre skin de profil
-    mpPlay(MP.me, BOARD.riding ? false : player.speed > 0.5, player.speed); /*MAF-HOVERBOARD-V1*/
+    if (bikeSkinHook(dt)) return; mpPlay(MP.me, rideCur() ? false : player.speed > 0.5, player.speed); /*MAF-HOVERBOARD-V1*/
     if (MP.me.mixer) MP.me.mixer.update(dt); try { boardCenterFeet(dt); } catch (e) { /* facultatif */ } /*MAF-HOVERBOARD-V2*/
     return;
   }
-  const sp = player.speed; if (BOARD.riding || BOARD.dismT >= 0) { boardPoseProc(u); return; } /*MAF-HOVERBOARD-V1*/
+  const sp = player.speed; { const RSH = rideShow(); if (RSH) { if (RSH === BOARD) boardPoseProc(u); else bikePoseProc(u); return; } } /*MAF-HOVERBOARD-V1*/
   const swing = clamp(sp / RUN_SPD, 0, 1);
   const ph = player.phase;
   const s = Math.sin(ph), c = Math.cos(ph * 2);
@@ -6264,7 +6264,7 @@ function toggleMenu(force) {
 
 /* ---------------------------------------------------- enter / exit / fix */
 let lastSwap = 0;
-function tryEnterExit() { if (boardToggle()) return; /*MAF-HOVERBOARD-V1*/
+function tryEnterExit() { if (rideToggle()) return; /*MAF-HOVERBOARD-V1*/
   if (player.seating) { leaveVillaSeat(); return; }
   if (sitOnVillaSeat(villaSeatUI.focused)) return;
   if (hubCanUse()) { hubOpen(); return; }
@@ -6454,8 +6454,8 @@ function boardTick() {
 // Applique la position et l'inclinaison du cavalier (appele par animateCharacter).
 function boardPoseApply(g) {
   g.rotation.order = 'YXZ';
-  g.position.x += BOARD.offX; g.position.y += BOARD.offY; g.position.z += BOARD.offZ;
-  g.rotation.x = BOARD.leanX; g.rotation.z = BOARD.leanZ;
+  const RS = rideShow() || BOARD; g.position.x += RS.offX; g.position.y += RS.offY; g.position.z += RS.offZ;
+  g.rotation.x = RS.leanX; g.rotation.z = RS.leanZ;
 }
 // Pose du personnage de base (sans skin) : pieds ecartes sur la planche, bras en balancier.
 function boardPoseProc(u) {
@@ -6503,6 +6503,274 @@ function boardCenterFeet(dt) {
   me.spin.position.x = F.sx; me.spin.position.z = F.sz;
 }
 /* MAF-HOVERBOARD-V2 END */
+/* MAF-RIDES-V1 BEGIN : velo electrique (fat-tyre-e-bike), gare a cote du hoverboard devant la villa.
+   E pres du velo = monter ; E en roulant = descendre. 25 km/h (marche) et 35 km/h (course).
+   Le joueur est assis sur la selle, pieds sur les pedales, mains sur le guidon (cinematique inverse). */
+BOARD.acc = 0.03; BOARD.yawK = 0.04;
+const BIKE = {
+  loaded: false, loading: false, retryAt: 0, group: null, wheelF: null, wheelR: null, fork: null, crank: null, pedL: null, pedR: null, forkQ0: null,
+  s: 1.0, sd: 0.3084, seatY: 0.9519, reach: 2.4, vCruise: 6.9, vMax: 9.7, acc: 0.11, yawK: 0.08, label: 'le v\u00e9lo \u00e9lectrique',
+  x: 0, z: 0, yaw: 0, homeSet: false, riding: false, mountT: -1, dismT: -1, fromX: 0, fromZ: 0, t0: 0, lastT: 0,
+  lastYaw: 0, leanX: 0, leanZ: 0, steer: 0, spin: 0, crankA: 0, offX: 0, offY: 0, offZ: 0, posed: false, sk: null
+};
+BIKE.wheelR0 = 0.33;
+const _rv = { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), q1: new THREE.Quaternion(), q2: new THREE.Quaternion(), q3: new THREE.Quaternion(), q4: new THREE.Quaternion(), gq: new THREE.Quaternion() };
+function rideCur() { return BOARD.riding ? BOARD : (BIKE.riding ? BIKE : null); }
+function rideShow() { return rideCur() || (BOARD.dismT >= 0 ? BOARD : (BIKE.dismT >= 0 ? BIKE : null)); }
+function rideNearMount() {
+  const a = boardCanMount() ? Math.hypot(player.x - BOARD.x, player.z - BOARD.z) : 1e9;
+  const b = bikeCanMount() ? Math.hypot(player.x - BIKE.x, player.z - BIKE.z) : 1e9;
+  if (a >= 1e9 && b >= 1e9) return null;
+  return a <= b ? { label: 'le hoverboard' } : { label: BIKE.label };
+}
+function rideToggle() {
+  if (player.seating) return false;
+  if (BIKE.riding) return bikeToggle();
+  if (BOARD.riding) return boardToggle();
+  const a = boardCanMount() ? Math.hypot(player.x - BOARD.x, player.z - BOARD.z) : 1e9;
+  const b = bikeCanMount() ? Math.hypot(player.x - BIKE.x, player.z - BIKE.z) : 1e9;
+  if (a >= 1e9 && b >= 1e9) return false;
+  return a <= b ? boardToggle() : bikeToggle();
+}
+function bikeHome() {
+  const h = boardHome(); const x = h.x + 1.8; let z = h.z;
+  for (let k = 0; k < 14 && insideAnyCollider(x, z, 1.2); k++) z -= 1;
+  return { x, z, yaw: Math.PI };
+}
+function bikeLoad() {
+  if (BIKE.loading || BIKE.loaded || nowMs() < BIKE.retryAt) return;
+  BIKE.loading = true;
+  mpLoaders().then(L => new Promise((ok, ko) =>
+    L.gltf.load(new URL('./rides/fat-tyre-e-bike.glb', document.baseURI).href, ok, undefined, ko)))
+  .then(g => {
+    const model = g.scene;
+    model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    const inner = new THREE.Group(); inner.add(model); inner.scale.setScalar(BIKE.s);
+    const group = new THREE.Group(); group.name = 'fat-tyre-e-bike'; group.add(inner);
+    BIKE.group = group;
+    BIKE.fork = model.getObjectByName('Fork'); BIKE.wheelF = model.getObjectByName('Front_Wheel'); BIKE.wheelR = model.getObjectByName('Rear_Wheel');
+    BIKE.crank = model.getObjectByName('Crank'); BIKE.pedL = model.getObjectByName('Pedal_L'); BIKE.pedR = model.getObjectByName('Pedal_R');
+    if (BIKE.fork) BIKE.forkQ0 = BIKE.fork.quaternion.clone();
+    if (!BIKE.homeSet) { const h = bikeHome(); BIKE.x = h.x; BIKE.z = h.z; BIKE.yaw = h.yaw; BIKE.homeSet = true; }
+    scene.add(group); BIKE.loaded = true; BIKE.loading = false;
+  })
+  .catch(e => { BIKE.loading = false; BIKE.retryAt = nowMs() + 8000; dbgFail('bike', e); });
+}
+function bikeCanMount() {
+  return BIKE.loaded && !BIKE.riding && BIKE.dismT < 0 && !BOARD.riding && player.mode === 'walk' && !player.seating &&
+    Math.hypot(player.x - BIKE.x, player.z - BIKE.z) < BIKE.reach;
+}
+function bikeMount() {
+  const p = player;
+  BIKE.fromX = p.x; BIKE.fromZ = p.z;
+  p.yaw = BIKE.yaw;
+  p.x = BIKE.x - Math.sin(BIKE.yaw) * BIKE.sd; p.z = BIKE.z - Math.cos(BIKE.yaw) * BIKE.sd; p.y = groundY(p.x, p.z);
+  p.vx = 0; p.vz = 0; p.speed = 0;
+  BIKE.riding = true; BIKE.mountT = 0; BIKE.lastYaw = p.yaw; BIKE.steer = 0; BIKE.leanZ = 0;
+  if (p.mesh) p.mesh.rotation.order = 'YXZ';
+  sfxDoor(); hudDirty = true;
+}
+function bikeDismount(silent) {
+  const p = player;
+  const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+  BIKE.x = p.x + fx * BIKE.sd; BIKE.z = p.z + fz * BIKE.sd; BIKE.yaw = p.yaw;      // le velo reste la ou on le laisse
+  const spots = [[fz * 0.85, -fx * 0.85], [-fz * 0.85, fx * 0.85], [-fx * 0.9, -fz * 0.9], [0, 0]];
+  let nx = p.x, nz = p.z;
+  for (const s of spots) { if (!insideAnyCollider(p.x + s[0], p.z + s[1], 0.4)) { nx = p.x + s[0]; nz = p.z + s[1]; break; } }
+  BIKE.fromX = p.x; BIKE.fromZ = p.z;
+  p.x = nx; p.z = nz; p.vx *= 0.3; p.vz *= 0.3;
+  BIKE.riding = false; BIKE.mountT = -1; BIKE.dismT = silent ? 1 : 0;
+  if (!silent) sfxDoor();
+  hudDirty = true;
+}
+function bikeToggle() {
+  if (player.seating) return false;
+  const now = nowMs();
+  if (BIKE.riding) { if (now - BIKE.lastT < 350) return true; BIKE.lastT = now; bikeDismount(false); return true; }
+  if (!bikeCanMount()) return false;
+  if (now - BIKE.lastT < 350) return true;
+  BIKE.lastT = now; bikeMount(); return true;
+}
+function bikeTick() {
+  const now = nowMs();
+  const dt = clamp((now - (BIKE.t0 || now)) / 1000, 0.001, 0.1); BIKE.t0 = now;
+  const p = player;
+  if (!BIKE.loaded) {
+    if (!BIKE.homeSet) { const h = bikeHome(); BIKE.x = h.x; BIKE.z = h.z; BIKE.yaw = h.yaw; BIKE.homeSet = true; }
+    if (Math.hypot(p.x - BIKE.x, p.z - BIKE.z) < 220) bikeLoad();
+    return;
+  }
+  if (BIKE.riding && (p.mode !== 'walk' || p.seating)) bikeDismount(true);
+  const e3 = t => t * t * (3 - 2 * t);
+  const kk = 1 - Math.pow(0.02, dt);
+  let offX = 0, offY = 0, offZ = 0;
+  if (BIKE.riding) {
+    BIKE.yaw = p.yaw;
+    BIKE.x = p.x + Math.sin(p.yaw) * BIKE.sd; BIKE.z = p.z + Math.cos(p.yaw) * BIKE.sd;
+    const sp = p.speed;
+    const yr = angDelta(BIKE.lastYaw, p.yaw) / dt; BIKE.lastYaw = p.yaw;
+    BIKE.steer += (clamp(yr * 0.16, -0.5, 0.5) * clamp(sp / 2, 0, 1) - BIKE.steer) * kk;
+    BIKE.leanZ += (clamp(-yr * 0.05 * clamp(sp / BIKE.vCruise, 0, 1.3), -0.3, 0.3) - BIKE.leanZ) * kk;
+    BIKE.spin += (sp / (BIKE.wheelR0 * BIKE.s)) * dt;
+    BIKE.crankA += (sp / (BIKE.wheelR0 * BIKE.s)) / 3.5 * dt;
+    if (BIKE.mountT >= 0) {
+      BIKE.mountT += dt / 0.45;
+      const t = Math.min(1, BIKE.mountT), e = e3(t);
+      offX = (BIKE.fromX - p.x) * (1 - e); offZ = (BIKE.fromZ - p.z) * (1 - e);
+      offY = 0.14 * Math.sin(Math.PI * t);
+      if (BIKE.mountT >= 1) BIKE.mountT = -1;
+    }
+  } else {
+    if (BIKE.dismT >= 0) {
+      BIKE.dismT += dt / 0.38;
+      const t = Math.min(1, BIKE.dismT), e = e3(t);
+      offX = (BIKE.fromX - p.x) * (1 - e); offZ = (BIKE.fromZ - p.z) * (1 - e);
+      offY = 0.12 * Math.sin(Math.PI * t);
+      if (BIKE.dismT >= 1) BIKE.dismT = -1;
+    }
+    BIKE.leanZ += (0 - BIKE.leanZ) * kk; BIKE.steer += (0 - BIKE.steer) * kk;
+  }
+  BIKE.offX = offX; BIKE.offY = offY; BIKE.offZ = offZ;
+  const g = BIKE.group;
+  g.position.set(BIKE.x, groundY(BIKE.x, BIKE.z), BIKE.z);
+  g.rotation.order = 'YXZ';
+  g.rotation.set(0, BIKE.yaw, BIKE.riding ? BIKE.leanZ : 0);
+  if (BIKE.fork && BIKE.forkQ0) BIKE.fork.quaternion.copy(BIKE.forkQ0).multiply(_rv.q1.setFromAxisAngle(_rv.a.set(0, 1, 0), BIKE.steer));
+  if (BIKE.wheelR) BIKE.wheelR.rotation.x = BIKE.spin;
+  if (BIKE.wheelF) BIKE.wheelF.rotation.x = BIKE.spin;
+  if (BIKE.crank) BIKE.crank.rotation.x = BIKE.crankA;
+  if (BIKE.pedL) BIKE.pedL.rotation.x = -BIKE.crankA;
+  if (BIKE.pedR) BIKE.pedR.rotation.x = -BIKE.crankA;
+}
+// Bonhomme par defaut (sans skin) : assis, jambes qui pedalent, bras au guidon.
+function bikePoseProc(u) {
+  const a = BIKE.crankA, sw = Math.sin(a) * 0.22;
+  u.legL.rotation.x = -(0.5 + sw); u.legR.rotation.x = -(0.5 - sw);
+  u.armL.rotation.x = -1.0; u.armR.rotation.x = -1.0;
+  u.armL.rotation.z = 0.12; u.armR.rotation.z = -0.12;
+  u.hips.position.y = 0.98;
+  u.body.rotation.x = 0.5;
+}
+// ---------- skin du joueur sur le velo (cinematique inverse a 2 os) ----------
+function ridePos(g, bone, out) { bone.getWorldPosition(out); return g.worldToLocal(out); }
+function rideAim(g, joint, next, dirLocal) {          // oriente le segment joint->next vers dirLocal (repere du joueur)
+  const gq = g.getWorldQuaternion(_rv.gq);
+  const here = joint.getWorldPosition(_rv.a);
+  const rest = next.getWorldPosition(_rv.b).sub(here).normalize();
+  const aim = _rv.c.copy(dirLocal).normalize().applyQuaternion(gq);
+  const delta = _rv.q1.setFromUnitVectors(rest, aim);
+  const parent = joint.parent.getWorldQuaternion(_rv.q2);
+  const pinv = _rv.q3.copy(parent).invert();
+  joint.quaternion.premultiply(pinv.multiply(delta).multiply(parent));
+}
+function rideRot(g, b, ang) {                         // incline un os autour de l'axe droite/gauche du joueur
+  const gq = g.getWorldQuaternion(_rv.gq);
+  const axis = _rv.c.set(1, 0, 0).applyQuaternion(gq);
+  const delta = _rv.q1.setFromAxisAngle(axis, ang);
+  const parent = b.parent.getWorldQuaternion(_rv.q2);
+  const pinv = _rv.q4.copy(parent).invert();
+  b.quaternion.premultiply(pinv.multiply(delta).multiply(parent));
+}
+function rideFlat(g, foot, rel) {                     // pied a plat, oriente comme le joueur
+  const gq = g.getWorldQuaternion(_rv.gq);
+  const want = _rv.q1.copy(gq).multiply(rel);
+  const parent = foot.parent.getWorldQuaternion(_rv.q2);
+  foot.quaternion.copy(parent.invert().multiply(want));
+}
+function rideIK(g, A, B, C, target, pole) {           // A racine, B milieu (genou/coude), C bout (cheville/poignet)
+  const pa = ridePos(g, A, new THREE.Vector3()), pb = ridePos(g, B, new THREE.Vector3()), pc = ridePos(g, C, new THREE.Vector3());
+  const l1 = pa.distanceTo(pb), l2 = pb.distanceTo(pc);
+  const d = target.clone().sub(pa), dist = d.length();
+  if (dist < 1e-4) return;
+  const dc = clamp(dist, Math.abs(l1 - l2) + 0.02, (l1 + l2) * 0.998);
+  const dir = d.multiplyScalar(1 / dist);
+  const x = (l1 * l1 - l2 * l2 + dc * dc) / (2 * dc);
+  const h = Math.sqrt(Math.max(0, l1 * l1 - x * x));
+  const pv = pole.clone().addScaledVector(dir, -pole.dot(dir));
+  if (pv.lengthSq() < 1e-6) pv.set(0, 0, 1);
+  pv.normalize();
+  const knee = pa.clone().addScaledVector(dir, x).addScaledVector(pv, h);
+  const endP = pa.clone().addScaledVector(dir, dc);
+  rideAim(g, A, B, knee.clone().sub(pa));
+  rideAim(g, B, C, endP.sub(knee));
+}
+function bikeSkinInit(me, g) {
+  const map = new Map();
+  me.model.traverse(o => { if (o.isBone) map.set(o.name.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^mixamorig\d*/, ''), o); });
+  const need = ['leftupleg', 'leftleg', 'leftfoot', 'rightupleg', 'rightleg', 'rightfoot', 'leftarm', 'leftforearm', 'lefthand', 'rightarm', 'rightforearm', 'righthand', 'spine'];
+  if (!need.every(n => map.has(n))) return { me, bad: true };
+  if (me.mixer) { me.mixer.stopAllAction(); me.cur = null; }   // les os reviennent a leur pose de depart
+  me.spin.position.set(0, 0, 0);
+  g.updateMatrixWorld(true);
+  const bind = [];
+  for (const n of ['spine', 'spine1', 'spine2', 'neck', 'head', 'leftupleg', 'leftleg', 'leftfoot', 'rightupleg', 'rightleg', 'rightfoot', 'leftarm', 'leftforearm', 'lefthand', 'rightarm', 'rightforearm', 'righthand']) {
+    const b = map.get(n); if (b) bind.push([b, b.quaternion.clone()]);
+  }
+  const ginv = g.getWorldQuaternion(new THREE.Quaternion()).invert();
+  const foot = {
+    leftfoot: ginv.clone().multiply(map.get('leftfoot').getWorldQuaternion(new THREE.Quaternion())),
+    rightfoot: ginv.clone().multiply(map.get('rightfoot').getWorldQuaternion(new THREE.Quaternion()))
+  };
+  const t = new THREE.Vector3();
+  const ankleH = (ridePos(g, map.get('leftfoot'), t).y + ridePos(g, map.get('rightfoot'), t).y) / 2;
+  const pu = ridePos(g, map.get('leftupleg'), new THREE.Vector3()), pl = ridePos(g, map.get('leftleg'), new THREE.Vector3()), pf = ridePos(g, map.get('leftfoot'), new THREE.Vector3());
+  return { me, map, bind, foot, ankleH, L: pu.distanceTo(pl) + pl.distanceTo(pf), baseY: me.model.position.y };
+}
+function bikeSkinPose(me, dt) {
+  const g = player.mesh; if (!g || !me.model || !me.spin) return false;
+  let K = BIKE.sk;
+  if (!K || K.me !== me) K = BIKE.sk = bikeSkinInit(me, g);
+  if (K.bad) return false;
+  const S = BIKE.s, sd = BIKE.sd, M = K.map;
+  for (const [b, q] of K.bind) b.quaternion.copy(q);                 // pose de depart, puis on pose tout de zero
+  me.spin.position.set(0, 0, 0); me.model.position.y = K.baseY;
+  g.updateMatrixWorld(true);
+  // 1) bassin pose sur la selle (sans depasser la portee des jambes quand la pedale est en bas)
+  const hl = ridePos(g, M.get('leftupleg'), new THREE.Vector3()), hr = ridePos(g, M.get('rightupleg'), new THREE.Vector3());
+  const hx = (hl.x + hr.x) / 2, hy = (hl.y + hr.y) / 2, hz = (hl.z + hr.z) / 2, half = Math.abs(hl.x - hr.x) / 2;
+  const lowAnkle = (0.14 + 0.012) * S + K.ankleH;
+  const dx = 0.177 * S - half, dz = 0.193 * S - 0.07;
+  const reachY = lowAnkle + Math.sqrt(Math.max(0, Math.pow(0.975 * K.L, 2) - dx * dx - dz * dz));
+  const hipY = Math.min(BIKE.seatY * S + 0.09, reachY);
+  me.spin.position.set(-hx, 0, -hz);
+  me.model.position.y = K.baseY + (hipY - hy);
+  g.updateMatrixWorld(true);
+  // 2) buste penche vers le guidon, tete relevee
+  for (const [n, a] of [['spine', 0.2], ['spine1', 0.22], ['spine2', 0.18], ['neck', -0.2], ['head', -0.3]]) {
+    const b = M.get(n); if (b) rideRot(g, b, a);
+  }
+  // 3) jambes : chevilles sur les pedales (qui tournent), pieds a plat
+  const ca = BIKE.crankA, sa = Math.sin(ca), cc = Math.cos(ca);
+  for (const [up, lo, ft, hip] of [['leftupleg', 'leftleg', 'leftfoot', hl], ['rightupleg', 'rightleg', 'rightfoot', hr]]) {
+    const side = hip.x >= 0 ? 1 : -1;
+    const tgt = new THREE.Vector3(side * 0.177 * S, (0.31 + side * 0.17 * sa) * S + 0.012 * S + K.ankleH, (-0.1154 - side * 0.17 * cc) * S + sd - 0.07);
+    rideIK(g, M.get(up), M.get(lo), M.get(ft), tgt, new THREE.Vector3(side * 0.2, 0.1, 1));
+    rideFlat(g, M.get(ft), K.foot[ft]);
+  }
+  // 4) bras : mains sur les poignees (elles suivent la direction du guidon)
+  const qf = _rv.q4.copy(BIKE.forkQ0 || _rv.q4.identity()).multiply(_rv.q3.setFromAxisAngle(_rv.c.set(0, 1, 0), BIKE.steer)).clone();
+  for (const [ar, fo, hd] of [['leftarm', 'leftforearm', 'lefthand'], ['rightarm', 'rightforearm', 'righthand']]) {
+    const sh = ridePos(g, M.get(ar), new THREE.Vector3()); const side = sh.x >= 0 ? 1 : -1;
+    const grip = new THREE.Vector3(side * 0.30, 0.285, 0.04).applyQuaternion(qf).add(new THREE.Vector3(0, 0.7783, 0.3593)).multiplyScalar(S);
+    grip.z += sd;
+    rideIK(g, M.get(ar), M.get(fo), M.get(hd), grip, new THREE.Vector3(side * 0.8, -0.6, -0.2));
+  }
+  return true;
+}
+function bikeSkinRestore(me) {
+  BIKE.posed = false;
+  const K = BIKE.sk;
+  if (!K || K.bad || K.me !== me || !me) return;
+  for (const [b, q] of K.bind) b.quaternion.copy(q);
+  me.spin.position.set(0, 0, 0); me.model.position.y = K.baseY; me.cur = null;   // l'animation normale reprend
+}
+function bikeSkinHook(dt) {                           // renvoie true si le skin est pose sur le velo (animation normale coupee)
+  const me = MP.me;
+  if (BIKE.riding) { if (bikeSkinPose(me, dt)) { BIKE.posed = true; return true; } return false; }
+  if (BIKE.posed) bikeSkinRestore(me);
+  return false;
+}
+/* MAF-RIDES-V1 END */
 /* MAF-HOVERBOARD-V1 END */
 let _hintT = 0;
 function hintStuck() {
@@ -7662,7 +7930,7 @@ function bbTick(now) {
 
 
 function frame() {
-  decor3dTick(); buildingLabelsTick(); try { boardTick(); } catch (e) { dbgFail('hoverboard-tick', e); } /*MAF-HOVERBOARD-V1*/ if (ISL.farmBlades) { const fbT = nowMs() * 0.0006; for (const fb of ISL.farmBlades) fb.rotation.z = fbT; } /*MAF-FARM-V1*/
+  decor3dTick(); buildingLabelsTick(); try { boardTick(); } catch (e) { dbgFail('hoverboard-tick', e); } try { bikeTick(); } catch (e) { dbgFail('bike-tick', e); } /*MAF-HOVERBOARD-V1*/ if (ISL.farmBlades) { const fbT = nowMs() * 0.0006; for (const fb of ISL.farmBlades) fb.rotation.z = fbT; } /*MAF-FARM-V1*/
   requestAnimationFrame(frame);
   const now = nowMs();
   let real = (now - lastT) / 1000;
@@ -7769,7 +8037,7 @@ function updatePrompt() {
     setPrompt((IS_TOUCH ? 'Tap <kbd>ENTER</kbd>' : 'Press <kbd>F</kbd>') + ' to step out');
     return;
   }
-  if (BOARD.riding) { setPrompt(tapE + ' pour descendre'); return; } if (boardCanMount()) { setPrompt(tapE + ' pour monter sur le hoverboard'); return; } /*MAF-HOVERBOARD-V1*/ if (hubCanUse()) { setPrompt(tapE + ' pour les salons Tir au but'); return; }
+  if (rideCur()) { setPrompt(tapE + ' pour descendre'); return; } { const rm = rideNearMount(); if (rm) { setPrompt(tapE + ' pour monter sur ' + rm.label); return; } } /*MAF-HOVERBOARD-V1*/ if (hubCanUse()) { setPrompt(tapE + ' pour les salons Tir au but'); return; }
   if (canEatAtFastFood()) { setPrompt(tapE + ' pour manger (+50 ⚡)'); return; }
   let best = null, bd = 5.2;
   for (const v of vehicles) { if (v.occupied) continue; const d = Math.hypot(v.x - player.x, v.z - player.z); if (d < bd) { bd = d; best = v; } }
@@ -9085,7 +9353,7 @@ function mpPlay(r, moving, speed) {
     clip = pl.walk || pl.main;
     if (pl.walk) rate = clamp((speed || 3.5) / 2.2, 0.8, 2.2);   // les pas suivent la vitesse : pas de glissade
   } else if (pl.idle) clip = pl.idle;
-  else if (pl.main && pl.type !== 'walk' && !(r === MP.me && BOARD.riding)) clip = pl.main; /*MAF-HOVERBOARD-V1*/          // a l'arret : le mouvement du profil (danse...)
+  else if (pl.main && pl.type !== 'walk' && !(r === MP.me && rideCur())) clip = pl.main; /*MAF-HOVERBOARD-V1*/          // a l'arret : le mouvement du profil (danse...)
   else if (pl.walk) { clip = pl.walk; paused = true; }
   else clip = pl.main;
   if (!clip) return;
