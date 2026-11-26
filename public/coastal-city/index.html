@@ -1631,13 +1631,13 @@ async function islandInit() {
       const url = new URL('./island-roads/' + n + '.glb', document.baseURI);
       models[n] = (await ld.loadAsync(url.href)).scene;
     }));
-    const G = new THREE.Group(); G.name = 'tropical-island';
+    const G = new THREE.Group(); G.name = 'tropical-island'; const kit = new THREE.Group(); kit.name = 'island-kit'; G.add(kit);
     G.position.set(ISL.O.x, 0, ISL.O.z); G.rotation.y = ISL.PHI;
     const put = (name, x, y, z, rot, sx, sy, sz) => {
       const m = models[name].clone(true);
       m.position.set(x, y, z); m.rotation.y = rot; m.scale.set(sx, sy, sz);
       m.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
-      G.add(m); return m;
+      kit.add(m); return m;
     };
     // Sable : maillage en relief doux, forme irrégulière.
     {
@@ -1703,6 +1703,7 @@ async function islandInit() {
         G.add(hm); G.add(pm);
       }
     }
+    mafMergeKit(kit);
     // ---- Etape 2 : palmiers (memes formes que ceux de la ville), hors routes et pont ----
     {
       const rnd = mulberry32(777), spots = [];
@@ -2544,7 +2545,8 @@ function decor3dPrep(scene) {
   wrap.add(scene);
   return wrap;
 }
-function decor3dSpawn() {
+function decor3dSpawn() { decor3dSpawnRaw(); decor3dBake(); }
+function decor3dSpawnRaw() {
   if (!DECOR3D.group) return;
   for (const c of DECOR3D.list) {
     if (c.obj || !DECOR3D.tpls[c.model]) continue;
@@ -2589,6 +2591,113 @@ function decor3dTick() {
     if (c.obj.visible !== near) c.obj.visible = near;
   }
 }
+/* MAF-DRAWCALLS-V1 BEGIN : reduction des draw calls (aucun changement visuel voulu).
+   1) etiquettes B1, B2... des batiments : visibles seulement a proximite (1 sprite = 1 draw call + 1 texture) ;
+   2) routes/pont/lampadaires du kit de l'ile : fusionnes en un seul mesh ;
+   3) voitures decoratives des parkings : fusionnees par zone (couleurs cuites dans les sommets). */
+function mafMergeMeshes(meshes, parent, keyOf, opt) {
+  parent.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(parent.matrixWorld).invert();
+  const groups = new Map(), v = new THREE.Vector3();
+  for (const o of meshes) {
+    const geo = o.geometry, pa = geo && geo.attributes.position;
+    if (!pa) continue;
+    const k = keyOf(o); if (!k) continue;
+    const M = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld), NM = new THREE.Matrix3().getNormalMatrix(M);
+    const na = geo.attributes.normal, ua = geo.attributes.uv, ix = geo.index;
+    let g = groups.get(k.key);
+    if (!g) { g = { mat: k.mat, pos: [], nor: [], uv: [], col: [], idx: [], n: 0, hasN: true, hasUV: false }; groups.set(k.key, g); }
+    for (let i = 0; i < pa.count; i++) {
+      v.fromBufferAttribute(pa, i).applyMatrix4(M); g.pos.push(v.x, v.y, v.z);
+      if (na) { v.fromBufferAttribute(na, i).applyMatrix3(NM).normalize(); g.nor.push(v.x, v.y, v.z); } else { g.hasN = false; g.nor.push(0, 1, 0); }
+      if (ua) { g.hasUV = true; g.uv.push(ua.getX(i), ua.getY(i)); } else g.uv.push(0, 0);
+      if (k.color) g.col.push(k.color.r, k.color.g, k.color.b);
+    }
+    if (ix) for (let i = 0; i < ix.count; i++) g.idx.push(g.n + ix.getX(i));
+    else for (let i = 0; i < pa.count; i++) g.idx.push(g.n + i);
+    g.n += pa.count;
+  }
+  const out = [];
+  groups.forEach(g => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(g.pos, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(g.nor, 3));
+    if (g.hasUV) geo.setAttribute('uv', new THREE.Float32BufferAttribute(g.uv, 2));
+    if (g.col.length) geo.setAttribute('color', new THREE.Float32BufferAttribute(g.col, 3));
+    geo.setIndex(g.n > 65535 ? new THREE.Uint32BufferAttribute(g.idx, 1) : new THREE.Uint16BufferAttribute(g.idx, 1));
+    if (!g.hasN) geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, g.mat);
+    m.castShadow = !!opt.cast; m.receiveShadow = !!opt.recv;
+    out.push(m);
+  });
+  return out;
+}
+
+// 1) Etiquettes de batiments : seulement celles a moins de 95 m de la camera.
+function buildingLabelsTick() {
+  const G = world.group;
+  if (!G || !G.userData.labels) return;
+  buildingLabelsTick.n = (buildingLabelsTick.n || 0) + 1;
+  if (buildingLabelsTick.n % 12) return;
+  const cx = camera.position.x, cz = camera.position.z, R2 = 95 * 95;
+  for (const sp of G.userData.labels) {
+    const dx = sp.position.x - cx, dz = sp.position.z - cz, vis = dx * dx + dz * dz < R2;
+    if (sp.visible !== vis) sp.visible = vis;
+  }
+}
+
+// 2) Kit de l'ile (routes, ponts, piliers, lampadaires) : un seul mesh par materiau equivalent.
+function mafMergeKit(kit) {
+  try {
+    const list = [], mats = new Map();
+    kit.traverse(o => { if (o.isMesh) list.push(o); });
+    if (list.length < 2) return;
+    const merged = mafMergeMeshes(list, kit, o => {
+      const m = o.material;
+      if (Array.isArray(m)) return null;
+      const img = m.map && m.map.image;
+      const k = (m.map ? 'T' + (img ? img.width + 'x' + img.height : m.map.uuid) : 'M' + m.uuid) + '|' + m.color.getHex() + '|' + m.type;
+      if (!mats.has(k)) mats.set(k, m);
+      return { key: k, mat: mats.get(k) };
+    }, { cast: false, recv: true });
+    if (!merged.length) return;
+    kit.children.slice().forEach(c => kit.remove(c));
+    merged.forEach(m => { m.name = 'island-kit-merged'; kit.add(m); });
+    console.info('Ile : ' + list.length + ' pieces -> ' + merged.length + ' mesh(es).');
+  } catch (e) { console.warn('Ile : fusion du kit ignoree.', e); }
+}
+
+// 3) Voitures decoratives : couleurs (peinture comprise) cuites en couleurs de sommets, un mesh par zone de 200 m.
+function decor3dBake() {
+  try {
+    const grp = DECOR3D.group;
+    if (!grp) return;
+    const items = DECOR3D.list.filter(c => c.obj && !c.baked);
+    if (!items.length) return;
+    grp.updateMatrixWorld(true);
+    const baked = DECOR3D.bakedMat || (DECOR3D.bakedMat = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.55, metalness: 0.12 }));
+    const buckets = new Map();
+    for (const c of items) {
+      const k = Math.floor(c.x / 200) + ',' + Math.floor(c.z / 200);
+      if (!buckets.has(k)) buckets.set(k, []);
+      buckets.get(k).push(c);
+    }
+    for (const list of buckets.values()) {
+      const meshes = [];
+      for (const c of list) c.obj.traverse(o => { if (o.isMesh) meshes.push(o); });
+      const out = mafMergeMeshes(meshes, grp, o => {
+        const m = o.material;
+        if (Array.isArray(m)) return null;
+        const plain = !m.map && !m.transparent && !(m.emissive && m.emissive.getHex() > 0);
+        return plain ? { key: 'baked', mat: baked, color: m.color } : { key: m.uuid, mat: m };
+      }, { cast: true, recv: true });
+      if (!out.length) continue;
+      out.forEach(m => { m.name = 'decor-vehicles-merged'; grp.add(m); });
+      for (const c of list) { grp.remove(c.obj); c.obj = new THREE.Object3D(); c.baked = true; }
+    }
+  } catch (e) { console.warn('Vehicules decor : fusion ignoree.', e); }
+}
+/* MAF-DRAWCALLS-V1 END */
 function generateWorld(seed) {
   world.seed = seed >>> 0;
   const R = mulberry32(world.seed);
@@ -2935,7 +3044,7 @@ function generateWorld(seed) {
       const t = new THREE.CanvasTexture(c);
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, fog: false, toneMapped: false }));
       sp.scale.set(16, 8, 1); sp.position.set(b.x, b.h + 7, b.z); sp.renderOrder = 9;
-      sp.name = 'label-' + b.id; G.add(sp);
+      sp.name = 'label-' + b.id; G.add(sp); sp.visible = false; (G.userData.labels || (G.userData.labels = [])).push(sp); /*MAF-DRAWCALLS-V1*/
     });
   }
   // MAF-DECOR-3D : placement dans les parkings uniquement (jamais sur la route), sans collision
@@ -7277,7 +7386,7 @@ function bbTick(now) {
 
 
 function frame() {
-  decor3dTick();
+  decor3dTick(); buildingLabelsTick();
   requestAnimationFrame(frame);
   const now = nowMs();
   let real = (now - lastT) / 1000;
