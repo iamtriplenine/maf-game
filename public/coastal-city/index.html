@@ -3772,7 +3772,7 @@ function animateCharacter(dt) {
   g.rotation.y = player.yaw; if (BOARD.riding || BOARD.dismT >= 0) boardPoseApply(g); else if (g.rotation.x || g.rotation.z) { g.rotation.x = 0; g.rotation.z = 0; } /*MAF-HOVERBOARD-V1*/
   if (MP.me && MP.me.model) {   // MAF-WORLD-MYSKIN-V1 : mon propre skin de profil
     mpPlay(MP.me, BOARD.riding ? false : player.speed > 0.5, player.speed); /*MAF-HOVERBOARD-V1*/
-    if (MP.me.mixer) MP.me.mixer.update(dt);
+    if (MP.me.mixer) MP.me.mixer.update(dt); try { boardCenterFeet(dt); } catch (e) { /* facultatif */ } /*MAF-HOVERBOARD-V2*/
     return;
   }
   const sp = player.speed; if (BOARD.riding || BOARD.dismT >= 0) { boardPoseProc(u); return; } /*MAF-HOVERBOARD-V1*/
@@ -6465,6 +6465,44 @@ function boardPoseProc(u) {
   u.hips.position.y = 0.9;
   u.body.rotation.x = 0.05;
 }
+/* MAF-HOVERBOARD-V2 BEGIN : recentre les pieds du skin sur la planche (plus de pied dehors).
+   Apres chaque mise a jour de l'animation, on mesure le milieu des deux chevilles dans le repere du joueur
+   et on decale le skin (spin) pour que ce milieu tombe au centre de la planche. Sans effet a pied. */
+const BOARD_FEET = { skin: null, fL: null, fR: null, sx: 0, sz: 0, tz: -0.06, v: null };
+function boardCenterFeet(dt) {
+  const me = MP.me, g = player.mesh;
+  if (!me || !me.spin || !me.model || !g) return;
+  const F = BOARD_FEET;
+  if (F.skin !== me) {
+    F.skin = me; F.fL = null; F.fR = null; F.sx = 0; F.sz = 0; F.v = new THREE.Vector3();
+    me.model.traverse(o => {
+      if (!o.isBone) return;
+      const n = o.name.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^mixamorig\d*/, '');
+      if (n === 'leftfoot') F.fL = o; else if (n === 'rightfoot') F.fR = o;
+    });
+  }
+  const on = (BOARD.riding || BOARD.dismT >= 0) && F.fL && F.fR;
+  if (!on) {                                   // a pied : le skin revient doucement a sa place
+    if (F.sx || F.sz) {
+      const r = Math.pow(0.001, dt);
+      F.sx *= r; F.sz *= r;
+      if (Math.abs(F.sx) < 0.002 && Math.abs(F.sz) < 0.002) { F.sx = 0; F.sz = 0; }
+      me.spin.position.x = F.sx; me.spin.position.z = F.sz;
+    }
+    return;
+  }
+  g.updateMatrixWorld(true);
+  let mx = 0, mz = 0;
+  for (const b of [F.fL, F.fR]) {
+    b.getWorldPosition(F.v); g.worldToLocal(F.v);
+    mx += F.v.x * 0.5; mz += F.v.z * 0.5;
+  }
+  const k = 1 - Math.pow(0.0005, dt);
+  F.sx = clamp(F.sx - mx * k, -0.6, 0.6);
+  F.sz = clamp(F.sz - (mz - F.tz) * k, -0.6, 0.6);
+  me.spin.position.x = F.sx; me.spin.position.z = F.sz;
+}
+/* MAF-HOVERBOARD-V2 END */
 /* MAF-HOVERBOARD-V1 END */
 let _hintT = 0;
 function hintStuck() {
