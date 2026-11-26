@@ -6514,7 +6514,7 @@ const BIKE = {
   lastYaw: 0, leanX: 0, leanZ: 0, steer: 0, spin: 0, crankA: 0, offX: 0, offY: 0, offZ: 0, posed: false, sk: null
 };
 BIKE.wheelR0 = 0.33;
-const _rv = { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), q1: new THREE.Quaternion(), q2: new THREE.Quaternion(), q3: new THREE.Quaternion(), q4: new THREE.Quaternion(), gq: new THREE.Quaternion() };
+const _rv = {}; function rvInit() { if (_rv.a) return; Object.assign(_rv, { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), q1: new THREE.Quaternion(), q2: new THREE.Quaternion(), q3: new THREE.Quaternion(), q4: new THREE.Quaternion(), gq: new THREE.Quaternion() }); } /* THREE n'existe qu'apres boot() */
 function rideCur() { return BOARD.riding ? BOARD : (BIKE.riding ? BIKE : null); }
 function rideShow() { return rideCur() || (BOARD.dismT >= 0 ? BOARD : (BIKE.dismT >= 0 ? BIKE : null)); }
 function rideNearMount() {
@@ -6600,7 +6600,7 @@ function bikeTick() {
     if (Math.hypot(p.x - BIKE.x, p.z - BIKE.z) < 220) bikeLoad();
     return;
   }
-  if (BIKE.riding && (p.mode !== 'walk' || p.seating)) bikeDismount(true);
+  rvInit(); if (BIKE.riding && (p.mode !== 'walk' || p.seating)) bikeDismount(true);
   const e3 = t => t * t * (3 - 2 * t);
   const kk = 1 - Math.pow(0.02, dt);
   let offX = 0, offY = 0, offZ = 0;
@@ -6717,7 +6717,7 @@ function bikeSkinInit(me, g) {
   return { me, map, bind, foot, ankleH, L: pu.distanceTo(pl) + pl.distanceTo(pf), baseY: me.model.position.y };
 }
 function bikeSkinPose(me, dt) {
-  const g = player.mesh; if (!g || !me.model || !me.spin) return false;
+  const g = player.mesh; if (!g || !me.model || !me.spin) return false; rvInit();
   let K = BIKE.sk;
   if (!K || K.me !== me) K = BIKE.sk = bikeSkinInit(me, g);
   if (K.bad) return false;
