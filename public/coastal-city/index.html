@@ -6344,7 +6344,7 @@ function boardLoad() {
   .catch(e => { BOARD.loading = false; BOARD.retryAt = nowMs() + 8000; dbgFail('hoverboard', e); });
 }
 function boardCanMount() {
-  return BOARD.loaded && !BOARD.riding && BOARD.dismT < 0 && player.mode === 'walk' && !player.seating &&
+  return BOARD.loaded && !BOARD.riding && BOARD.dismT < 0 && player.mode === 'walk' && !player.seating && ridesFree(BOARD) &&
     Math.hypot(player.x - BOARD.x, player.z - BOARD.z) < BOARD.reach;
 }
 function boardMount() {
@@ -6360,14 +6360,14 @@ function boardMount() {
 function boardDismount(silent) {
   const p = player;
   BOARD.x = p.x; BOARD.z = p.z; BOARD.yaw = p.yaw;
-  BOARD.vx = p.vx * 0.55; BOARD.vz = p.vz * 0.55;              // la planche continue de rouler un peu
+  BOARD.vx = 0; BOARD.vz = 0;              // la planche continue de rouler un peu
   const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
   const spots = [[fx * 0.9, fz * 0.9], [fz * 0.9, -fx * 0.9], [-fz * 0.9, fx * 0.9], [0, 0]];
   let nx = p.x, nz = p.z;
   for (const s of spots) { if (!insideAnyCollider(p.x + s[0], p.z + s[1], 0.4)) { nx = p.x + s[0]; nz = p.z + s[1]; break; } }
   BOARD.fromX = p.x; BOARD.fromZ = p.z;
   p.x = nx; p.z = nz; p.vx *= 0.3; p.vz *= 0.3;
-  BOARD.riding = false; BOARD.mountT = -1; BOARD.dismT = silent ? 1 : 0;
+  BOARD.riding = false; BOARD.mountT = -1; BOARD.dismT = silent ? 1 : 0; ridesRelease(BOARD);
   if (!silent) sfxDoor();
   hudDirty = true;
 }
@@ -6377,7 +6377,7 @@ function boardToggle() {
   if (BOARD.riding) { if (now - BOARD.lastT < 350) return true; BOARD.lastT = now; boardDismount(false); return true; }
   if (!boardCanMount()) return false;
   if (now - BOARD.lastT < 350) return true;
-  BOARD.lastT = now; boardMount(); return true;
+  BOARD.lastT = now; ridesClaim(BOARD, boardMount); return true;
 }
 function boardHum(sp) {
   try {
@@ -6403,7 +6403,7 @@ function boardTick() {
     if (Math.hypot(p.x - BOARD.x, p.z - BOARD.z) < 220) boardLoad();
     return;
   }
-  if (BOARD.riding && (p.mode !== 'walk' || p.seating)) boardDismount(true);
+  ridePlace(BOARD, dt); if (BOARD.riding && (p.mode !== 'walk' || p.seating)) boardDismount(true);
   const e3 = t => t * t * (3 - 2 * t);
   let offX = 0, offY = 0, offZ = 0;
   if (BOARD.riding) {
@@ -6529,7 +6529,7 @@ function rideToggle() {
   if (BOARD.riding) return boardToggle();
   const a = boardCanMount() ? Math.hypot(player.x - BOARD.x, player.z - BOARD.z) : 1e9;
   const b = bikeCanMount() ? Math.hypot(player.x - BIKE.x, player.z - BIKE.z) : 1e9;
-  if (a >= 1e9 && b >= 1e9) return false;
+  if (a >= 1e9 && b >= 1e9) { const o = ridesBusyNear(); if (o) { toast('D\u00e9j\u00e0 utilis\u00e9 par ' + o + '.', 'bad'); return true; } return false; }
   return a <= b ? boardToggle() : bikeToggle();
 }
 function bikeHome() {
@@ -6557,7 +6557,7 @@ function bikeLoad() {
   .catch(e => { BIKE.loading = false; BIKE.retryAt = nowMs() + 8000; dbgFail('bike', e); });
 }
 function bikeCanMount() {
-  return BIKE.loaded && !BIKE.riding && BIKE.dismT < 0 && !BOARD.riding && player.mode === 'walk' && !player.seating &&
+  return BIKE.loaded && !BIKE.riding && BIKE.dismT < 0 && !BOARD.riding && player.mode === 'walk' && !player.seating && ridesFree(BIKE) &&
     Math.hypot(player.x - BIKE.x, player.z - BIKE.z) < BIKE.reach;
 }
 function bikeMount() {
@@ -6579,7 +6579,7 @@ function bikeDismount(silent) {
   for (const s of spots) { if (!insideAnyCollider(p.x + s[0], p.z + s[1], 0.4)) { nx = p.x + s[0]; nz = p.z + s[1]; break; } }
   BIKE.fromX = p.x; BIKE.fromZ = p.z;
   p.x = nx; p.z = nz; p.vx *= 0.3; p.vz *= 0.3;
-  BIKE.riding = false; BIKE.mountT = -1; BIKE.dismT = silent ? 1 : 0;
+  BIKE.riding = false; BIKE.mountT = -1; BIKE.dismT = silent ? 1 : 0; ridesRelease(BIKE);
   if (!silent) sfxDoor();
   hudDirty = true;
 }
@@ -6589,7 +6589,7 @@ function bikeToggle() {
   if (BIKE.riding) { if (now - BIKE.lastT < 350) return true; BIKE.lastT = now; bikeDismount(false); return true; }
   if (!bikeCanMount()) return false;
   if (now - BIKE.lastT < 350) return true;
-  BIKE.lastT = now; bikeMount(); return true;
+  BIKE.lastT = now; ridesClaim(BIKE, bikeMount); return true;
 }
 function bikeTick() {
   const now = nowMs();
@@ -6600,7 +6600,7 @@ function bikeTick() {
     if (Math.hypot(p.x - BIKE.x, p.z - BIKE.z) < 220) bikeLoad();
     return;
   }
-  rvInit(); if (BIKE.riding && (p.mode !== 'walk' || p.seating)) bikeDismount(true);
+  rvInit(); ridePlace(BIKE, dt); if (BIKE.riding && (p.mode !== 'walk' || p.seating)) bikeDismount(true);
   const e3 = t => t * t * (3 - 2 * t);
   const kk = 1 - Math.pow(0.02, dt);
   let offX = 0, offY = 0, offZ = 0;
@@ -6716,10 +6716,10 @@ function bikeSkinInit(me, g) {
   const pu = ridePos(g, map.get('leftupleg'), new THREE.Vector3()), pl = ridePos(g, map.get('leftleg'), new THREE.Vector3()), pf = ridePos(g, map.get('leftfoot'), new THREE.Vector3());
   return { me, map, bind, foot, ankleH, L: pu.distanceTo(pl) + pl.distanceTo(pf), baseY: me.model.position.y };
 }
-function bikeSkinPose(me, dt) {
-  const g = player.mesh; if (!g || !me.model || !me.spin) return false; rvInit();
-  let K = BIKE.sk;
-  if (!K || K.me !== me) K = BIKE.sk = bikeSkinInit(me, g);
+function bikeSkinPose(me, dt, gIn, crankA, steerA) {
+  const g = gIn || player.mesh; if (!g || !me.model || !me.spin) return false; rvInit(); if (crankA === undefined) { crankA = BIKE.crankA; steerA = BIKE.steer; }
+  let K = me._bikeK;
+  if (!K || K.me !== me) K = me._bikeK = bikeSkinInit(me, g);
   if (K.bad) return false;
   const S = BIKE.s, sd = BIKE.sd, M = K.map;
   for (const [b, q] of K.bind) b.quaternion.copy(q);                 // pose de depart, puis on pose tout de zero
@@ -6740,7 +6740,7 @@ function bikeSkinPose(me, dt) {
     const b = M.get(n); if (b) rideRot(g, b, a);
   }
   // 3) jambes : chevilles sur les pedales (qui tournent), pieds a plat
-  const ca = BIKE.crankA, sa = Math.sin(ca), cc = Math.cos(ca);
+  const ca = crankA, sa = Math.sin(ca), cc = Math.cos(ca);
   for (const [up, lo, ft, hip] of [['leftupleg', 'leftleg', 'leftfoot', hl], ['rightupleg', 'rightleg', 'rightfoot', hr]]) {
     const side = hip.x >= 0 ? 1 : -1;
     const tgt = new THREE.Vector3(side * 0.177 * S, (0.31 + side * 0.17 * sa) * S + 0.012 * S + K.ankleH, (-0.1154 - side * 0.17 * cc) * S + sd - 0.07);
@@ -6748,7 +6748,7 @@ function bikeSkinPose(me, dt) {
     rideFlat(g, M.get(ft), K.foot[ft]);
   }
   // 4) bras : mains sur les poignees (elles suivent la direction du guidon)
-  const qf = _rv.q4.copy(BIKE.forkQ0 || _rv.q4.identity()).multiply(_rv.q3.setFromAxisAngle(_rv.c.set(0, 1, 0), BIKE.steer)).clone();
+  const qf = _rv.q4.copy(BIKE.forkQ0 || _rv.q4.identity()).multiply(_rv.q3.setFromAxisAngle(_rv.c.set(0, 1, 0), steerA)).clone();
   for (const [ar, fo, hd] of [['leftarm', 'leftforearm', 'lefthand'], ['rightarm', 'rightforearm', 'righthand']]) {
     const sh = ridePos(g, M.get(ar), new THREE.Vector3()); const side = sh.x >= 0 ? 1 : -1;
     const grip = new THREE.Vector3(side * 0.30, 0.285, 0.04).applyQuaternion(qf).add(new THREE.Vector3(0, 0.7783, 0.3593)).multiplyScalar(S);
@@ -6759,7 +6759,7 @@ function bikeSkinPose(me, dt) {
 }
 function bikeSkinRestore(me) {
   BIKE.posed = false;
-  const K = BIKE.sk;
+  const K = me && me._bikeK;
   if (!K || K.bad || K.me !== me || !me) return;
   for (const [b, q] of K.bind) b.quaternion.copy(q);
   me.spin.position.set(0, 0, 0); me.model.position.y = K.baseY; me.cur = null;   // l'animation normale reprend
@@ -6771,6 +6771,91 @@ function bikeSkinHook(dt) {                           // renvoie true si le skin
   return false;
 }
 /* MAF-RIDES-V1 END */
+/* MAF-RIDES-NET-V1 BEGIN : hoverboard et velo PARTAGES. Un seul exemplaire de chaque, un seul cavalier a la fois ;
+   la machine reste ou on la laisse (position gardee par le serveur) et les autres joueurs voient le cavalier dessus. */
+BOARD.id = 'hoverboard'; BOARD.sd = 0; BOARD.wr = 0.083;
+BIKE.id = 'bike'; BIKE.wr = BIKE.wheelR0;
+for (const R of [BOARD, BIKE]) { R.sv = null; R.holdUntil = 0; R.pending = false; R.mountedAt = 0; R.noRelease = false; }
+const RIDESNET = { synced: false, myId: null };
+function ridesFree(R) { return !R.sv || !R.sv.rider || R.sv.rider === RIDESNET.myId; }
+function ridesBusyNear() {
+  for (const R of [BOARD, BIKE]) {
+    if (R.loaded && R.sv && R.sv.rider && R.sv.rider !== RIDESNET.myId && Math.hypot(player.x - R.x, player.z - R.z) < R.reach + 0.5)
+      return R.sv.name || 'un autre joueur';
+  }
+  return null;
+}
+function ridesHeaders() { return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + MP.token }; }
+// Monter : le serveur confirme d'abord que la machine est libre.
+function ridesClaim(R, go) {
+  if (R.pending) return;
+  if (!MP.ready) { go(); return; }                       // hors ligne : usage local seulement
+  if (!RIDESNET.synced) { toast('Connexion au World en cours, r\u00e9essaie dans un instant.', 'bad'); return; }
+  R.pending = true;
+  fetch(MP.api + '/api/world/rides/claim', { method: 'POST', headers: ridesHeaders(), body: JSON.stringify({ id: R.id, x: R.x, z: R.z, yaw: R.yaw }) })
+    .then(r => r.json().catch(() => ({})).then(j => ({ ok: r.ok && j.ok, j })))
+    .then(({ ok, j }) => {
+      R.pending = false;
+      if (!ok) { toast((j && j.error) || 'Impossible de monter pour le moment.', 'bad'); return; }
+      if (j.ride) R.sv = j.ride;
+      const still = !R.riding && R.dismT < 0 && !rideCur() && player.mode === 'walk' && !player.seating && Math.hypot(player.x - R.x, player.z - R.z) < R.reach + 1.5;
+      if (still) { R.mountedAt = nowMs(); go(); }
+      else { R.noRelease = false; ridesRelease(R); }      // il a bouge entre-temps : on rend la machine
+    })
+    .catch(() => { R.pending = false; toast('Impossible de monter pour le moment.', 'bad'); });
+}
+// Descendre : la machine reste exactement ici, enregistree sur le serveur.
+function ridesRelease(R) {
+  if (R.noRelease) return;
+  R.holdUntil = nowMs() + 3000;
+  if (R.sv) { R.sv.rider = null; R.sv.set = true; R.sv.x = R.x; R.sv.z = R.z; R.sv.yaw = R.yaw; }
+  if (R.noRelease || !MP.ready) return;
+  try {
+    fetch(MP.api + '/api/world/rides/release', { method: 'POST', keepalive: true, headers: ridesHeaders(), body: JSON.stringify({ id: R.id, x: R.x, z: R.z, yaw: R.yaw }) })
+      .then(r => r.json()).then(j => { if (j && j.ride) { R.sv = j.ride; R.holdUntil = nowMs() + 400; } }).catch(() => {});
+  } catch (e) { /* le serveur liberera la machine tout seul */ }
+}
+function ridesNetApply(list, myId) {
+  if (!Array.isArray(list)) return;
+  RIDESNET.myId = myId; RIDESNET.synced = true;
+  for (const it of list) {
+    const R = it.id === 'bike' ? BIKE : (it.id === 'hoverboard' ? BOARD : null);
+    if (!R) continue;
+    R.sv = it;
+    if (R.riding && it.rider !== myId && nowMs() - R.mountedAt > 3000) {      // le serveur l'a donnee a quelqu'un d'autre
+      R.noRelease = true; (R === BIKE ? bikeDismount : boardDismount)(true); R.noRelease = false;
+      toast('Cette machine n\u2019est plus disponible.', 'bad');
+    }
+  }
+}
+// Machine au repos ou conduite par un autre joueur : on la place selon le serveur / selon son cavalier.
+function ridePlace(R, dt) {
+  if (R.riding || R.dismT >= 0 || R.mountT >= 0 || !R.sv || nowMs() < R.holdUntil) return;
+  const rr = R.sv.rider && R.sv.rider !== RIDESNET.myId ? MP.remotes.get(R.sv.rider) : null;
+  if (rr) {
+    R.x = rr.x + Math.sin(rr.yaw) * R.sd; R.z = rr.z + Math.cos(rr.yaw) * R.sd; R.yaw = rr.yaw; R.vx = 0; R.vz = 0;
+    R.spin += ((rr.spd || 0) / (R.wr * R.s)) * dt;
+    if (R === BIKE) BIKE.crankA = rr.rideCrank || 0;
+  } else if (R.sv.set) { R.x = R.sv.x; R.z = R.sv.z; R.yaw = R.sv.yaw; R.vx = 0; R.vz = 0; }
+}
+// Les autres joueurs : on voit le cavalier sur la machine.
+function ridesRemoteRestore(r) { r.ridePosed = false; bikeSkinRestore(r); }
+function ridesRemotePose(r, dt, d) {
+  if (!r.ride || r.seat || r.veh || !r.group.visible) { if (r.ridePosed) ridesRemoteRestore(r); return false; }
+  if (r.ride !== 'bike' && r.ridePosed) ridesRemoteRestore(r);
+  if (d >= 90) return true;
+  if (r.ride === 'hoverboard') {
+    r.group.position.y += BOARD.deck;
+    if (r.mixer) { mpPlay(r, false, 0); r.mixer.update(dt); }
+    return true;
+  }
+  if (!r.model || !r.spin || !r.mixer) return false;
+  rvInit();
+  r.rideCrank = (r.rideCrank || 0) + ((r.spd || 0) / (BIKE.wr * BIKE.s)) / 3.5 * dt;
+  if (bikeSkinPose(r, dt, r.group, r.rideCrank, 0)) { r.ridePosed = true; return true; }
+  return false;
+}
+/* MAF-RIDES-NET-V1 END */
 /* MAF-HOVERBOARD-V1 END */
 let _hintT = 0;
 function hintStuck() {
@@ -8367,7 +8452,7 @@ function mpSend() {
         z:(MP.lastOwnedCar || MP.porsche).z,
         yaw:(MP.lastOwnedCar || MP.porsche).yaw
       } : null),
-    carId: MP.carId || null,
+    carId: MP.carId || null, ride: (rideCur() || {}).id || null,
     wantParked: nowMs()>= (MP.parkedNextAt||0),
     voice: true, voiceClient: worldChat.client, voiceDone
   };
@@ -8382,7 +8467,7 @@ function mpSend() {
       MP.fails = 0; MP.gap = 600;
       mpShowOnline(j.onlineCount);
       mpWorldNotices(j.notices);
-      mpSyncParkedCars(j.parkedCars, j.me?.id);
+      mpSyncParkedCars(j.parkedCars, j.me?.id); ridesNetApply(j.rides, j.me?.id);
       for (const id of voiceDone) worldVoice.done.delete(id);
       mpVoiceReceive(j.voices, j.chat);
       if (j.me && j.me.skin) mpSetLocal(j.me.skin);
@@ -9120,7 +9205,7 @@ function mpLoadSkin(r) {
     model.traverse(o => { if (o.isMesh) o.frustumCulled = false; });
     mpFit(src, model);
     const spin = new THREE.Group(); spin.rotation.y = src.meta.rotation || 0; spin.add(model);
-    r.group.remove(r.ph); r.group.add(spin); r.model = model;
+    r.group.remove(r.ph); r.group.add(spin); r.model = model; r.spin = spin;
     if (src.plan.mode === 'anim') { r.mixer = new THREE.AnimationMixer(model); r.plan = src.plan; }
   }).catch(() => { /* on garde la silhouette bleue + le pseudo */ });
 }
@@ -9214,7 +9299,7 @@ function mpApply(list) {
     const parked = p.parked;
     r.parked = !r.veh && parked && Number.isFinite(parked.x) && Number.isFinite(parked.z) &&
       Number.isFinite(parked.yaw) ? parked : null;
-    r.seat = !r.veh && Number.isInteger(p.seat) ? VILLA_SEATS[p.seat - 1] || null : null;
+    r.seat = !r.veh && Number.isInteger(p.seat) ? VILLA_SEATS[p.seat - 1] || null : null; r.ride = p.ride === 'bike' || p.ride === 'hoverboard' ? p.ride : null;
   }
   for (const id of Array.from(MP.remotes.keys())) {
     if (seen.has(id)) continue;
@@ -9751,7 +9836,7 @@ function mpTick(dt) {
     mpSeatPose(r, !!r.seat);
     const wantShadow = d < 45;                                          // MAF-PERF-V1 : pas d'ombre ni d'animation pour les joueurs lointains
     if (r.shadowOn !== wantShadow) { r.shadowOn = wantShadow; r.group.traverse(o => { if (o.isMesh) o.castShadow = wantShadow; }); }
-    if (!r.seat && r.mixer && r.group.visible && d < 90) { mpPlay(r, moving, r.spd); r.mixer.update(dt); }
+    const rideH = ridesRemotePose(r, dt, d); if (!r.seat && !rideH && r.mixer && r.group.visible && d < 90) { mpPlay(r, moving, r.spd); r.mixer.update(dt); }
   }
 }
 
