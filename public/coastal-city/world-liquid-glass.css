@@ -164,3 +164,6 @@
 #hud .world-send-go{color:#2a1700;border:1px solid #ffd37a;background:linear-gradient(180deg,#ffd36b,#ff9f1c)}
 #hud .world-send-go:disabled{opacity:.45;cursor:default}
 #hud .world-send input:focus-visible,#hud .world-send select:focus-visible,#hud .world-send button:focus-visible{outline:3px solid #ffd166}
+
+/* MAF-WORLD-ROTATE-V1 */
+#topMenus #btnWorldRotate[data-on]{color:#e4cbff;border-color:rgba(198,138,255,.68)}

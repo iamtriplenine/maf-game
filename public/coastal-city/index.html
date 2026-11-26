@@ -441,6 +441,11 @@
           </svg>
         </button>
         <button id="btnWorldBillboard" type="button" aria-label="Placer un panneau" title="Placer un panneau"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="10" rx="1.5"/><path d="M8 14v6m8-6v6M7 9h10"/></svg></button>
+        <button id="btnWorldRotate" class="hidden" type="button" aria-label="Verrouiller l’écran à l’horizontale" title="Écran à l’horizontale">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="10" width="18" height="10" rx="2"/><path d="M7 6.5a7 7 0 0 1 10 0m0 0V4m0 2.5h-2.5"/>
+          </svg>
+        </button>
         <button id="btnWorldVoiceMute" class="hidden" type="button" aria-label="Lecture automatique des vocaux" aria-pressed="true" title="Couper la lecture automatique">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M11 5 6 9H3v6h3l5 4V5m4 4a4 4 0 0 1 0 6m3-9a8 8 0 0 1 0 12"/>
@@ -8829,6 +8834,46 @@ function mpWorldNotices(list) {
     if (e.detail?.action !== 'send-money') return;
     e.preventDefault();                                  // remplace le toast "Bientot disponible" de l'etape 1
     open(e.detail.players || []);
+  });
+})();
+/* MAF-WORLD-ROTATE-V1 : bouton "ecran a l'horizontale" (telephones). La page parente fait le verrouillage. */
+(function () {
+  const btn = document.getElementById('btnWorldRotate');
+  if (!btn) return;
+  const phone = matchMedia('(pointer:coarse)').matches && Math.min(screen.width, screen.height) <= 900;
+  if (!phone) return;                                   // ordinateur : le bouton reste cache
+  btn.classList.remove('hidden');
+  let timer = 0;
+  const label = on => {
+    btn.toggleAttribute('data-on', on);
+    const t = on ? 'Rotation libre' : 'Écran à l\u2019horizontale';
+    btn.title = t; btn.setAttribute('aria-label', on ? 'Libérer la rotation de l\u2019écran' : 'Verrouiller l\u2019écran à l\u2019horizontale');
+  };
+  const unsupported = () => toast('Ton téléphone ne peut pas forcer l\u2019horizontale. Désactive le verrouillage de rotation et tourne-le.');
+  function done(res) {
+    clearTimeout(timer);
+    if (!res) return;
+    if (res.ok) { label(!!res.locked); if (!res.silent) toast(res.locked ? 'Écran verrouillé à l\u2019horizontale.' : 'Rotation libre.', 'good'); }
+    else if (res.reason === 'unsupported') unsupported();
+    else toast('Impossible de verrouiller. Tourne ton téléphone à l\u2019horizontale.');
+  }
+  window.addEventListener('message', e => {
+    if (e.origin !== location.origin || !e.data || !e.data.mafWorldOrientationResult) return;
+    done(e.data.mafWorldOrientationResult);
+  });
+  btn.addEventListener('click', async () => {
+    const lock = !btn.hasAttribute('data-on');
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ mafWorldOrientation: lock ? 'lock' : 'unlock' }, location.origin);
+      clearTimeout(timer); timer = setTimeout(unsupported, 2500);        // pas de reponse : page parente ancienne
+      return;
+    }
+    try {                                                                 // jeu ouvert seul (hors iframe)
+      if (!lock) { screen.orientation.unlock(); return done({ ok: true, locked: false }); }
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+      await screen.orientation.lock('landscape');
+      done({ ok: true, locked: true });
+    } catch (err) { done({ ok: false, reason: screen.orientation && screen.orientation.lock ? 'denied' : 'unsupported' }); }
   });
 })();
 boot();

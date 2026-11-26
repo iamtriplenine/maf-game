@@ -25,12 +25,37 @@ const tryFullscreen = () => {
 
 const leaveFullscreen = () => {
   try {
+    if (window.screen.orientation && window.screen.orientation.unlock) window.screen.orientation.unlock();
+  } catch {
+    /* optionnel */
+  }
+  try {
     if (document.fullscreenElement && document.exitFullscreen) {
       const p = document.exitFullscreen();
       if (p && p.catch) p.catch(() => {});
     }
   } catch {
     /* pas grave */
+  }
+};
+
+// MAF-WORLD-ROTATE-V1 : le jeu (iframe) demande ici de verrouiller l'ecran a l'horizontale, car seule
+// cette page est en plein ecran. iPhone / Safari ne savent pas verrouiller : on repond "unsupported".
+const lockLandscape = async (lock) => {
+  const so = window.screen && window.screen.orientation;
+  try {
+    if (!lock) {
+      if (so && so.unlock) so.unlock();
+      return { ok: true, locked: false };
+    }
+    if (!so || !so.lock) return { ok: false, reason: "unsupported" };
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+    }
+    await so.lock("landscape");
+    return { ok: true, locked: true };
+  } catch {
+    return { ok: false, reason: "denied" };
   }
 };
 
@@ -90,6 +115,13 @@ export default function WorldPage() {
         void refreshSession(); // le solde reel a change dans le World : on met a jour le profil
         return;
       }
+      if (e.data.mafWorldOrientation) {
+        const src = e.source;
+        void lockLandscape(e.data.mafWorldOrientation === "lock").then((result) => {
+          try { src.postMessage({ mafWorldOrientationResult: result }, window.location.origin); } catch { /* iframe fermee */ }
+        });
+        return;
+      }
       if (e.data.mafWorldExit) {
         leave();
         return;
@@ -116,7 +148,16 @@ export default function WorldPage() {
     };
     window.addEventListener("popstate", onPop);
     window.addEventListener("message", onMsg);
+    // Si le joueur quitte le plein ecran, l'orientation est liberee : on previent le jeu pour remettre le bouton a jour.
+    const onFs = () => {
+      if (document.fullscreenElement) return;
+      try {
+        frameRef.current.contentWindow.postMessage({ mafWorldOrientationResult: { ok: true, locked: false, silent: true } }, window.location.origin);
+      } catch { /* pas grave */ }
+    };
+    document.addEventListener("fullscreenchange", onFs);
     return () => {
+      document.removeEventListener("fullscreenchange", onFs);
       window.removeEventListener("popstate", onPop);
       window.removeEventListener("message", onMsg);
       leaveFullscreen();
