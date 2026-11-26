@@ -167,3 +167,30 @@
 
 /* MAF-WORLD-ROTATE-V1 */
 #topMenus #btnWorldRotate[data-on]{color:#e4cbff;border-color:rgba(198,138,255,.68)}
+
+/* MAF-WORLD-PAYSAGE-V1 : iPhone en mode horizontal. */
+/* 1) L'encoche (gauche ou droite) ne cache plus la minimap, les boutons ni le menu. */
+#hud #statusBar{left:calc(10px + env(safe-area-inset-left,0px))}
+#hud #minimapStack{left:calc(10px + env(safe-area-inset-left,0px))}
+#hud #topMenus{right:calc(10px + env(safe-area-inset-right,0px))}
+#hud #speedo{right:calc(10px + env(safe-area-inset-right,0px))}
+@media (max-width:760px){#hud #missionCard{right:calc(10px + env(safe-area-inset-right,0px))}}
+#worldHubAlerts{right:calc(10px + env(safe-area-inset-right,0px)) !important}
+#worldLudoHubAlerts{left:calc(10px + env(safe-area-inset-left,0px)) !important}
+/* 2) Joystick a gauche : le repere "DEPLACER" passe aussi a gauche. */
+@media (orientation:landscape){
+  #touch #stickZone::after{right:auto;left:calc(22% - 37px);bottom:calc(18% - 37px)}
+}
+/* 3) Version compacte du bloc "en ligne" et du bouton Actions. */
+@media (orientation:landscape) and (max-height:520px){
+  #hud #worldComms.lga-glass{min-height:32px;grid-template-columns:minmax(0,auto) 32px}
+  #hud #worldComms.lga-glass #worldOnline{padding:0 6px 0 9px;gap:3px}
+  #hud #worldComms.lga-glass #worldOnline span:last-child{display:none}
+  #hud #worldComms.lga-glass #btnWorldMic svg{width:16px;height:16px}
+  #hud #btnWorldActions{width:38px;height:38px;min-width:38px}
+  #hud #btnWorldActions svg{width:18px;height:18px}
+  #hud .world-action-ico{width:38px;height:38px;font-size:17px}
+  #hud .world-action-txt{padding:3px 0}
+  #hud #worldActions[data-open] .world-action-txt{padding:4px 12px}
+  #hud #minimapStack{gap:5px}
+}

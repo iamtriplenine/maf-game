@@ -5473,7 +5473,10 @@ function bindInput() {
   const sz = ui.stickZone;
   const lookTouches = new Map();
   let lookPinch = null;
-  const inMoveZone = e => e.clientX >= innerWidth * 0.50 && e.clientY >= innerHeight * 0.70;
+  // MAF-WORLD-JOYSTICK-PAYSAGE-V1 : en mode horizontal, la marche est a GAUCHE et le regard a DROITE.
+  const inMoveZone = e => innerWidth > innerHeight
+    ? e.clientX <= innerWidth * 0.50 && e.clientY >= innerHeight * 0.30
+    : e.clientX >= innerWidth * 0.50 && e.clientY >= innerHeight * 0.70;
   const stickOff = () => {
     touchState.stickId = null; touchState.vx = 0; touchState.vy = 0; touchState.btn.run = false;
     ui.stickBase.style.opacity = '0'; ui.stickKnob.style.opacity = '0';
