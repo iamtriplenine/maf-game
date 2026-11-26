@@ -3720,22 +3720,22 @@ function stepPlayer(dt, input) {
   // MAF-WORLD-DIR-V1 : pousser vers le haut = avancer (le signe etait inverse)
   const dx = fwdX * mz + rgtX * mx;
   const dz = fwdZ * mz + rgtZ * mx;
-  const want = input.run ? RUN_SPD : WALK_SPD;
+  const want = BOARD.riding ? (input.run ? BOARD.vMax : BOARD.vCruise) : (input.run ? RUN_SPD : WALK_SPD); /*MAF-HOVERBOARD-V1*/
   const dmag = Math.hypot(dx, dz);
   const tvx = dmag > 0.01 ? (dx / dmag) * want * Math.min(1, dmag) : 0;
   const tvz = dmag > 0.01 ? (dz / dmag) * want * Math.min(1, dmag) : 0;
-  const accelRate = p.onGround ? 0.00002 : 0.02;
+  const accelRate = BOARD.riding ? 0.03 : (p.onGround ? 0.00002 : 0.02); /*MAF-HOVERBOARD-V1*/
   p.vx = damp(p.vx, tvx, accelRate, dt);
   p.vz = damp(p.vz, tvz, accelRate, dt);
 
   if (dmag > 0.05) {
     const targetYaw = Math.atan2(p.vx, p.vz);
-    p.yaw += angDelta(p.yaw, targetYaw) * (1 - Math.pow(0.00002, dt));
+    p.yaw += angDelta(p.yaw, targetYaw) * (1 - Math.pow(BOARD.riding ? 0.04 : 0.00002, dt)); /*MAF-HOVERBOARD-V1*/
   }
   p.speed = Math.hypot(p.vx, p.vz);
 
   // vertical
-  if (input.jump && p.onGround) { p.vy = JUMP_V; p.onGround = false; sfxJump(); }
+  if (input.jump && p.onGround && !BOARD.riding) { p.vy = JUMP_V; p.onGround = false; sfxJump(); } /*MAF-HOVERBOARD-V1*/
   p.vy -= GRAV * dt;
   p.y += p.vy * dt;
 
@@ -3759,7 +3759,7 @@ function stepPlayer(dt, input) {
 
   // footsteps
   p.phase += p.speed * dt * 2.05;
-  if (p.onGround && p.speed > 0.6) {
+  if (p.onGround && p.speed > 0.6 && !BOARD.riding) { /*MAF-HOVERBOARD-V1*/
     const st = Math.floor(p.phase / Math.PI);
     if (st !== p._lastStep) { p._lastStep = st; sfxStep(p.speed / RUN_SPD, p.z > BEACH_Z - 2); }
   }
@@ -3769,13 +3769,13 @@ function animateCharacter(dt) {
   const g = player.mesh; if (!g || !g.visible) return;
   const u = g.userData;
   g.position.set(player.x, player.y, player.z);
-  g.rotation.y = player.yaw;
+  g.rotation.y = player.yaw; if (BOARD.riding || BOARD.dismT >= 0) boardPoseApply(g); else if (g.rotation.x || g.rotation.z) { g.rotation.x = 0; g.rotation.z = 0; } /*MAF-HOVERBOARD-V1*/
   if (MP.me && MP.me.model) {   // MAF-WORLD-MYSKIN-V1 : mon propre skin de profil
-    mpPlay(MP.me, player.speed > 0.5, player.speed);
+    mpPlay(MP.me, BOARD.riding ? false : player.speed > 0.5, player.speed); /*MAF-HOVERBOARD-V1*/
     if (MP.me.mixer) MP.me.mixer.update(dt);
     return;
   }
-  const sp = player.speed;
+  const sp = player.speed; if (BOARD.riding || BOARD.dismT >= 0) { boardPoseProc(u); return; } /*MAF-HOVERBOARD-V1*/
   const swing = clamp(sp / RUN_SPD, 0, 1);
   const ph = player.phase;
   const s = Math.sin(ph), c = Math.cos(ph * 2);
@@ -6264,7 +6264,7 @@ function toggleMenu(force) {
 
 /* ---------------------------------------------------- enter / exit / fix */
 let lastSwap = 0;
-function tryEnterExit() {
+function tryEnterExit() { if (boardToggle()) return; /*MAF-HOVERBOARD-V1*/
   if (player.seating) { leaveVillaSeat(); return; }
   if (sitOnVillaSeat(villaSeatUI.focused)) return;
   if (hubCanUse()) { hubOpen(); return; }
@@ -6309,6 +6309,163 @@ function tryEnterExit() {
   }
   hudDirty = true;
 }
+/* MAF-HOVERBOARD-V1 BEGIN : hoverboard (un seul exemplaire, gare devant la villa Tir au but).
+   E pres du hoverboard = monter ; E en roulant = descendre (il reste la ou on le laisse).
+   Vitesse : 20 km/h (marche) et 30 km/h (course). Repere monde, metres. */
+const BOARD = {
+  loaded: false, loading: false, retryAt: 0, group: null, inner: null, wheels: [],
+  s: 1.15, deck: 0.24, axle: 0.083 * 1.15, reach: 2.2,
+  vCruise: 5.6, vMax: 8.3,                       // 20 km/h et 30 km/h
+  x: 0, z: 0, yaw: 0, vx: 0, vz: 0, vyaw: 0, homeSet: false,
+  riding: false, mountT: -1, dismT: -1, fromX: 0, fromZ: 0, t0: 0, lastT: 0,
+  lastSp: 0, lastYaw: 0, pitch: 0, leanX: 0, leanZ: 0, offX: 0, offY: 0, offZ: 0, spin: 0, hum: null
+};
+function boardHome() {
+  const x = VILLA.x + 8; let z = VILLA.z - 14;
+  for (let k = 0; k < 14 && insideAnyCollider(x, z, 1.2); k++) z -= 1;
+  return { x, z, yaw: Math.PI };
+}
+function boardLoad() {
+  if (BOARD.loading || BOARD.loaded || nowMs() < BOARD.retryAt) return;
+  BOARD.loading = true;
+  mpLoaders().then(L => new Promise((ok, ko) =>
+    L.gltf.load(new URL('./rides/hoverboard.glb', document.baseURI).href, ok, undefined, ko)))
+  .then(g => {
+    const model = g.scene;
+    model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    const inner = new THREE.Group(); inner.add(model);
+    inner.scale.setScalar(BOARD.s); inner.position.y = -BOARD.axle;      // pivot = axe des roues
+    const group = new THREE.Group(); group.name = 'hoverboard'; group.add(inner);
+    BOARD.group = group; BOARD.inner = inner;
+    BOARD.wheels = [model.getObjectByName('Wheel_L'), model.getObjectByName('Wheel_R')].filter(Boolean);
+    if (!BOARD.homeSet) { const h = boardHome(); BOARD.x = h.x; BOARD.z = h.z; BOARD.yaw = h.yaw; BOARD.vyaw = h.yaw; BOARD.homeSet = true; }
+    scene.add(group); BOARD.loaded = true; BOARD.loading = false;
+  })
+  .catch(e => { BOARD.loading = false; BOARD.retryAt = nowMs() + 8000; dbgFail('hoverboard', e); });
+}
+function boardCanMount() {
+  return BOARD.loaded && !BOARD.riding && BOARD.dismT < 0 && player.mode === 'walk' && !player.seating &&
+    Math.hypot(player.x - BOARD.x, player.z - BOARD.z) < BOARD.reach;
+}
+function boardMount() {
+  const p = player;
+  BOARD.fromX = p.x; BOARD.fromZ = p.z;
+  p.x = BOARD.x; p.z = BOARD.z; p.y = groundY(p.x, p.z);
+  p.vx = 0; p.vz = 0; p.speed = 0;
+  BOARD.vx = 0; BOARD.vz = 0;
+  BOARD.riding = true; BOARD.mountT = 0; BOARD.lastSp = 0; BOARD.lastYaw = p.yaw;
+  if (p.mesh) p.mesh.rotation.order = 'YXZ';
+  sfxDoor(); hudDirty = true;
+}
+function boardDismount(silent) {
+  const p = player;
+  BOARD.x = p.x; BOARD.z = p.z; BOARD.yaw = p.yaw;
+  BOARD.vx = p.vx * 0.55; BOARD.vz = p.vz * 0.55;              // la planche continue de rouler un peu
+  const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+  const spots = [[fx * 0.9, fz * 0.9], [fz * 0.9, -fx * 0.9], [-fz * 0.9, fx * 0.9], [0, 0]];
+  let nx = p.x, nz = p.z;
+  for (const s of spots) { if (!insideAnyCollider(p.x + s[0], p.z + s[1], 0.4)) { nx = p.x + s[0]; nz = p.z + s[1]; break; } }
+  BOARD.fromX = p.x; BOARD.fromZ = p.z;
+  p.x = nx; p.z = nz; p.vx *= 0.3; p.vz *= 0.3;
+  BOARD.riding = false; BOARD.mountT = -1; BOARD.dismT = silent ? 1 : 0;
+  if (!silent) sfxDoor();
+  hudDirty = true;
+}
+function boardToggle() {
+  if (player.seating) return false;
+  const now = nowMs();
+  if (BOARD.riding) { if (now - BOARD.lastT < 350) return true; BOARD.lastT = now; boardDismount(false); return true; }
+  if (!boardCanMount()) return false;
+  if (now - BOARD.lastT < 350) return true;
+  BOARD.lastT = now; boardMount(); return true;
+}
+function boardHum(sp) {
+  try {
+    if (!A.ctx || !A.master || !A.on) return;
+    if (!BOARD.hum) {
+      if (!BOARD.riding) return;
+      const o = A.ctx.createOscillator(), f = A.ctx.createBiquadFilter(), g = A.ctx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = 55; f.type = 'lowpass'; f.frequency.value = 420; g.gain.value = 0;
+      o.connect(f); f.connect(g); g.connect(A.master); o.start();
+      BOARD.hum = { o, g };
+    }
+    const k = clamp(sp / BOARD.vMax, 0, 1), t = A.ctx.currentTime;
+    BOARD.hum.o.frequency.setTargetAtTime(55 + k * 120, t, 0.08);
+    BOARD.hum.g.gain.setTargetAtTime(BOARD.riding ? 0.012 + k * 0.04 : 0, t, 0.12);
+  } catch (e) { /* le son est facultatif */ }
+}
+function boardTick() {
+  const now = nowMs();
+  const dt = clamp((now - (BOARD.t0 || now)) / 1000, 0.001, 0.1); BOARD.t0 = now;
+  const p = player;
+  if (!BOARD.loaded) {
+    if (!BOARD.homeSet) { const h = boardHome(); BOARD.x = h.x; BOARD.z = h.z; BOARD.yaw = h.yaw; BOARD.vyaw = h.yaw; BOARD.homeSet = true; }
+    if (Math.hypot(p.x - BOARD.x, p.z - BOARD.z) < 220) boardLoad();
+    return;
+  }
+  if (BOARD.riding && (p.mode !== 'walk' || p.seating)) boardDismount(true);
+  const e3 = t => t * t * (3 - 2 * t);
+  let offX = 0, offY = 0, offZ = 0;
+  if (BOARD.riding) {
+    BOARD.x = p.x; BOARD.z = p.z; BOARD.yaw = p.yaw;
+    const sp = p.speed, acc = (sp - BOARD.lastSp) / dt; BOARD.lastSp = sp;
+    const yr = angDelta(BOARD.lastYaw, p.yaw) / dt; BOARD.lastYaw = p.yaw;
+    const kk = 1 - Math.pow(0.02, dt);
+    BOARD.pitch += (clamp(acc * 0.012, -0.12, 0.12) - BOARD.pitch) * kk;
+    BOARD.leanX += (clamp(acc * 0.009, -0.07, 0.11) + clamp(sp / BOARD.vMax, 0, 1) * 0.07 - BOARD.leanX) * kk;
+    BOARD.leanZ += (clamp(-yr * 0.045 * clamp(sp / BOARD.vCruise, 0, 1.4), -0.2, 0.2) - BOARD.leanZ) * kk;
+    BOARD.vyaw += angDelta(BOARD.vyaw, p.yaw) * (1 - Math.pow(0.001, dt));
+    BOARD.spin += (sp / (0.083 * BOARD.s)) * dt;
+    offY = BOARD.deck;
+    if (BOARD.mountT >= 0) {
+      BOARD.mountT += dt / 0.42;
+      const t = Math.min(1, BOARD.mountT), e = e3(t);
+      offX = (BOARD.fromX - p.x) * (1 - e); offZ = (BOARD.fromZ - p.z) * (1 - e);
+      offY = BOARD.deck * e + 0.16 * Math.sin(Math.PI * t);
+      if (BOARD.mountT >= 1) BOARD.mountT = -1;
+    }
+  } else {
+    if (BOARD.dismT >= 0) {
+      BOARD.dismT += dt / 0.38;
+      const t = Math.min(1, BOARD.dismT), e = e3(t);
+      offX = (BOARD.fromX - p.x) * (1 - e); offZ = (BOARD.fromZ - p.z) * (1 - e);
+      offY = BOARD.deck * (1 - e) + 0.12 * Math.sin(Math.PI * t);
+      if (BOARD.dismT >= 1) BOARD.dismT = -1;
+    }
+    const sp = Math.hypot(BOARD.vx, BOARD.vz);
+    if (sp > 0.05) {
+      const nx = BOARD.x + BOARD.vx * dt, nz = BOARD.z + BOARD.vz * dt;
+      if (insideAnyCollider(nx, nz, 0.3)) { BOARD.vx = 0; BOARD.vz = 0; }
+      else { BOARD.x = nx; BOARD.z = nz; const f = Math.pow(0.25, dt); BOARD.vx *= f; BOARD.vz *= f; }
+      BOARD.spin += (sp / (0.083 * BOARD.s)) * dt;
+    } else { BOARD.vx = 0; BOARD.vz = 0; }
+    const kk = 1 - Math.pow(0.02, dt);
+    BOARD.pitch += (0 - BOARD.pitch) * kk; BOARD.leanX += (0 - BOARD.leanX) * kk; BOARD.leanZ += (0 - BOARD.leanZ) * kk;
+    BOARD.vyaw += angDelta(BOARD.vyaw, BOARD.yaw) * (1 - Math.pow(0.001, dt));
+  }
+  BOARD.offX = offX; BOARD.offY = offY; BOARD.offZ = offZ;
+  const g = BOARD.group;
+  g.position.set(BOARD.x, groundY(BOARD.x, BOARD.z) + BOARD.axle, BOARD.z);
+  g.rotation.order = 'YXZ';
+  g.rotation.set(BOARD.pitch, BOARD.vyaw, BOARD.leanZ * 0.3);
+  for (const w of BOARD.wheels) w.rotation.x = BOARD.spin;
+  boardHum(BOARD.riding ? p.speed : 0);
+}
+// Applique la position et l'inclinaison du cavalier (appele par animateCharacter).
+function boardPoseApply(g) {
+  g.rotation.order = 'YXZ';
+  g.position.x += BOARD.offX; g.position.y += BOARD.offY; g.position.z += BOARD.offZ;
+  g.rotation.x = BOARD.leanX; g.rotation.z = BOARD.leanZ;
+}
+// Pose du personnage de base (sans skin) : pieds ecartes sur la planche, bras en balancier.
+function boardPoseProc(u) {
+  u.legL.rotation.x = -0.06; u.legR.rotation.x = 0.04;
+  u.armL.rotation.x = -0.12 + BOARD.leanX; u.armR.rotation.x = -0.12 + BOARD.leanX;
+  u.armL.rotation.z = 0.38 - BOARD.leanZ * 1.2; u.armR.rotation.z = -0.38 - BOARD.leanZ * 1.2;
+  u.hips.position.y = 0.9;
+  u.body.rotation.x = 0.05;
+}
+/* MAF-HOVERBOARD-V1 END */
 let _hintT = 0;
 function hintStuck() {
   if (nowMs() - _hintT < 9000) return;
@@ -7467,7 +7624,7 @@ function bbTick(now) {
 
 
 function frame() {
-  decor3dTick(); buildingLabelsTick(); if (ISL.farmBlades) { const fbT = nowMs() * 0.0006; for (const fb of ISL.farmBlades) fb.rotation.z = fbT; } /*MAF-FARM-V1*/
+  decor3dTick(); buildingLabelsTick(); try { boardTick(); } catch (e) { dbgFail('hoverboard-tick', e); } /*MAF-HOVERBOARD-V1*/ if (ISL.farmBlades) { const fbT = nowMs() * 0.0006; for (const fb of ISL.farmBlades) fb.rotation.z = fbT; } /*MAF-FARM-V1*/
   requestAnimationFrame(frame);
   const now = nowMs();
   let real = (now - lastT) / 1000;
@@ -7574,7 +7731,7 @@ function updatePrompt() {
     setPrompt((IS_TOUCH ? 'Tap <kbd>ENTER</kbd>' : 'Press <kbd>F</kbd>') + ' to step out');
     return;
   }
-  if (hubCanUse()) { setPrompt(tapE + ' pour les salons Tir au but'); return; }
+  if (BOARD.riding) { setPrompt(tapE + ' pour descendre'); return; } if (boardCanMount()) { setPrompt(tapE + ' pour monter sur le hoverboard'); return; } /*MAF-HOVERBOARD-V1*/ if (hubCanUse()) { setPrompt(tapE + ' pour les salons Tir au but'); return; }
   if (canEatAtFastFood()) { setPrompt(tapE + ' pour manger (+50 ⚡)'); return; }
   let best = null, bd = 5.2;
   for (const v of vehicles) { if (v.occupied) continue; const d = Math.hypot(v.x - player.x, v.z - player.z); if (d < bd) { bd = d; best = v; } }
@@ -8890,7 +9047,7 @@ function mpPlay(r, moving, speed) {
     clip = pl.walk || pl.main;
     if (pl.walk) rate = clamp((speed || 3.5) / 2.2, 0.8, 2.2);   // les pas suivent la vitesse : pas de glissade
   } else if (pl.idle) clip = pl.idle;
-  else if (pl.main && pl.type !== 'walk') clip = pl.main;          // a l'arret : le mouvement du profil (danse...)
+  else if (pl.main && pl.type !== 'walk' && !(r === MP.me && BOARD.riding)) clip = pl.main; /*MAF-HOVERBOARD-V1*/          // a l'arret : le mouvement du profil (danse...)
   else if (pl.walk) { clip = pl.walk; paused = true; }
   else clip = pl.main;
   if (!clip) return;
