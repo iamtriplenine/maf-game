@@ -8403,7 +8403,8 @@ const worldVoice = {
   audio: null, capture: null, playback: null, notes: new Map(), done: new Set()
 };
 const worldChat = {
-  client: '', open: false, sending: false, messages: [], sent: [], signature: ''
+  client: '', open: false, sending: false, messages: [], sent: [], signature: '',
+  mode: 'near', gMsgs: [], gLast: 0, gEpoch: null, gBusy: false, gTimer: 0, gStick: false, gSig: '', gAudio: null, gAudioId: 0, lastTap: 0, hinted: false, myId: null
 };
 
 function mpInit() {
@@ -8467,7 +8468,7 @@ function mpSend() {
       MP.fails = 0; MP.gap = 600;
       mpShowOnline(j.onlineCount);
       mpWorldNotices(j.notices);
-      mpSyncParkedCars(j.parkedCars, j.me?.id); ridesNetApply(j.rides, j.me?.id);
+      mpSyncParkedCars(j.parkedCars, j.me?.id); if (j.me && j.me.id != null) worldChat.myId = j.me.id; ridesNetApply(j.rides, j.me?.id);
       for (const id of voiceDone) worldVoice.done.delete(id);
       mpVoiceReceive(j.voices, j.chat);
       if (j.me && j.me.skin) mpSetLocal(j.me.skin);
@@ -8517,7 +8518,7 @@ function mpBindVoice() {
   worldVoice.audio.setAttribute('playsinline', '');
   try { worldVoice.muted = localStorage.getItem('maf-world-voice-muted') === '1'; } catch (e) {}
   ui.btnWorldMic.onclick = mpVoiceToggleRecording;
-  ui.btnWorldChat.onclick = () => mpChatSetOpen(!worldChat.open);
+  ui.btnWorldChat.onclick = gchatTap;
   ui.worldChatForm.addEventListener('submit', mpChatSend);
   ui.worldChatText.addEventListener('focus', () => keys.clear());
   ui.btnWorldVoiceMute.onclick = () => {
@@ -8889,13 +8890,14 @@ function mpChatSetOpen(open) {
   worldChat.open = open && worldVoice.available;
   ui.worldChatPanel.classList.toggle('hidden', !worldChat.open);
   ui.hud.classList.toggle('world-chat-open', worldChat.open);
-  ui.btnWorldChat.setAttribute('aria-expanded', String(worldChat.open));
+  ui.btnWorldChat.setAttribute('aria-expanded', String(worldChat.open)); gchatSync();
   if (worldChat.open) worldChat.signature = '';
   mpChatRender();
   if (worldChat.open) mpVoicePump();
 }
 
 async function mpChatSend(event) {
+  if (worldChat.mode === 'global') return gchatSend(event);
   event.preventDefault();
   const text = ui.worldChatText.value.trim();
   if (!text || !worldVoice.available || !MP.ready || worldChat.sending) return;
@@ -8922,6 +8924,7 @@ function mpChatRender() {
   ui.worldChatBadge.classList.toggle('hidden', !count || worldChat.open);
   ui.btnWorldChat.toggleAttribute('data-playing', Boolean(worldVoice.playback));
   if (!worldChat.open) return;
+  if (worldChat.mode === 'global') { gchatRender(); return; }
   worldChat.sent = worldChat.sent.filter(note => note.expires > nowMs());
   const notes = Array.from(worldVoice.notes.values());
   const playing = worldVoice.playback?.note;
@@ -8988,6 +8991,137 @@ function mpChatRender() {
   if (follow) feed.scrollTop = feed.scrollHeight;
 }
 
+/* MAF-WORLD-GLOBALCHAT-V1 BEGIN : mode "discussion globale" du chat du World.
+   C'est le MEME chat que celui du profil (/api/chat) : les messages ecrits ici s'affichent sur le profil, et inversement.
+   Basculer : appuyer 2 fois de suite sur le bouton message (1 fois = ouvrir / fermer). */
+function gchatSync() {
+  const g = worldChat.mode === 'global';
+  ui.worldChatPanel.dataset.mode = worldChat.mode;
+  ui.btnWorldChat.dataset.mode = worldChat.mode;
+  const label = g ? 'Discussion globale' : 'Chat de proximit\u00e9';
+  document.getElementById('worldChatTitle').textContent = label;
+  const range = ui.worldChatPanel.querySelector('.world-chat-range'); if (range) range.textContent = g ? 'Tous' : '30 m';
+  ui.worldChatText.maxLength = g ? 200 : 160;
+  ui.worldChatText.placeholder = g ? '\u00c9crire \u00e0 tout le monde\u2026' : '\u00c9crire \u00e0 proximit\u00e9\u2026';
+  ui.worldChatText.setAttribute('aria-label', g ? 'Message \u00e0 tout le monde' : 'Message de proximit\u00e9');
+  ui.btnWorldChat.title = label; ui.btnWorldChat.setAttribute('aria-label', label);
+  clearInterval(worldChat.gTimer); worldChat.gTimer = 0;
+  if (g && worldChat.open) {
+    worldChat.gStick = true; gchatLoad();
+    worldChat.gTimer = setInterval(() => { if (!document.hidden) gchatLoad(); }, 3500);
+  } else if (worldChat.gAudio) { try { worldChat.gAudio.pause(); } catch (e) { /* facultatif */ } }
+}
+function gchatSetMode(mode) {
+  if (worldChat.mode === mode) return;
+  worldChat.mode = mode; worldChat.signature = ''; worldChat.gSig = '';
+  gchatSync(); mpChatRender();
+  toast(mode === 'global' ? 'Discussion globale : tout le monde, m\u00eame depuis le profil.' : 'Chat de proximit\u00e9 (30 m).');
+}
+function gchatTap() {                                   // 1 appui = ouvrir / fermer ; 2 appuis de suite = changer de chat
+  const now = nowMs();
+  if (now - worldChat.lastTap < 380) {
+    worldChat.lastTap = 0;
+    gchatSetMode(worldChat.mode === 'global' ? 'near' : 'global');
+    mpChatSetOpen(true);
+    return;
+  }
+  worldChat.lastTap = now;
+  mpChatSetOpen(!worldChat.open);
+  if (worldChat.open && !worldChat.hinted) { worldChat.hinted = true; toast('Astuce : appuie 2 fois sur le bouton message pour passer au chat global.'); }
+}
+async function gchatLoad() {
+  if (worldChat.gBusy || !MP.api) return;
+  worldChat.gBusy = true;
+  try {
+    const get = async after => {
+      const r = await fetch(MP.api + '/api/chat?after=' + after, { cache: 'no-store', signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined });
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
+    };
+    let data = await get(worldChat.gLast);
+    if (worldChat.gEpoch !== null && data.epoch !== worldChat.gEpoch) { worldChat.gMsgs = []; worldChat.gLast = 0; worldChat.gSig = ''; data = await get(0); }
+    worldChat.gEpoch = data.epoch;
+    gchatMerge(data.messages);
+  } catch (e) { /* on reessaiera au prochain tour */ }
+  finally { worldChat.gBusy = false; }
+}
+function gchatMerge(list) {
+  if (Array.isArray(list) && list.length) {
+    const known = new Set(worldChat.gMsgs.map(m => m.id));
+    for (const m of list) { if (!known.has(m.id)) worldChat.gMsgs.push(m); worldChat.gLast = Math.max(worldChat.gLast, m.id); }
+    worldChat.gMsgs.sort((a, b) => a.id - b.id);
+    worldChat.gMsgs = worldChat.gMsgs.slice(-200);
+  }
+  if (worldChat.open && worldChat.mode === 'global') gchatRender();
+}
+async function gchatSend(event) {
+  event.preventDefault();
+  const text = ui.worldChatText.value.trim();
+  if (!text || !MP.ready || worldChat.sending) return;
+  worldChat.sending = true; ui.worldChatSend.disabled = true;
+  try {
+    const r = await fetch(MP.api + '/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + MP.token }, body: JSON.stringify({ body: text }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || ('erreur ' + r.status));
+    if (ui.worldChatText.value.trim() === text) ui.worldChatText.value = '';
+    worldChat.gStick = true;
+    if (j.message) gchatMerge([j.message]);
+  } catch (error) { toast('Message non envoy\u00e9. ' + error.message, 'bad'); }
+  finally { worldChat.sending = false; ui.worldChatSend.disabled = false; }
+}
+function gchatPlay(id) {
+  try {
+    let a = worldChat.gAudio;
+    if (a && worldChat.gAudioId === id && !a.paused) { a.pause(); return; }
+    if (a) a.pause();
+    a = worldChat.gAudio = new Audio(MP.api + '/api/chat/' + id + '/audio');
+    worldChat.gAudioId = id;
+    a.onended = a.onpause = () => { worldChat.gSig = ''; if (worldChat.open && worldChat.mode === 'global') gchatRender(); };
+    a.play().catch(() => toast('Lecture du vocal impossible.', 'bad'));
+    worldChat.gSig = ''; gchatRender();
+  } catch (e) { /* facultatif */ }
+}
+function gchatRender() {
+  const feed = ui.worldChatFeed, msgs = worldChat.gMsgs;
+  const playing = worldChat.gAudio && !worldChat.gAudio.paused ? worldChat.gAudioId : 0;
+  const sig = msgs.length + ':' + (msgs.length ? msgs[msgs.length - 1].id : 0) + ':' + playing + ':' + worldChat.myId;
+  if (worldChat.gSig === sig) return;
+  worldChat.gSig = sig;
+  const follow = worldChat.gStick || feed.scrollHeight - feed.scrollTop - feed.clientHeight < 14;
+  const fragment = document.createDocumentFragment();
+  if (!msgs.length) {
+    const empty = document.createElement('p');
+    empty.className = 'world-chat-empty';
+    empty.textContent = 'Aucun message pour le moment.';
+    fragment.append(empty);
+  }
+  for (const m of msgs) {
+    const row = document.createElement('div');
+    row.className = 'world-chat-line';
+    const copy = document.createElement('div');
+    copy.className = 'world-chat-copy';
+    const author = document.createElement('strong');
+    author.textContent = (m.user_id === worldChat.myId ? 'Toi' : (m.pseudo || 'Joueur ' + m.user_id)) + ' \u00b7 ';
+    copy.append(author);
+    if (m.audio_ms) {
+      const play = document.createElement('button');
+      play.className = 'world-chat-action'; play.type = 'button';
+      const active = playing === m.id;
+      play.textContent = active ? '\u2161' : '\u25b6';
+      play.title = active ? 'Mettre en pause' : '\u00c9couter le vocal';
+      play.setAttribute('aria-label', play.title + ' de ' + (m.pseudo || 'Joueur'));
+      play.onclick = () => gchatPlay(m.id);
+      row.append(play);
+      copy.append('Vocal ' + Math.max(1, Math.round(m.audio_ms / 1000)) + ' s');
+    } else copy.append(m.body);
+    row.append(copy);
+    fragment.append(row);
+  }
+  feed.replaceChildren(fragment);
+  if (follow) feed.scrollTop = feed.scrollHeight;
+  worldChat.gStick = false;
+}
+/* MAF-WORLD-GLOBALCHAT-V1 END */
 function mpBindStatuses() {
   MP.statusPoint = new THREE.Vector3();
   MP.statusBubble = mpStatusBubble('Modifier mon statut', mpEditStatus);

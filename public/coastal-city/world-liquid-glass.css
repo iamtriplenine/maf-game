@@ -194,3 +194,22 @@
   #hud #worldActions[data-open] .world-action-txt{padding:4px 12px}
   #hud #minimapStack{gap:5px}
 }
+/* MAF-WORLD-GLOBALCHAT-V1 : chat global du World = meme verre liquide, teinte rose pour le distinguer du chat de proximite. */
+#hud #worldChatPanel[data-mode="global"]{
+  border-color:rgba(255,128,204,.82);
+  background-image:linear-gradient(135deg,rgba(255,112,196,.22),rgba(255,72,164,.07) 55%,rgba(196,76,255,.17));
+  box-shadow:inset 0 0 16px rgba(255,96,188,.48),inset 0 0 38px rgba(255,64,160,.16),inset 0 1px 0 rgba(255,255,255,.36);
+}
+#hud #worldChatPanel[data-mode="global"] .world-chat-head{color:#ffe6f5}
+#hud #worldChatPanel[data-mode="global"] .world-chat-range{background:rgba(255,100,190,.34);color:#fff0f9}
+#hud #worldChatPanel[data-mode="global"] .world-chat-line{background:rgba(52,10,40,.36)}
+#hud #worldChatPanel[data-mode="global"] .world-chat-line strong{color:#ffc4e8}
+#hud #worldChatPanel[data-mode="global"] .world-chat-action,
+#hud #worldChatPanel[data-mode="global"] #worldChatSend{border-color:rgba(255,168,222,.55);background:rgba(255,92,184,.38);color:#fff0f9}
+#hud #worldChatPanel[data-mode="global"] #worldChatForm{border-top-color:rgba(255,150,214,.34)}
+#hud #topMenus #btnWorldChat[data-mode="global"]{
+  color:#ffd2ee;border-color:rgba(255,128,204,.9);
+  background-image:radial-gradient(circle at 35% 28%,rgba(255,140,214,.50),rgba(255,70,170,.20) 62%,rgba(255,60,150,.08));
+  box-shadow:0 0 12px rgba(255,92,184,.62),0 0 26px rgba(255,64,160,.30),inset 0 1px 0 rgba(255,255,255,.35);
+}
+#hud #topMenus #btnWorldChat[data-mode="global"] svg{filter:drop-shadow(0 0 5px rgba(255,100,190,.85))}
