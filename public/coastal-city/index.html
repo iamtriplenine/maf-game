@@ -414,8 +414,9 @@
 </style>
 <link rel="stylesheet" href="./world-liquid-glass.css">
 <style>
-#mafInventory{position:fixed;inset:0 auto 0 max(10px,env(safe-area-inset-left));margin:auto 0;width:min(340px,calc(100vw - 20px));max-height:calc(100dvh - 20px);box-sizing:border-box;padding:16px;border:1px solid #ffffff55;border-radius:20px;background:rgba(20,35,48,.84);color:#fff;box-shadow:0 12px 45px #0007;backdrop-filter:blur(12px);font:14px system-ui;overflow:auto;}
-#mafInventory[open]{animation:mafInventoryIn .2s ease-out} @keyframes mafInventoryIn{from{transform:translateX(-105%);opacity:0}to{transform:translateX(0);opacity:1}}
+#mafInventory{position:fixed;inset:var(--inv-top,60px) var(--inv-right,110px) auto auto;margin:0;width:var(--inv-width,300px);max-height:var(--inv-height,calc(100dvh - 20px));box-sizing:border-box;padding:16px;border:1px solid #ffffff55;border-radius:20px;background:rgba(20,35,48,.84);color:#fff;box-shadow:0 12px 45px #0007;backdrop-filter:blur(12px);font:14px system-ui;overflow:auto;}
+#mafInventory[open]{animation:mafInventoryIn .2s ease-out} @keyframes mafInventoryIn{from{transform:translateX(12px);opacity:0}to{transform:translateX(0);opacity:1}}
+#hud #topMenus #btnWorldStatus{color:#bbf7d0;border-color:rgba(94,234,145,.8);background-color:transparent!important;background-image:radial-gradient(circle at 32% 25%,rgba(110,255,165,.48),rgba(25,150,80,.25) 65%,rgba(20,100,50,.12))!important;box-shadow:inset 0 1px 0 #ffffff55,0 0 10px #22c55e55;}
 #mafInventory::backdrop{background:#0002}#mafInventory header,#mafInventory .inv-row{display:flex;align-items:center;gap:12px;justify-content:space-between}#mafInventory h2{font-size:18px;margin:0}#mafInventory button{font:inherit;color:inherit;border:1px solid #ffffff44;background:#ffffff16;border-radius:10px;padding:10px;cursor:pointer;touch-action:manipulation}#mafInventory .inv-category{width:100%;text-align:left}#mafInventory .inv-row{padding:10px 0;border-bottom:1px solid #ffffff20}#mafInventory [hidden]{display:none!important}#mafInventory p{margin:12px 0;color:#d2e0e9}#mafInventory .inv-count{font-weight:700;font-variant-numeric:tabular-nums}#mafInventory .inv-icon{width:26px;height:28px;flex:none}#mafInventory .inv-label{flex:1} @media(prefers-reduced-motion:reduce){#mafInventory[open]{animation:none}}
 </style>
 </head>
@@ -6248,9 +6249,10 @@ function bindInput() {
       const open = !item.box.classList.contains('open');
       for (const menu of topMenus) setDrop(menu, menu === item && open);
     };
-    item.drop.addEventListener('click', () => setDrop(item, false));
+    item.drop.addEventListener('click', e => { if (!e.target.closest('#btnWorldStatus')) setDrop(item, false); });
   }
   document.addEventListener('pointerdown', e => {
+    if (document.getElementById('mafInventory')?.open) return;
     for (const item of topMenus) {
       if (item.box.classList.contains('open') && !item.box.contains(e.target)) setDrop(item, false);
     }
@@ -9200,9 +9202,21 @@ function gchatRender() {
   worldChat.gStick = false;
 }
 /* MAF-WORLD-GLOBALCHAT-V1 END */
-// MAF World inventory V7: read-only personal stock, extensible by category.
+// MAF World inventory V8: read-only personal stock, extensible by category.
 let mafInventoryDialog, mafInventoryRequest=0, mafInventoryData=null;
 const mafInventoryCrops=[['wheat','Blé','🌾'],['corn','Maïs','🌽'],['tomato','Tomate','🍅']];
+function mafPositionInventory(){
+ const d=mafInventoryDialog,button=ui.btnWorldStatus;if(!d||!button)return;
+ const r=button.getBoundingClientRect(),vw=document.documentElement.clientWidth,vh=document.documentElement.clientHeight;
+ const gap=10,edge=10,available=r.left-gap-edge;
+ const width=Math.min(320,Math.max(0,available));
+ const fallback=width<150;
+ const top=Math.max(edge,Math.min(r.top,vh-160));
+ d.style.setProperty('--inv-top',`${top}px`);
+ d.style.setProperty('--inv-right',`${fallback?edge:vw-r.left+gap}px`);
+ d.style.setProperty('--inv-width',`${fallback?Math.min(320,vw-2*edge):width}px`);
+ d.style.setProperty('--inv-height',`${Math.max(0,vh-top-edge)}px`);
+}
 function mafOpenInventory(){
  if(!mafInventoryDialog){
   const d=document.createElement('dialog');d.id='mafInventory';d.setAttribute('aria-labelledby','mafInvTitle');
@@ -9213,10 +9227,11 @@ function mafOpenInventory(){
   q('[data-seeds]').onclick=()=>{q('[data-categories]').hidden=true;q('[data-detail]').hidden=false;};
   q('[data-back]').onclick=()=>{q('[data-detail]').hidden=true;q('[data-categories]').hidden=false;};
   d.addEventListener('close',()=>{mafInventoryRequest++;mafInventoryData=null;keys.clear();});
+  window.addEventListener('resize',()=>{if(d.open)mafPositionInventory();});
   d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}});
  }
  const d=mafInventoryDialog;if(d.open)return;
- keys.clear();if(pointerLocked)document.exitPointerLock();d.showModal();
+ keys.clear();if(pointerLocked)document.exitPointerLock();mafPositionInventory();d.showModal();
  if(!d.dataset.glass&&window.LiquidGlassApple){try{window.LiquidGlassApple.apply(d,{surface:'convex_squircle',radius:20,glassThickness:30,refractiveIndex:1.55,bezelWidth:12,specularOpacity:.30,tintColor:'#182f45',tintOpacity:.23,fallbackBlur:10,interactive:false});d.dataset.glass='1';}catch(e){console.warn('Inventory glass',e);}}
  mafLoadInventory();
 }
@@ -9242,6 +9257,10 @@ function mpBindStatuses() {
   MP.statusPoint = new THREE.Vector3();
   MP.statusBubble = mpStatusBubble('Modifier mon statut', mpEditStatus);
   ui.btnWorldStatus.onclick = mafOpenInventory;
+  if(window.LiquidGlassApple&&!ui.btnWorldStatus.dataset.inventoryGlass){try{
+    window.LiquidGlassApple.apply(ui.btnWorldStatus,{surface:'convex_circle',radius:999,glassThickness:30,refractiveIndex:1.55,bezelWidth:12,tintColor:'#22c55e',tintOpacity:.32,specularOpacity:.35,fallbackBlur:4,interactive:true});
+    ui.btnWorldStatus.dataset.inventoryGlass='1';
+  }catch(e){console.warn('Inventory button glass',e);}}
   ui.worldStatusClose.onclick = () => ui.worldStatusDialog.close();
   ui.worldStatusForm.onsubmit = e => {
     e.preventDefault();
