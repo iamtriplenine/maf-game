@@ -719,10 +719,10 @@
 
 <script type="module" src="./world-liquid-glass.js"></script>
 <script type="module">
-import { createLandMarket } from './world-land.js?v=3';
+import { createLandMarket } from './world-land.js?v=4';
 let mafLandMarket;
 function mafLandTick(){
-  if(!mafLandMarket) mafLandMarket=createLandMarket({THREE, island:()=>ISL.group, world:islToWorld, local:islToLocal, canvas:()=>ui.gl, closeMenu:()=>toggleMenu(false), free:(x,z)=>!islPropBlocked(x,z)&&islSd(x,z)>6&&!ISL.cells.has(ISL.key(Math.round(x/10),Math.round(z/10))), auth:()=>({api:MP.api,token:MP.token}), player:()=>player, camera:()=>camera, release:()=>{keys.clear(); if(pointerLocked)document.exitPointerLock();}, cash:v=>{WW.world=v;hudDirty=true;wwRender();}, collider:(a,b,c,d)=>addCollider(a,b,c,d,1.1,1), rebuild:buildColliderHash});
+  if(!mafLandMarket) mafLandMarket=createLandMarket({THREE, island:()=>ISL.group, world:islToWorld, local:islToLocal, canvas:()=>ui.gl, closeMenu:()=>toggleMenu(false), free:(x,z)=>!islPropBlocked(x,z)&&islSd(x,z)>6&&!ISL.cells.has(ISL.key(Math.round(x/10),Math.round(z/10))), auth:()=>({api:MP.api,token:MP.token}), player:()=>player, camera:()=>camera, release:()=>{keys.clear(); if(pointerLocked)document.exitPointerLock();}, cash:v=>{WW.world=v;hudDirty=true;wwRender();}, collider:(a,b,c,d)=>addCollider(a,b,c,d,1.1,1), removeCollider:k=>{col.x0[k]=col.z0[k]=col.x1[k]=col.z1[k]=NaN;}, rebuild:buildColliderHash});
   mafLandMarket.tick();
 }
 import { createSeedMarket } from './world-seeds.js?v=5'; // MAF-WORLD-SEEDS-V5
@@ -6121,7 +6121,7 @@ function bindInput() {
     audioResume();
     // MAF-BB-CLICK-EDIT-V1 : clic direct sur la surface publicitaire, avant pointer lock.
     if (e.pointerType === 'mouse' && e.button === 0 && e.target === ui.gl &&
-        bbClickAd(e.clientX, e.clientY)) { e.preventDefault(); return; }
+        bbClickAd(pointerLocked ? innerWidth / 2 : e.clientX, pointerLocked ? innerHeight / 2 : e.clientY)) { e.preventDefault(); return; }
     if (e.pointerType === 'mouse') {
       if (pointerLocked && e.button === 0) {
         const target = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
@@ -8062,6 +8062,7 @@ function bbOpenAd(b) {
 // Clic souris sur la vraie surface 3D du panneau (pas sur les autres parties du modele).
 // MAF-BB-CLICK-EDIT-V1 : toucher la partie image ou « À LOUER » ouvre l'éditeur.
 function bbClickAd(clientX, clientY) {
+  if (!menuOpen() && !bb.place && mafLandMarket?.clickSign(clientX, clientY)) return true;
   if (!bb.ui || !bb.ui.dlg.hidden || !bb.ui.viewDlg.hidden || bb.place || !MP.ready || menuOpen() || player.mode !== 'walk') return false;
   const screens = [];
   for (const b of bb.boards) {
