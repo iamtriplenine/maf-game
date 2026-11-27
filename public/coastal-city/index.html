@@ -496,6 +496,7 @@
         <span id="worldChatBadge" class="hidden" aria-hidden="true"></span>
       </button>
       <div id="topDrop" class="world-top-drop" inert>
+        <button id="mafLotOwner" class="hidden" type="button" title="Lotir un terrain" aria-label="Lotir un terrain">▧</button>
         <button id="btnMission" aria-label="Start or cancel delivery run" title="Delivery run (M)">📦</button>
         <button id="btnSound" aria-label="Toggle sound" aria-pressed="true" title="Sound (P)">🔊</button>
         <button id="btnCam" aria-label="Cycle camera" title="Camera (C)">🎥</button>
@@ -718,6 +719,12 @@
 
 <script type="module" src="./world-liquid-glass.js"></script>
 <script type="module">
+import { createLandMarket } from './world-land.js?v=1';
+let mafLandMarket;
+function mafLandTick(){
+  if(!mafLandMarket) mafLandMarket=createLandMarket({THREE, island:()=>ISL.group, world:islToWorld, auth:()=>({api:MP.api,token:MP.token}), player:()=>player, camera:()=>camera, release:()=>{keys.clear(); if(pointerLocked)document.exitPointerLock();}, cash:v=>{WW.world=v;hudDirty=true;wwRender();}, collider:(a,b,c,d)=>addCollider(a,b,c,d,1.1,1), rebuild:buildColliderHash});
+  mafLandMarket.tick();
+}
 import { createSeedMarket } from './world-seeds.js?v=5'; // MAF-WORLD-SEEDS-V5
 let mafSeedMarket;
 function mafSeedTick(){
@@ -6080,7 +6087,7 @@ function bindInput() {
   if (IS_TOUCH) ui.touch.classList.remove('hidden');
 
   addEventListener('keydown', e => {
-    if (document.getElementById('mafInventory')?.open || document.getElementById('mafSeedShop')?.open || document.getElementById('worldWalletDialog')?.open || ui.worldStatusDialog.open || ui.worldMapDialog.open || e.target === ui.worldChatText || e.repeat) return;
+    if (document.getElementById('mafLandDialog')?.open || document.getElementById('mafInventory')?.open || document.getElementById('mafSeedShop')?.open || document.getElementById('worldWalletDialog')?.open || ui.worldStatusDialog.open || ui.worldMapDialog.open || e.target === ui.worldChatText || e.repeat) return;
     const k = e.code;
     if (k === 'Space' && (e.target === ui.minimapWrap || e.target === ui.worldStandButton ||
         e.target.matches?.('.world-seat-button'))) return;
@@ -6274,7 +6281,7 @@ function bindInput() {
 }
 
 function gatherInput(dt) {
-  if (document.getElementById('mafInventory')?.open || ui.worldStatusDialog.open || ui.worldMapDialog.open) {
+  if (document.getElementById('mafLandDialog')?.open || document.getElementById('mafInventory')?.open || ui.worldStatusDialog.open || ui.worldMapDialog.open) {
     input.moveX = input.moveZ = input.throttle = input.steer = input.hand = input.lookX = input.lookY = 0;
     input.run = input.jump = false;
     lookAccum.x = lookAccum.y = 0;
@@ -8167,7 +8174,7 @@ function frame() {
   if (mmAccum > 0.09) { mmAccum = 0; drawMinimap(); }
   updateObjArrow();
 
-  renderer.render(scene, camera); try { mafSeedTick(); } catch(e) { dbgFail("world-seeds",e); }
+  renderer.render(scene, camera); try { mafLandTick(); } catch(e) { dbgFail("world-land",e); } try { mafSeedTick(); } catch(e) { dbgFail("world-seeds",e); }
   try { drawVillaSeatButtons(); drawFoodButton(); hubDraw(now); ludoHubDraw(now); plazaDraw(now); beachLoungeDraw(now); mpDrawStatuses(); } catch (e) { dbgFail('hud', e); }
 }
 
