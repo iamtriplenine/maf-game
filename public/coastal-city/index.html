@@ -720,7 +720,7 @@
 
 <script type="module" src="./world-liquid-glass.js"></script>
 <script type="module">
-import { createLandMarket } from './world-land.js?v=6';
+import { createLandMarket } from './world-land.js?v=7';
 let mafLandMarket;
 function mafLandTick(){
   if(!mafLandMarket) mafLandMarket=createLandMarket({THREE, island:()=>ISL.group, world:islToWorld, local:islToLocal, canvas:()=>ui.gl, closeMenu:()=>toggleMenu(false), free:(x,z)=>!islPropBlocked(x,z)&&islSd(x,z)>6&&!ISL.cells.has(ISL.key(Math.round(x/10),Math.round(z/10))), auth:()=>({api:MP.api,token:MP.token}), player:()=>player, camera:()=>camera, release:()=>{keys.clear(); if(pointerLocked)document.exitPointerLock();}, cash:v=>{WW.world=v;hudDirty=true;wwRender();}, collider:(a,b,c,d)=>addCollider(a,b,c,d,1.1,1), removeCollider:k=>{col.x0[k]=col.z0[k]=col.x1[k]=col.z1[k]=NaN;}, rebuild:buildColliderHash});
@@ -9231,11 +9231,11 @@ function mafPositionInventory(){
 function mafOpenInventory(){
  if(!mafInventoryDialog){
   const d=document.createElement('dialog');d.id='mafInventory';d.setAttribute('aria-labelledby','mafInvTitle');
-  d.innerHTML=`<header><h2 id="mafInvTitle">Mes possessions</h2><button type="button" data-close aria-label="Fermer">×</button></header><p data-status role="status"></p><button type="button" data-retry hidden>Réessayer</button><section data-categories hidden><button type="button" class="inv-category" data-seeds><span>🌱 Graines</span> <strong data-total></strong> ›</button></section><section data-detail hidden><button type="button" data-back>‹ Catégories</button><h3>Graines</h3><div data-list></div></section>`;
+  d.innerHTML=`<header><h2 id="mafInvTitle">Mes possessions</h2><button type="button" data-close aria-label="Fermer">×</button></header><p data-status role="status"></p><button type="button" data-retry hidden>Réessayer</button><section data-categories hidden><button type="button" class="inv-category" data-seeds><span>🌱 Graines</span> <strong data-total></strong> ›</button><button type="button" class="inv-category" data-harvest><span>🌾 Récoltes</span> <strong data-harvest-total></strong> ›</button></section><section data-detail hidden><button type="button" data-back>‹ Catégories</button><h3>Graines</h3><div data-list></div><div data-harvest-list hidden></div></section>`;
   document.body.append(d);mafInventoryDialog=d;
   const q=s=>d.querySelector(s);
   q('[data-close]').onclick=()=>d.close();q('[data-retry]').onclick=mafLoadInventory;
-  q('[data-seeds]').onclick=()=>{q('[data-categories]').hidden=true;q('[data-detail]').hidden=false;};
+  q('[data-seeds]').onclick=()=>{q('[data-detail] h3').textContent='Graines';q('[data-list]').hidden=false;q('[data-harvest-list]').hidden=true;q('[data-categories]').hidden=true;q('[data-detail]').hidden=false;}; q('[data-harvest]').onclick=()=>{q('[data-detail] h3').textContent='Récoltes';q('[data-list]').hidden=true;q('[data-harvest-list]').hidden=false;q('[data-categories]').hidden=true;q('[data-detail]').hidden=false;};
   q('[data-back]').onclick=()=>{q('[data-detail]').hidden=true;q('[data-categories]').hidden=false;};
   d.addEventListener('close',()=>{mafInventoryRequest++;mafInventoryData=null;keys.clear();});
   window.addEventListener('resize',()=>{if(d.open)mafPositionInventory();});
@@ -9257,7 +9257,7 @@ async function mafLoadInventory(){
   const data=await r.json();if(!d.open||seq!==mafInventoryRequest||token!==MP.token)return;
   const counts=mafInventoryCrops.map(([id])=>data.inventory?.[id]);
   if(counts.some(n=>!Number.isSafeInteger(n)||n<0))throw new Error('Inventaire indisponible.');
-  mafInventoryData=counts;const fmt=n=>n.toLocaleString('fr-FR');
+  mafInventoryData=counts;const fmt=n=>n.toLocaleString('fr-FR');const wheat=Number(data.harvest?.wheat||0);q('[data-harvest-total]').textContent=fmt(wheat);q('[data-harvest-list]').textContent='🌾 Blé récolté : '+fmt(wheat);
   q('[data-total]').textContent=fmt(counts.reduce((a,b)=>a+b,0));
   mafInventoryCrops.forEach(([id,name,icon],i)=>{const row=document.createElement('div');row.className='inv-row';const art=document.createElement('span');art.className='inv-icon';art.textContent=icon;art.setAttribute('aria-hidden','true');const label=document.createElement('span');label.className='inv-label';label.textContent=name;const count=document.createElement('span');count.className='inv-count';count.textContent=fmt(counts[i]);row.append(art,label,count);q('[data-list]').append(row);});
   status.textContent='';q('[data-categories]').hidden=false;
