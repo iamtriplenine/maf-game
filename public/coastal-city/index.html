@@ -748,6 +748,69 @@
 })();
 </script>
 
+<style id="mafQuantityControlsStyle">
+  .maf-qty-controls{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:5px 0 9px;width:100%;box-sizing:border-box}
+  .maf-qty-controls button{appearance:none;flex:1 0 auto;min-height:32px;padding:5px 8px!important;margin:0!important;border:1px solid #ffffff42!important;border-radius:10px!important;background:linear-gradient(145deg,#ffffff26,#ffffff0d)!important;color:#fff!important;font:600 12px system-ui,sans-serif!important;white-space:nowrap;cursor:pointer;touch-action:manipulation;box-shadow:inset 0 1px 0 #ffffff20}
+  .maf-qty-controls button[data-qty-edit]{flex-grow:0;background:#ffffff24!important}
+  .maf-qty-controls button:disabled{opacity:.4;cursor:default}
+  input[data-maf-qty-lock][readonly]{cursor:default;caret-color:transparent}
+  input[data-maf-qty-lock]::-webkit-inner-spin-button,input[data-maf-qty-lock]::-webkit-outer-spin-button{appearance:none;margin:0}
+  input[type=number][data-maf-qty-lock]{appearance:textfield}
+</style>
+<script id="mafQuantityControlsV25">
+(function(){
+  'use strict';
+  const selector='input[type="number"],input[inputmode="numeric"]';
+  const controls=new WeakMap();
+  function attach(input){
+    if(controls.has(input)||input.readOnly||input.matches('[placeholder^="ID client"]'))return;
+    const originalMode=input.getAttribute('inputmode')||'numeric';
+    const row=document.createElement('div');row.className='maf-qty-controls';
+    row.setAttribute('role','group');row.setAttribute('aria-label','Saisie rapide de quantité');
+    let editing=false;
+    function lock(){editing=false;input.readOnly=true;input.inputMode='none';edit.textContent='✎ Écrire';edit.setAttribute('aria-pressed','false');}
+    function change(delta){
+      if(input.disabled)return;
+      if(editing){lock();input.blur();}
+      const raw=input.type==='number'?input.value:input.value.replace(/\D/g,'');
+      const current=Math.max(0,Math.trunc(Number(raw)||0));
+      let max=Number.MAX_SAFE_INTEGER;
+      if(input.hasAttribute('max')&&Number.isFinite(Number(input.max)))max=Math.min(max,Number(input.max));
+      if(input.maxLength>0)max=Math.min(max,10**Math.min(input.maxLength,15)-1);
+      input.value=String(delta===null?0:Math.min(max,current+delta));
+      input.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    function button(label,action){
+      const b=document.createElement('button');b.type='button';b.textContent=label;
+      b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();});
+      b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();if(!input.disabled&&!b.disabled)action();});
+      for(const event of ['keydown','keyup'])b.addEventListener(event,e=>e.stopPropagation());
+      row.appendChild(b);return b;
+    }
+    for(const n of [1,5,10,50,100])button('+'+n,()=>change(n));
+    button('0',()=>change(null)).setAttribute('aria-label','Remettre à zéro');
+    const edit=button('✎ Écrire',()=>{
+      if(editing){lock();input.blur();return;}
+      editing=true;input.readOnly=false;input.inputMode=originalMode;edit.textContent='✓ Terminer';edit.setAttribute('aria-pressed','true');
+      input.focus();if(input.type==='text')input.select();
+    });edit.dataset.qtyEdit='1';
+    controls.set(input,{row,lock});input.dataset.mafQtyLock='1';lock();
+    input.addEventListener('pointerdown',e=>{if(!editing){e.preventDefault();e.stopPropagation();}});
+    input.addEventListener('click',e=>{if(!editing){e.preventDefault();e.stopPropagation();}});
+    input.addEventListener('blur',lock);
+    input.addEventListener('keydown',e=>{e.stopPropagation();if(!editing)e.preventDefault();});
+    input.addEventListener('keyup',e=>e.stopPropagation());
+    const anchor=input.closest('label,.seed-row')||input;
+    anchor.insertAdjacentElement('afterend',row);
+    sync(input);
+  }
+  function sync(input){const state=controls.get(input);if(!state)return;if(input.disabled)state.lock();for(const b of state.row.children){if(b.disabled!==input.disabled)b.disabled=input.disabled;}}
+  function scan(node){if(node.nodeType!==1)return;if(node.matches(selector))attach(node);node.querySelectorAll(selector).forEach(attach);}
+  scan(document.body);
+  new MutationObserver(records=>{for(const r of records){if(r.type==='attributes'){if(r.target instanceof HTMLInputElement)sync(r.target);continue;}for(const node of r.addedNodes)scan(node);}}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['disabled']});
+})();
+</script>
+
 <script type="module" src="./world-liquid-glass.js"></script>
 <script type="module" id="mafSettingsModule">
 import LiquidGlassApple from './liquid-glass-apple.js';
@@ -10271,7 +10334,7 @@ function mpWorldNotices(list) {
   const row = mk('div', 'world-send-row');
   const cancel = mk('button', 'world-send-cancel', 'Annuler'); cancel.type = 'button';
   const go = mk('button', 'world-send-go', 'Envoyer'); go.type = 'button';
-  for (const v of QUICK) { const c = mk('button', 'world-send-chip', wwFmt(v)); c.type = 'button'; c.onclick = () => { input.value = wwFmt(v); refresh(); input.focus(); }; chips.appendChild(c); }
+  for (const v of QUICK) { const c = mk('button', 'world-send-chip', wwFmt(v)); c.type = 'button'; c.onclick = () => { input.value = wwFmt(v); refresh(); }; chips.appendChild(c); }
   row.append(cancel, go); card.append(title, who, bal, chips, input, msg, row); dlg.appendChild(card); root.appendChild(dlg);
   let key = null, busy = false;
   const amount = () => { const r = input.value.replace(/\D/g, ''); return r ? Number(r) : 0; };
@@ -10293,7 +10356,7 @@ function mpWorldNotices(list) {
     input.value = ''; msg.textContent = ''; key = wwUuid();
     dlg.hidden = false; refresh();
     try { wwLoad(); } catch (e) { /* ignore */ }
-    setTimeout(() => { refresh(); input.focus(); }, 60);
+    setTimeout(() => { refresh(); }, 60);
   }
   input.addEventListener('input', () => { const n = amount(); input.value = n ? wwFmt(n) : ''; refresh(); });
   who.addEventListener('change', refresh);
