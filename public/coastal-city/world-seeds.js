@@ -1,4 +1,4 @@
-// MAF-WORLD-SEEDS-V3 — DOM holograms anchored in the existing island, no GLB edits.
+// MAF-WORLD-SEEDS-V4 — DOM holograms anchored in the existing island, no GLB edits.
 const products=[
  {id:'wheat',name:'Blé',x:99.75,z:39,y:2.0,color:'#ffd56b',svg:'<path d="M12 29V5m0 7C3 12 3 5 4 3c5 1 8 4 8 9Zm0 7c9 0 9-7 8-9-5 1-8 4-8 9Zm0 7C3 26 3 19 4 17c5 1 8 4 8 9Z"/>'},
  {id:'corn',name:'Maïs',x:99.75,z:35,y:2.35,color:'#ffe16b',svg:'<ellipse cx="12" cy="13" rx="7" ry="11"/><path d="M8 5v16m8-16v16M5 10h14M5 15h14M4 20l8 10 8-10"/>'},
@@ -19,14 +19,14 @@ export function createSeedMarket(ctx){
  buy.onclick=async()=>{if(buy.disabled)return;pending=pending||{crop:crop.id,lots:lots(),request_key:ctx.uuid()};busy=true;q('[data-error]').textContent='Achat en cours…';render();try{data=await call('/buy',pending);pending=null;ctx.cash(data.world_cash);q('[data-error]').textContent=fmt(data.receipt.quantity)+' graines ajoutées à tes possessions.';}catch(e){if(e.status&&e.status<500)pending=null;q('[data-error]').textContent=e.message+(pending?' — Réessaie le même achat.':'');}finally{busy=false;render();}};
  const markers=products.map(p=>{const b=document.createElement('button');b.type='button';b.className='maf-seed-marker';b.style.color=p.color;b.innerHTML=icon(p)+p.name;b.hidden=true;b.onclick=()=>open(p);b.addEventListener('pointerdown',e=>e.stopPropagation());document.body.append(b);return {p,b};});
  // Each marker is permanently anchored to the centre of its own crop terrace.
- // Only the camera projection changes; there is no screen-space fallback or animation.
+ // Position and apparent size follow the camera projection; there is no screen-space fallback or animation.
  return {tick(){
   const near=!dialog.open&&ctx.near();
   markers.forEach(({p,b})=>{
    const w=ctx.world(p.x,p.z);
    const pos=near?ctx.project(w.x,p.y,w.z):null;
    b.hidden=!pos;
-   if(pos){b.style.left=pos.x+'px';b.style.top=pos.y+'px';}
+   if(pos){b.style.left=pos.x+'px';b.style.top=pos.y+'px';b.style.transform='translate(-50%,-50%) scale('+pos.scale+')';}
   });
  }};
 }
