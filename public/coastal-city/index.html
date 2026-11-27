@@ -8316,6 +8316,7 @@ function bbTick(now) {
 
 
 function frame() {
+  if(worldSessionStopped)return;
   decor3dTick(); buildingLabelsTick(); try { boardTick(); } catch (e) { dbgFail('hoverboard-tick', e); } try { bikeTick(); } catch (e) { dbgFail('bike-tick', e); } /*MAF-HOVERBOARD-V1*/ if (ISL.farmBlades) { const fbT = nowMs() * 0.0006; for (const fb of ISL.farmBlades) fb.rotation.z = fbT; } /*MAF-FARM-V1*/
   requestAnimationFrame(frame);
   const now = nowMs();
@@ -8708,15 +8709,57 @@ const worldChat = {
   mode: 'near', gMsgs: [], gLast: 0, gEpoch: null, gBusy: false, gTimer: 0, gStick: false, gSig: '', gAudio: null, gAudioId: 0, lastTap: 0, hinted: false, myId: null
 };
 
+// V34: chaque iframe obtient une session propre, jamais réutilisée sur un autre appareil.
+const worldNativeFetch=window.fetch.bind(window);
+let worldSessionId=null,worldSessionOpening=false,worldSessionStopped=false;
+function stopWorldSession(){
+  if(worldSessionStopped)return;
+  worldSessionStopped=true;MP.ready=false;keys.clear();
+  if(pointerLocked)document.exitPointerLock();
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#101c27;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;color:white;text-align:center;font:16px system-ui';
+  overlay.innerHTML='<strong>Session World interrompue</strong><span>Ton compte est utilisé sur un autre appareil. Quitte World pour reprendre le contrôle.</span><button type="button">Quitter World</button>';
+  overlay.querySelector('button').onclick=()=>window.parent.postMessage({mafWorldExit:true},location.origin);
+  document.body.append(overlay);
+}
+window.fetch=async function(input,init){
+  const url=new URL(typeof input==='string'||input instanceof URL?input:input.url,location.href);
+  if(MP.api && url.origin===new URL(MP.api,location.href).origin && url.pathname.startsWith('/api/world/')){
+    if(worldSessionStopped||!worldSessionId)throw new Error('Session World inactive');
+    const headers=new Headers(init?.headers||(input instanceof Request?input.headers:undefined));
+    headers.set('X-World-Session',worldSessionId);
+    const response=await worldNativeFetch(input,{...init,headers});
+    if(response.status===423)stopWorldSession();
+    return response;
+  }
+  return worldNativeFetch(input,init);
+};
 function mpInit() {
   if (window.parent === window) return;               // jeu ouvert seul : pas de multijoueur
   mpBindStatuses();
   mpBindVoice();
-  addEventListener('message', e => {
+  addEventListener('message', async e => {
     if (e.origin !== window.location.origin || e.source !== window.parent) return;
     const d = e.data && e.data.mafWorldInit;
     if (!d || !d.token || !d.api) return;
     MP.api = String(d.api).replace(/\/+$/, ''); MP.token = d.token; MP.base = d.base || '/';
+    if(worldSessionOpening||worldSessionId||worldSessionStopped)return;
+    worldSessionOpening=true;
+    try{
+      const id=wwUuid();
+      const response=await worldNativeFetch(MP.api+'/api/world/session/open',{method:'POST',headers:{Authorization:'Bearer '+MP.token,'Content-Type':'application/json'},body:JSON.stringify({sessionId:id,citySeed:world.seed})});
+      if(!response.ok)throw new Error('Ouverture de session refusée');
+      const data=await response.json();
+      const pos=data.position;
+      if(pos&&Number.isFinite(pos.x)&&Number.isFinite(pos.z)){
+        leaveVillaSeat();if(player.veh)player.veh.occupied=false;
+        player.veh=null;player.mode='walk';if(player.mesh)player.mesh.visible=true;
+        player.x=pos.x;player.z=pos.z;player.y=groundY(pos.x,pos.z);player.yaw=pos.yaw||0;
+        player.vx=player.vy=player.vz=0;cam.yaw=player.yaw+Math.PI;cam.pos.set(player.x,8,player.z+8);
+      }
+      worldSessionId=id;
+    }catch(e){toast('Connexion World impossible. Quitte puis réouvre World.','bad');stopWorldSession();return;}
+    finally{worldSessionOpening=false;}
     MP.skins = d.skins || {}; MP.ready = true;
     energy.nextRefresh = 0;
     void refreshEnergy();
