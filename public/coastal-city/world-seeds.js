@@ -1,4 +1,4 @@
-// MAF-WORLD-SEEDS-V4 — DOM holograms anchored in the existing island, no GLB edits.
+// MAF-WORLD-SEEDS-V5 — DOM holograms anchored in the existing island, no GLB edits.
 const products=[
  {id:'wheat',name:'Blé',x:99.75,z:39,y:2.0,color:'#ffd56b',svg:'<path d="M12 29V5m0 7C3 12 3 5 4 3c5 1 8 4 8 9Zm0 7c9 0 9-7 8-9-5 1-8 4-8 9Zm0 7C3 26 3 19 4 17c5 1 8 4 8 9Z"/>'},
  {id:'corn',name:'Maïs',x:99.75,z:35,y:2.35,color:'#ffe16b',svg:'<ellipse cx="12" cy="13" rx="7" ry="11"/><path d="M8 5v16m8-16v16M5 10h14M5 15h14M4 20l8 10 8-10"/>'},
@@ -17,11 +17,16 @@ export function createSeedMarket(ctx){
  q('[data-close]').onclick=()=>dialog.close();dialog.addEventListener('cancel',e=>{if(busy||pending)e.preventDefault();});
  input.oninput=render;q('[data-minus]').onclick=()=>{input.value=Math.max(1,(lots()||1)-1);render();};q('[data-plus]').onclick=()=>{input.value=Math.min(1000,(lots()||1)+1);render();};
  buy.onclick=async()=>{if(buy.disabled)return;pending=pending||{crop:crop.id,lots:lots(),request_key:ctx.uuid()};busy=true;q('[data-error]').textContent='Achat en cours…';render();try{data=await call('/buy',pending);pending=null;ctx.cash(data.world_cash);q('[data-error]').textContent=fmt(data.receipt.quantity)+' graines ajoutées à tes possessions.';}catch(e){if(e.status&&e.status<500)pending=null;q('[data-error]').textContent=e.message+(pending?' — Réessaie le même achat.':'');}finally{busy=false;render();}};
+ const notice=document.createElement('dialog');notice.id='mafSeedNotice';notice.setAttribute('aria-labelledby','mafSeedNoticeTitle');notice.style.cssText='color:#fff;background:#14251fee;border:1px solid #ffffff44;border-radius:24px;padding:22px;width:min(360px,85vw);max-width:calc(100vw - 32px);box-sizing:border-box;box-shadow:0 16px 70px #0009;font:15px/1.55 system-ui';
+ notice.innerHTML=`<h2 id="mafSeedNoticeTitle" style="margin:0 0 12px;color:#9debd5;font-size:21px">Marché des graines</h2><p>Bienvenue au marché des semences, destiné aux futurs agriculteurs de World.</p><p><strong>À quoi sert ce marché ?</strong><br>Tu peux acheter des graines de blé, de maïs et de tomate pour préparer tes futures cultures.</p><p><strong>De quoi as-tu besoin ?</strong><br>Pour acheter, il te faut un solde World suffisant. Pour semer, il te faudra posséder un terrain agricole.</p><p><strong>Et ensuite ?</strong><br>Lorsque la plantation sera disponible, tu pourras semer tes graines, attendre leur croissance, récolter tes produits et les vendre.</p><p style="color:#a9c8be;font-size:13px">Pour le moment, seuls les achats de graines sont disponibles.</p><button type="button" style="width:100%;padding:12px;border:1px solid #ffffff45;border-radius:12px;background:#197b4a;color:white;font:inherit;cursor:pointer">Compris</button>`;
+ document.body.append(notice);notice.querySelector('button').onclick=()=>notice.close();
+ const info=document.createElement('button');info.type='button';info.className='maf-seed-marker';info.style.color='#8eeaff';info.setAttribute('aria-label','Informations sur le marché des graines');info.innerHTML='<svg viewBox="0 0 32 32" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2"><circle cx="16" cy="16" r="14"/><path d="M11 11a5 5 0 1 1 8 4c-2 1-3 2-3 5" stroke-linecap="round"/><circle cx="16" cy="24" r="1" fill="currentColor"/></svg>Info';info.hidden=true;info.onclick=()=>{if(dialog.open||notice.open)return;ctx.release();notice.showModal();};info.addEventListener('pointerdown',e=>e.stopPropagation());document.body.append(info);
  const markers=products.map(p=>{const b=document.createElement('button');b.type='button';b.className='maf-seed-marker';b.style.color=p.color;b.innerHTML=icon(p)+p.name;b.hidden=true;b.onclick=()=>open(p);b.addEventListener('pointerdown',e=>e.stopPropagation());document.body.append(b);return {p,b};});
  // Each marker is permanently anchored to the centre of its own crop terrace.
  // Position and apparent size follow the camera projection; there is no screen-space fallback or animation.
  return {tick(){
-  const near=!dialog.open&&ctx.near();
+  const near=!dialog.open&&!notice.open&&ctx.near();
+  const iw=ctx.world(95.5,35);const ip=near?ctx.project(iw.x,2.35,iw.z):null;info.hidden=!ip;if(ip){info.style.left=ip.x+'px';info.style.top=ip.y+'px';info.style.transform='translate(-50%,-50%) scale('+ip.scale+')';}
   markers.forEach(({p,b})=>{
    const w=ctx.world(p.x,p.z);
    const pos=near?ctx.project(w.x,p.y,w.z):null;

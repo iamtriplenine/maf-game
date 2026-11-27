@@ -542,6 +542,7 @@
     <button id="worldMapLeft" class="world-map-button" type="button" aria-label="Tourner à gauche" title="Tourner à gauche">↶</button>
     <button id="worldMapRight" class="world-map-button" type="button" aria-label="Tourner à droite" title="Tourner à droite">↷</button>
     <button id="worldMapOverview" class="world-map-button" type="button" aria-label="Vue générale, nord en haut" title="Vue générale">◎</button>
+    <button id="worldMapSeeds" class="world-map-button" type="button" title="Localiser le marché des graines">🌱 Marché des graines</button>
     <button id="worldMapClear" class="world-map-button" type="button" disabled>Effacer le trajet</button>
   </footer>
 </dialog>
@@ -686,7 +687,7 @@
 
 <script type="module" src="./world-liquid-glass.js"></script>
 <script type="module">
-import { createSeedMarket } from './world-seeds.js?v=4'; // MAF-WORLD-SEEDS-V4
+import { createSeedMarket } from './world-seeds.js?v=5'; // MAF-WORLD-SEEDS-V5
 let mafSeedMarket;
 function mafSeedTick(){
   if(!mafSeedMarket) mafSeedMarket=createSeedMarket({
@@ -5528,6 +5529,8 @@ function updateHUD() {
 }
 
 /* ------------------------------------------------------------ minimap */
+const SEED_MAP_PLACE = { label: 'Marché des graines', icon: '🌱', ...islToWorld(95.5,35), seedMarket: true };
+WORLD_MAP_PLACES.push(SEED_MAP_PLACE);
 const WORLD_MAP_SOUTH = Math.max(SHORE_Z + 30, ISL.south + 20); /*MAF-ISLAND-V1*/
 const WORLD_MAP_MAX_ZOOM = 12;
 const WORLD_MAP_HINT = 'Glisse pour explorer · Appuie pour tracer';
@@ -5733,6 +5736,10 @@ function drawWorldMapPlaces(ctx, toS, w, h, round) {
     ctx.font = '700 13px system-ui, sans-serif';
     ctx.fillStyle = '#fff5e1'; ctx.lineWidth = 3;
     ctx.strokeText(icon, x, y - 12); ctx.fillText(icon, x, y - 12);
+    if (place.seedMarket && !round) {
+      ctx.font = '600 11px system-ui, sans-serif'; ctx.strokeStyle = '#14251f'; ctx.fillStyle = '#a9ffd1'; ctx.lineWidth = 4;
+      ctx.strokeText(place.label, x, y + 15); ctx.fillText(place.label, x, y + 15);
+    }
   }
   ctx.restore();
 }
@@ -5880,6 +5887,7 @@ function bindWorldMap() {
         const [x, y, visible] = mapEdgePoint(mapToScreen(view, place.x, place.z), view.w, view.h, 17, false);
         return visible && Math.abs(point.x - x) <= 23 && point.y >= y - 22 && point.y <= y + 10;
       });
+      if (place?.seedMarket) { ui.worldMapHint.textContent = 'Marché des graines · jardin de l’île'; return; }
       selectWorldMapDestination(place || screenToMap(view, point.x, point.y));
     }
   };
@@ -5970,6 +5978,10 @@ function bindWorldMap() {
   ui.worldMapOverview.onclick = () => {
     Object.assign(mm.viewer, { x: 0, z: (WORLD_MAP_SOUTH - OUTER) / 2, zoom: 1, angle: 0 });
     drawExpandedWorldMap();
+  };
+  document.getElementById('worldMapSeeds').onclick = () => {
+    Object.assign(mm.viewer, {x: SEED_MAP_PLACE.x, z: SEED_MAP_PLACE.z, zoom: 4, angle: 0});
+    ui.worldMapHint.textContent = 'Marché des graines · jardin de l’île'; drawExpandedWorldMap();
   };
   ui.worldMapClear.onclick = () => { clearWorldMapRoute(); drawMinimap(); };
 }
