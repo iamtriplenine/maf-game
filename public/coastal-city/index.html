@@ -419,7 +419,7 @@
 #hud #topMenus #btnWorldStatus{color:#bbf7d0;border-color:rgba(94,234,145,.8);background-color:transparent!important;background-image:radial-gradient(circle at 32% 25%,rgba(110,255,165,.48),rgba(25,150,80,.25) 65%,rgba(20,100,50,.12))!important;box-shadow:inset 0 1px 0 #ffffff55,0 0 10px #22c55e55;}
 #mafInventory [hidden]{display:none!important}#mafInventory section,#mafInventory [data-list],#mafInventory [data-harvest-list],#mafInventory [data-flour-list]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}#mafInventory [data-detail]{display:block}#mafInventory [data-back]{margin-bottom:6px}#mafInventory button,#mafInventory .inv-row,#mafInventory p:not(:empty){box-sizing:border-box;color:#fff;border:1px solid #ffffff55;background:rgba(20,35,48,.78);backdrop-filter:blur(10px);border-radius:10px;padding:8px;min-height:42px;font:inherit;}#mafInventory button{cursor:pointer;touch-action:manipulation}#mafInventory .inv-category,#mafInventory .inv-row{display:flex;align-items:center;gap:5px;justify-content:space-between;min-width:0}#mafInventory .inv-label{flex:1;min-width:0;overflow-wrap:anywhere}#mafInventory .inv-count{font-weight:700;font-variant-numeric:tabular-nums}#mafInventory p{margin:0 0 6px}#mafInventory p:empty{display:none}#mafInventory .inv-icon{flex:none}#mafInventory [data-back]{min-height:30px} @media(prefers-reduced-motion:reduce){#mafInventory[open]{animation:none}}
 </style>
-</head>
+<style>#mafBakerySign{position:fixed;z-index:12;display:flex;gap:5px;pointer-events:auto}#mafBakerySign[hidden]{display:none}#mafBakerySign button,.maf-bakery-dialog button{background:#253c3bdf;color:white;border:1px solid #a0d3c7;border-radius:12px;padding:9px;font:600 13px system-ui;cursor:pointer;touch-action:manipulation}.maf-bakery-dialog{color:white;background:#233439e8;backdrop-filter:blur(16px);border:1px solid #ffffff66;border-radius:18px;padding:14px;width:min(400px,90vw);max-height:85dvh;overflow:auto;box-sizing:border-box;font:14px system-ui}.maf-bakery-dialog::backdrop{background:#0005}.maf-bakery-dialog header,.maf-bakery-dialog nav{display:flex;align-items:center;justify-content:space-between;gap:8px}.maf-bakery-dialog nav button{flex:1}.maf-bakery-dialog button[aria-pressed=true]{background:#407c65}.maf-bakery-dialog input{width:100%;box-sizing:border-box;background:#ffffff15;color:white;border:1px solid #ffffff55;border-radius:9px;padding:8px;font:inherit}.maf-bakery-dialog>button{margin:5px 3px 0 0}.maf-bakery-dialog p{margin:8px 0}</style></head>
 <body>
 <canvas id="gl" aria-label="Coastal City Sandbox 3D view" role="img" tabindex="0"></canvas>
 
@@ -709,9 +709,9 @@
         <article><h3>🏡 Terrains agricoles</h3><span class="maf-guide-state">Disponible</span><dl><dt>Prix de référence</dt><dd>$1 000 / m²</dd><dt>Exemple : 100 m²</dt><dd>$100 000</dd><dt>Case cultivable</dt><dd>1 × 2 m</dd></dl><p>Le prix réel est fixé lors du lotissement. Clique sur le panneau À VENDRE. Après achat, la propriété est repérable sur ta carte personnelle.</p></article>
         <article><h3>🌾 Semer et récolter</h3><span class="maf-guide-state">Disponible</span><dl><dt>Semences par case</dt><dd>1 graine de blé</dd><dt>Rendement</dt><dd>1 unité de blé</dd><dt>Durée</dt><dd>12 h réelles</dd></dl><p>Approche-toi de ton terrain et utilise les hologrammes Semer ou Récolter. Sélectionne une case libre. Récolte après 12 h ; le blé rejoint tes possessions.</p><ol><li>0 h : semis</li><li>1 h : jeune pousse</li><li>3 h : croissance</li><li>8 h : maturation</li><li>12 h : récolte</li></ol><p>La croissance continue hors connexion.</p></article>
         <article><h3>💰 Rentabilité agricole</h3><span class="maf-guide-future">Simulation · vente selon les commandes</span><dl><dt>Terrain de 10 × 10 m</dt><dd>50 cases</dd><dt>50 graines</dt><dd>$500</dd><dt>50 blés à $3 500</dt><dd>$175 000</dd><dt>Marge brute par cycle</dt><dd>$174 500</dd></dl><p>Hors achat du terrain et autres frais. Suppose que toute la récolte trouve un acheteur. Aucun bénéfice ni rachat automatique garanti.</p></article>
-        <article><h3>🏭 Usine de farine</h3><span class="maf-guide-future">Disponible · achat et transformation</span><dl><dt>Achat de 1 blé</dt><dd>$3 500</dd><dt>Vente de 1 farine</dt><dd>$8 000</dd><dt>Marge brute</dt><dd>$4 500</dd></dl><p>Deux grandes usines à $200 000 chacune et la petite usine à $150 000. Le meunier choisit uniquement la quantité et préfinance ses commandes de blé et transforme son stock en farine. La vente aux boulangeries reste à venir.</p></article>
-        <article><h3>🥖 Boulangerie</h3><span class="maf-guide-future">À venir · tarifs fixés</span><dl><dt>Achat de 1 farine</dt><dd>$8 000</dd><dt>Vente de 1 baguette</dt><dd>$12 000</dd><dt>Marge brute</dt><dd>$4 000</dd></dl><p>Petite boulangerie : $150 000 ; grande : $450 000 (propositions). La nourriture pourra être stockée et consommée plus tard.</p></article>
-        <article><h3>⚡ Énergie</h3><span class="maf-guide-state">Règle actuelle de base</span><dl><dt>Autonomie à 100 %, sans effort</dt><dd>24 h</dd><dt>Baguette (prévu)</dt><dd>+50 %</dd></dl><p>Les effets de la marche, de la course et des transports restent à définir. Deux baguettes couvrent 24 h sans effort. La consommation de baguettes et la livraison alimentaire ne sont pas encore disponibles.</p></article>
+        <article><h3>🏭 Usine de farine</h3><span class="maf-guide-future">Disponible · achat et transformation</span><dl><dt>Achat de 1 blé</dt><dd>$3 500</dd><dt>Vente de 1 farine</dt><dd>$8 000</dd><dt>Marge brute</dt><dd>$4 500</dd></dl><p>Deux grandes usines à $200 000 chacune et la petite usine à $150 000. Le meunier choisit uniquement la quantité et préfinance ses commandes de blé et transforme son stock en farine. La farine peut être livrée à la boulangerie selon ses commandes prépayées.</p></article>
+        <article><h3>🥖 Boulangerie</h3><span class="maf-guide-future">Disponible · tarifs fixés</span><dl><dt>Achat de 1 farine</dt><dd>$8 000</dd><dt>Vente de 1 baguette</dt><dd>$12 000</dd><dt>Marge brute</dt><dd>$4 000</dd></dl><p>Boulangerie L1 : $250 000. Commandes de farine prépayées, transformation 1 pour 1 et vente du pain au comptoir. Repas gratuit tant que la boulangerie est invendue.</p></article>
+        <article><h3>⚡ Énergie</h3><span class="maf-guide-state">Règle actuelle de base</span><dl><dt>Autonomie à 100 %, sans effort</dt><dd>24 h</dd><dt>Baguette</dt><dd>+50 %</dd></dl><p>Les effets de la marche, de la course et des transports restent à définir. Deux baguettes couvrent 24 h sans effort. Le pain est consommé au comptoir ; la livraison alimentaire reste à venir.</p></article>
         <article><h3>🔄 Circuit économique</h3><span class="maf-guide-future">Objectif de World</span><p>🌱 Semences → 🌾 Agriculteur → 🏭 Meunier → 🥖 Boulanger → 👤 Consommateur.</p><p>Prix fixés par le jeu par unité : $10 → $3 500 → $8 000 → $12 000. Marges brutes : agriculteur $3 490, meunier $4 500, boulanger $4 000. Les entrepreneurs ne peuvent pas modifier ces tarifs. La circulation de monnaie ne garantit pas un revenu réel.</p><p>Conversion de référence : 100 FCFA = $65 000, avant éventuels frais.</p></article>
       </div>
     </section>
@@ -1488,7 +1488,7 @@ function syncFastfoodPlacement(){
     seat.yaw = yaw * Math.PI / 180 + FASTFOOD.yaw;
   });
   if (typeof WORLD_MAP_PLACES !== 'undefined') {
-    const place = WORLD_MAP_PLACES.find(p => p.label === 'Fastfood');
+    const place = WORLD_MAP_PLACES.find(p => p.label === 'Boulangerie');
     if (place) Object.assign(place,foodWorld(0,8));
   }
 }
@@ -1501,7 +1501,7 @@ const VILLA2 = { x: VILLA.x - 44.6, y: VILLA.y, z: VILLA.z - 2.4, scale: 0.8, hx
 const WORLD_MAP_PLACES = [
   { label: 'Tir au but', icon: '⚽', x: VILLA.x, z: VILLA.z - 12.7 * VILLA.scale },
   { label: 'Ludo', icon: '🎲', x: VILLA2.x, z: VILLA2.z - 12.7 * VILLA2.scale },
-  { label: 'Fastfood', icon: '🍔', x: FASTFOOD.x, z: FASTFOOD.z + 8 * FASTFOOD.scale },
+  { label: 'Boulangerie', icon: '🍔', x: FASTFOOD.x, z: FASTFOOD.z + 8 * FASTFOOD.scale },
   { label: 'Place des défis', icon: '⚔️', x: 0, z: 31 },
   { label: 'Beach Lounge', icon: '🏖️', x: -42, z: BEACH_Z + 16 }
 ];
@@ -5471,6 +5471,23 @@ function beachLoungeDraw(now) {
   if(L.button)L.button.hidden=!(d<13&&player.mode==='walk'&&!player.seating&&!menuOpen());
 }
 
+// MAF V31: bakery UI, same numeric shortcuts as the mill market.
+const bakeryUI={data:null,token:null,next:0,loading:false,dialog:null,sign:null,tab:'order',busy:false};
+const bakeryMoney=n=>'$'+Number(n).toLocaleString('fr-FR');
+async function bakeryRequest(path='',body){const r=await fetch(MP.api+'/api/world/bakery'+path,{method:body?'POST':'GET',cache:'no-store',headers:{Authorization:'Bearer '+MP.token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Boulangerie indisponible');return d;}
+async function bakeryRefresh(){if(bakeryUI.loading||!MP.ready)return;const token=MP.token;bakeryUI.loading=true;bakeryUI.next=Date.now()+4000;try{const d=await bakeryRequest();if(token===MP.token)bakeryUI.data=d;}catch{if(token===MP.token)bakeryUI.data=null;}finally{bakeryUI.loading=false;}}
+function bakeryCash(d){if(d.world_cash!==null&&d.world_cash!==undefined){WW.world=Number(d.world_cash);hudDirty=true;wwRender();}}
+function bakeryOpen(info=false){if(!bakeryUI.dialog){const d=document.createElement('dialog');d.id='mafBakeryDialog';d.className='maf-bakery-dialog';document.body.append(d);d.addEventListener('close',()=>keys.clear());for(const event of ['keydown','keyup','pointerdown','click'])d.addEventListener(event,e=>e.stopPropagation());bakeryUI.dialog=d;}keys.clear();if(pointerLocked)document.exitPointerLock();bakeryUI.tab='order';bakeryRender(info);if(!bakeryUI.dialog.open)bakeryUI.dialog.showModal();}
+function bakeryRender(info=false){const d=bakeryUI.dialog,b=bakeryUI.data;d.replaceChildren();const el=(tag,txt,parent=d)=>{const e=document.createElement(tag);e.textContent=txt;parent.append(e);return e;};const btn=(txt,fn,parent=d)=>{const e=el('button',txt,parent);e.type='button';e.onclick=fn;return e;};const head=el('header','');el('strong','🥖 Boulangerie',head);btn('Fermer',()=>d.close(),head);const status=el('p','');status.setAttribute('role','status');
+const action=async(type,quantity,button)=>{if(bakeryUI.busy)return;bakeryUI.busy=true;button.disabled=true;try{const a=await bakeryRequest('/action',{action:type,quantity,request_key:wwUuid()});bakeryCash(a);bakeryUI.data=await bakeryRequest();if(d.open)bakeryRender();toast('Opération effectuée.','good');}catch(e){status.textContent=e.message;}finally{bakeryUI.busy=false;button.disabled=false;}};
+if(info){el('p','Prix du bâtiment : $250 000. Repas gratuit jusqu’à la vente. Après achat, une baguette coûte $12 000 et restaure 50 % d’énergie.');el('p','Le boulanger préfinance ses besoins en farine à $8 000 l’unité. Les meuniers livrent même hors connexion. Une farine donne une baguette.');return;}
+if(!b){status.textContent='Données indisponibles. Réessaie.';btn('Actualiser',async()=>{await bakeryRefresh();bakeryRender();});return;}
+if(!b.sold){el('p','À vendre · $250 000');el('p','Le repas reste gratuit jusqu’à l’achat. Après acquisition, il faudra produire du pain pour les consommateurs.');btn('Acheter pour $250 000',e=>{e.currentTarget.textContent='Confirmer l’achat — $250 000';e.currentTarget.onclick=ev=>action('buy',0,ev.currentTarget);});return;}
+const quantity=(max,initial,label,verb,callback,unit)=>{el('label',label);const i=document.createElement('input');i.type='number';i.min='0';i.max=String(max);i.step='1';i.value=String(Math.min(max,initial));d.append(i);const cost=el('p','');const update=()=>{const n=Number(i.value);cost.textContent=unit?bakeryMoney(n*unit):n+' baguette(s)';};i.addEventListener('input',update);update();btn(verb,e=>{const n=Number(i.value);if(!Number.isSafeInteger(n)||n<1||n>max){status.textContent='Quantité invalide.';return;}callback(n,e.currentTarget);});};
+if(b.mine){el('p','Farine : '+b.flour+' · Pain : '+b.bread+' · Ventes : '+b.sales);const nav=el('nav','');for(const [id,name] of [['order','Approvisionnement'],['bake','Transformation']]){const t=btn(name,()=>{bakeryUI.tab=id;bakeryRender();},nav);t.setAttribute('aria-pressed',String(bakeryUI.tab===id));}if(bakeryUI.tab==='order'){el('p','Besoin restant : '+b.wanted+' · Budget réservé : '+bakeryMoney(b.escrow)+' · Livraisons : '+b.received);quantity(100000,b.wanted||1,'Quantité de farine à commander','Préfinancer / modifier',(n,e)=>action('order',n,e),8000);btn('Annuler le besoin',e=>action('cancel',0,e.currentTarget));}else{quantity(Math.min(100000,b.flour),1,'Farine à transformer','Fabriquer les baguettes',(n,e)=>action('bake',n,e),0);}return;}
+el('p','Besoin de la boulangerie : '+b.wanted+' farine(s) · Prix fixe : $8 000');el('p','Ton stock de farine : '+b.availableFlour);if(b.wanted&&b.availableFlour)quantity(Math.min(100000,b.wanted,b.availableFlour),1,'Quantité à livrer','Vendre la farine',(n,e)=>action('sell',n,e),8000);else el('p','Aucune livraison possible pour le moment.');el('p','Pain disponible : '+b.bread+' · $12 000 par repas au comptoir.');}
+function bakeryDraw(){if(bakeryUI.token!==MP.token){bakeryUI.token=MP.token;bakeryUI.data=null;bakeryUI.next=0;if(bakeryUI.dialog?.open)bakeryUI.dialog.close();}const near=fastfood.model&&MP.ready&&player.mode==='walk'&&!player.seating&&!menuOpen()&&Math.hypot(player.x-foodAt.x,player.z-foodAt.z)<20;if(near&&Date.now()>=bakeryUI.next)void bakeryRefresh();if(!bakeryUI.sign){const s=document.createElement('div');s.id='mafBakerySign';s.hidden=true;const main=document.createElement('button'),info=document.createElement('button');main.type=info.type='button';main.onclick=()=>bakeryOpen();info.textContent='?';info.setAttribute('aria-label','Informations boulangerie');info.onclick=()=>bakeryOpen(true);s.append(main,info);document.body.append(s);bakeryUI.sign=s;}const s=bakeryUI.sign,b=bakeryUI.data;s.hidden=true;if(!near||!b||bakeryUI.dialog?.open)return;const pos=foodWorld(12,10),v=new THREE.Vector3(pos.x,FASTFOOD.y+2.8,pos.z),depth=-v.clone().applyMatrix4(camera.matrixWorldInverse).z;if(depth<=camera.near)return;v.project(camera);if(Math.abs(v.x)>=1||Math.abs(v.y)>=1||Math.abs(v.z)>=1)return;s.style.left=(v.x+1)*innerWidth/2+'px';s.style.top=(1-v.y)*innerHeight/2+'px';s.style.transform='translate(-50%,-50%) scale('+Math.min(1.3,innerHeight*Math.abs(camera.projectionMatrix.elements[5])/(2*depth)*1.4/50)+')';s.firstChild.textContent=!b.sold?'🥖 Acheter · $250 000':b.mine?'🥖 Ma boulangerie':'🥖 Vendre la farine';s.hidden=false;}
+
 function canEatAtFastFood() {
   const {x:lx,z:lz}=foodLocal(player.x,player.z);
   return !!(fastfood.model && !player.seating && player.mode === 'walk' && player.onGround &&
@@ -5482,16 +5499,18 @@ async function eatAtFastFood() {
   if (!canEatAtFastFood()) return false;
   if (!MP.ready) { toast('Connecte-toi pour manger.', 'bad'); return true; }
   if (energy.eating) return true;
+  if(!bakeryUI.data){toast("Actualisation de la boulangerie…", "bad");void bakeryRefresh();return true;}
+  const price=bakeryUI.data.sold?12000:0;
   energy.eating = true;
   ui.worldEatButton.disabled = true;
   try {
     const response = await fetch(MP.api + '/api/world/eat', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + MP.token }
+      method: 'POST', headers: { Authorization: 'Bearer ' + MP.token, 'Content-Type':'application/json' }, body:JSON.stringify({price})
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Repas indisponible');
     const before = Math.max(0, energy.value - (Date.now() - energy.at) * (100 / 86400000));
-    acceptEnergy(data);
+    acceptEnergy(data); bakeryCash(data); void bakeryRefresh();
     toast('Repas termine : +' + Math.round(Math.max(0, energy.value - before)) + ' energie ⚡', 'good');
   } catch (err) { toast(err.message || 'Impossible de manger.', 'bad'); }
   finally { energy.eating = false; ui.worldEatButton.disabled = false; }
@@ -5500,7 +5519,9 @@ async function eatAtFastFood() {
 function drawFoodButton() {
   // Bouton fixe et accessible : le player n'a pas besoin de viser exactement
   // une caisse avec la camera pour declencher le repas.
-  ui.worldEatButton.hidden = !canEatAtFastFood();
+  bakeryDraw();
+  ui.worldEatButton.hidden = !canEatAtFastFood() || !bakeryUI.data || !!bakeryUI.dialog?.open;
+  ui.worldEatButton.textContent= bakeryUI.data?.sold ? "🥖 Manger · $12 000 (+50 ⚡)" : "🥖 Manger gratuitement (+50 ⚡)";
 }
 function tryEatAtFastFood() {
   if (!canEatAtFastFood()) return false;
