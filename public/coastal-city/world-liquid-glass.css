@@ -213,3 +213,29 @@
   box-shadow:0 0 12px rgba(255,92,184,.62),0 0 26px rgba(255,64,160,.30),inset 0 1px 0 rgba(255,255,255,.35);
 }
 #hud #topMenus #btnWorldChat[data-mode="global"] svg{filter:drop-shadow(0 0 5px rgba(255,100,190,.85))}
+/* MAF-WORLD-CHAT-PAYSAGE-V1 : telephone en mode horizontal. La bulle de message devient une colonne etroite,
+   entre la barre du haut (a gauche) et les boutons menu (a droite), du haut de l'ecran jusqu'en bas :
+   elle ne recouvre plus la carte, ni le joystick, ni les boutons tactiles. */
+@media (orientation:landscape) and (max-height:520px){
+  #hud{--chat-w:min(210px,28vw)}
+  #hud #worldChatPanel{
+    top:calc(10px + env(safe-area-inset-top,0px));
+    bottom:calc(64px + env(safe-area-inset-bottom,0px));
+    left:auto;
+    right:calc(166px + env(safe-area-inset-right,0px));
+    width:var(--chat-w);
+    height:auto;
+    border-radius:16px;
+    clip-path:none;
+    grid-template-rows:32px minmax(0,1fr) 34px;
+  }
+  #hud #worldChatPanel .world-chat-head{padding:0 9px}
+  #hud #worldChatPanel #worldChatFeed{font-size:11px}
+  /* la carte de livraison se decale a gauche de la colonne quand le chat est ouvert */
+  #hud.world-chat-open #missionCard[id]{
+    left:auto;transform:none;
+    right:calc(166px + var(--chat-w) + 10px + env(safe-area-inset-right,0px));
+    top:calc(64px + env(safe-area-inset-top,0px));
+    width:min(260px,34vw);
+  }
+}
