@@ -686,6 +686,19 @@
 
 <script type="module" src="./world-liquid-glass.js"></script>
 <script type="module">
+import { createSeedMarket } from './world-seeds.js?v=2'; // MAF-WORLD-SEEDS-V2
+let mafSeedMarket;
+function mafSeedTick(){
+  if(!mafSeedMarket) mafSeedMarket=createSeedMarket({
+    world:islToWorld,
+    near:()=>{const g=islToWorld(106,37);return !!ISL.group&&!menuOpen()&&player.mode==='walk'&&!player.seating&&Math.hypot(player.x-g.x,player.z-g.z)<24;},
+    project:(x,y,z)=>{const p=new THREE.Vector3(x,y,z).project(camera);return Math.abs(p.x)<.86&&Math.abs(p.y)<.80&&Math.abs(p.z)<1?{x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2}:null;},
+    auth:()=>({api:MP.api,token:MP.token}),uuid:wwUuid,
+    release:()=>{keys.clear();if(pointerLocked)document.exitPointerLock();},
+    cash:v=>{WW.world=v;hudDirty=true;wwRender();}
+  });
+  mafSeedMarket.tick();
+}
 /* ==========================================================================
    COASTAL CITY SANDBOX — one self-contained file.
    Sections:
@@ -6001,7 +6014,7 @@ function bindInput() {
   if (IS_TOUCH) ui.touch.classList.remove('hidden');
 
   addEventListener('keydown', e => {
-    if (document.getElementById('worldWalletDialog')?.open || ui.worldStatusDialog.open || ui.worldMapDialog.open || e.target === ui.worldChatText || e.repeat) return;
+    if (document.getElementById('mafSeedShop')?.open || document.getElementById('worldWalletDialog')?.open || ui.worldStatusDialog.open || ui.worldMapDialog.open || e.target === ui.worldChatText || e.repeat) return;
     const k = e.code;
     if (k === 'Space' && (e.target === ui.minimapWrap || e.target === ui.worldStandButton ||
         e.target.matches?.('.world-seat-button'))) return;
@@ -8087,7 +8100,7 @@ function frame() {
   if (mmAccum > 0.09) { mmAccum = 0; drawMinimap(); }
   updateObjArrow();
 
-  renderer.render(scene, camera);
+  renderer.render(scene, camera); try { mafSeedTick(); } catch(e) { dbgFail("world-seeds",e); }
   try { drawVillaSeatButtons(); drawFoodButton(); hubDraw(now); ludoHubDraw(now); plazaDraw(now); beachLoungeDraw(now); mpDrawStatuses(); } catch (e) { dbgFail('hud', e); }
 }
 
