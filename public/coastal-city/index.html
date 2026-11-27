@@ -413,6 +413,11 @@
   }
 </style>
 <link rel="stylesheet" href="./world-liquid-glass.css">
+<style>
+#mafInventory{position:fixed;inset:0 auto 0 max(10px,env(safe-area-inset-left));margin:auto 0;width:min(340px,calc(100vw - 20px));max-height:calc(100dvh - 20px);box-sizing:border-box;padding:16px;border:1px solid #ffffff55;border-radius:20px;background:rgba(20,35,48,.84);color:#fff;box-shadow:0 12px 45px #0007;backdrop-filter:blur(12px);font:14px system-ui;overflow:auto;}
+#mafInventory[open]{animation:mafInventoryIn .2s ease-out} @keyframes mafInventoryIn{from{transform:translateX(-105%);opacity:0}to{transform:translateX(0);opacity:1}}
+#mafInventory::backdrop{background:#0002}#mafInventory header,#mafInventory .inv-row{display:flex;align-items:center;gap:12px;justify-content:space-between}#mafInventory h2{font-size:18px;margin:0}#mafInventory button{font:inherit;color:inherit;border:1px solid #ffffff44;background:#ffffff16;border-radius:10px;padding:10px;cursor:pointer;touch-action:manipulation}#mafInventory .inv-category{width:100%;text-align:left}#mafInventory .inv-row{padding:10px 0;border-bottom:1px solid #ffffff20}#mafInventory [hidden]{display:none!important}#mafInventory p{margin:12px 0;color:#d2e0e9}#mafInventory .inv-count{font-weight:700;font-variant-numeric:tabular-nums}#mafInventory .inv-icon{width:26px;height:28px;flex:none}#mafInventory .inv-label{flex:1} @media(prefers-reduced-motion:reduce){#mafInventory[open]{animation:none}}
+</style>
 </head>
 <body>
 <canvas id="gl" aria-label="Coastal City Sandbox 3D view" role="img" tabindex="0"></canvas>
@@ -463,9 +468,9 @@
         </svg>
       </button>
       <div id="worldToolsDrop" class="world-top-drop" inert>
-        <button id="btnWorldStatus" type="button" aria-label="Mon statut" title="Mon statut (T)">
+        <button id="btnWorldStatus" type="button" aria-label="Mes possessions" title="Mes possessions" aria-haspopup="dialog" aria-controls="mafInventory">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <path d="M20 15a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2zM8 9h8m-8 4h5"/>
+            <rect x="5" y="7" width="14" height="14" rx="3"/><path d="M9 7V5a3 3 0 0 1 6 0v2M5 12h14M10 15h4"/>
           </svg>
         </button>
         <button id="btnWorldBillboard" type="button" aria-label="Placer un panneau" title="Placer un panneau"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="10" rx="1.5"/><path d="M8 14v6m8-6v6M7 9h10"/></svg></button>
@@ -6074,7 +6079,7 @@ function bindInput() {
   if (IS_TOUCH) ui.touch.classList.remove('hidden');
 
   addEventListener('keydown', e => {
-    if (document.getElementById('mafSeedShop')?.open || document.getElementById('worldWalletDialog')?.open || ui.worldStatusDialog.open || ui.worldMapDialog.open || e.target === ui.worldChatText || e.repeat) return;
+    if (document.getElementById('mafInventory')?.open || document.getElementById('mafSeedShop')?.open || document.getElementById('worldWalletDialog')?.open || ui.worldStatusDialog.open || ui.worldMapDialog.open || e.target === ui.worldChatText || e.repeat) return;
     const k = e.code;
     if (k === 'Space' && (e.target === ui.minimapWrap || e.target === ui.worldStandButton ||
         e.target.matches?.('.world-seat-button'))) return;
@@ -6267,7 +6272,7 @@ function bindInput() {
 }
 
 function gatherInput(dt) {
-  if (ui.worldStatusDialog.open || ui.worldMapDialog.open) {
+  if (document.getElementById('mafInventory')?.open || ui.worldStatusDialog.open || ui.worldMapDialog.open) {
     input.moveX = input.moveZ = input.throttle = input.steer = input.hand = input.lookX = input.lookY = 0;
     input.run = input.jump = false;
     lookAccum.x = lookAccum.y = 0;
@@ -9195,10 +9200,48 @@ function gchatRender() {
   worldChat.gStick = false;
 }
 /* MAF-WORLD-GLOBALCHAT-V1 END */
+// MAF World inventory V7: read-only personal stock, extensible by category.
+let mafInventoryDialog, mafInventoryRequest=0, mafInventoryData=null;
+const mafInventoryCrops=[['wheat','Blé','🌾'],['corn','Maïs','🌽'],['tomato','Tomate','🍅']];
+function mafOpenInventory(){
+ if(!mafInventoryDialog){
+  const d=document.createElement('dialog');d.id='mafInventory';d.setAttribute('aria-labelledby','mafInvTitle');
+  d.innerHTML=`<header><h2 id="mafInvTitle">Mes possessions</h2><button type="button" data-close aria-label="Fermer">×</button></header><p data-status role="status"></p><button type="button" data-retry hidden>Réessayer</button><section data-categories hidden><button type="button" class="inv-category" data-seeds><span>🌱 Graines</span> <strong data-total></strong> ›</button></section><section data-detail hidden><button type="button" data-back>‹ Catégories</button><h3>Graines</h3><div data-list></div></section>`;
+  document.body.append(d);mafInventoryDialog=d;
+  const q=s=>d.querySelector(s);
+  q('[data-close]').onclick=()=>d.close();q('[data-retry]').onclick=mafLoadInventory;
+  q('[data-seeds]').onclick=()=>{q('[data-categories]').hidden=true;q('[data-detail]').hidden=false;};
+  q('[data-back]').onclick=()=>{q('[data-detail]').hidden=true;q('[data-categories]').hidden=false;};
+  d.addEventListener('close',()=>{mafInventoryRequest++;mafInventoryData=null;keys.clear();});
+  d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}});
+ }
+ const d=mafInventoryDialog;if(d.open)return;
+ keys.clear();if(pointerLocked)document.exitPointerLock();d.showModal();
+ if(!d.dataset.glass&&window.LiquidGlassApple){try{window.LiquidGlassApple.apply(d,{surface:'convex_squircle',radius:20,glassThickness:30,refractiveIndex:1.55,bezelWidth:12,specularOpacity:.30,tintColor:'#182f45',tintOpacity:.23,fallbackBlur:10,interactive:false});d.dataset.glass='1';}catch(e){console.warn('Inventory glass',e);}}
+ mafLoadInventory();
+}
+async function mafLoadInventory(){
+ const d=mafInventoryDialog,q=s=>d.querySelector(s),seq=++mafInventoryRequest;
+ const status=q('[data-status]');status.textContent='Chargement de tes possessions…';q('[data-retry]').hidden=true;q('[data-categories]').hidden=true;q('[data-detail]').hidden=true;q('[data-list]').replaceChildren();mafInventoryData=null;
+ try{
+  if(!MP.api||!MP.token||!MP.ready)throw new Error('Connecte-toi à World pour consulter tes possessions.');
+  const token=MP.token;
+  const r=await fetch(MP.api+'/api/world/seeds',{cache:'no-store',headers:{Authorization:'Bearer '+token}});
+  if(!r.ok)throw new Error('Impossible de récupérer tes possessions.');
+  const data=await r.json();if(!d.open||seq!==mafInventoryRequest||token!==MP.token)return;
+  const counts=mafInventoryCrops.map(([id])=>data.inventory?.[id]);
+  if(counts.some(n=>!Number.isSafeInteger(n)||n<0))throw new Error('Inventaire indisponible.');
+  mafInventoryData=counts;const fmt=n=>n.toLocaleString('fr-FR');
+  q('[data-total]').textContent=fmt(counts.reduce((a,b)=>a+b,0));
+  mafInventoryCrops.forEach(([id,name,icon],i)=>{const row=document.createElement('div');row.className='inv-row';const art=document.createElement('span');art.className='inv-icon';art.textContent=icon;art.setAttribute('aria-hidden','true');const label=document.createElement('span');label.className='inv-label';label.textContent=name;const count=document.createElement('span');count.className='inv-count';count.textContent=fmt(counts[i]);row.append(art,label,count);q('[data-list]').append(row);});
+  status.textContent='';q('[data-categories]').hidden=false;
+ }catch(e){if(d.open&&seq===mafInventoryRequest){status.textContent=e.message||'Inventaire indisponible.';q('[data-retry]').hidden=false;}}
+}
+
 function mpBindStatuses() {
   MP.statusPoint = new THREE.Vector3();
   MP.statusBubble = mpStatusBubble('Modifier mon statut', mpEditStatus);
-  ui.btnWorldStatus.onclick = mpEditStatus;
+  ui.btnWorldStatus.onclick = mafOpenInventory;
   ui.worldStatusClose.onclick = () => ui.worldStatusDialog.close();
   ui.worldStatusForm.onsubmit = e => {
     e.preventDefault();
