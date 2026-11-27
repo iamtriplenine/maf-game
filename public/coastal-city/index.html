@@ -2923,7 +2923,7 @@ function buildingLabelsTick() {
   if (buildingLabelsTick.n % 12) return;
   const cx = camera.position.x, cz = camera.position.z, R2 = 95 * 95;
   for (const sp of G.userData.labels) {
-    const dx = sp.position.x - cx, dz = sp.position.z - cz, vis = dx * dx + dz * dz < R2;
+    const dx = sp.position.x - cx, dz = sp.position.z - cz, vis = MP.ready && MP.carsOwner === true && dx * dx + dz * dz < R2;
     if (sp.visible !== vis) sp.visible = vis;
   }
 }
@@ -2980,7 +2980,9 @@ function decor3dBake() {
   } catch (e) { console.warn('Vehicules decor : fusion ignoree.', e); }
 }
 /* MAF-DRAWCALLS-V1 END */
+const MAF_CITY_SEED = 2019927517;
 function generateWorld(seed) {
+  seed = MAF_CITY_SEED;
   world.seed = seed >>> 0;
   const R = mulberry32(world.seed);
   world.buildings.length = 0; world.doors.length = 0; world.parks.length = 0;
@@ -7361,7 +7363,7 @@ function applySave(o, opts) {
   if (!validSave(o)) return false;
   leaveVillaSeat();
   opts = opts || {};
-  if ((o.seed >>> 0) !== world.seed && opts.allowRebuild !== false) rebuildCity(o.seed >>> 0);
+  if ((o.seed >>> 0) !== MAF_CITY_SEED) return false;
   if (isFinite(o.todMs)) { env.todMs = o.todMs; }
   if (Array.isArray(o.vehicles)) {
     o.vehicles.forEach((sv, i) => {
@@ -8463,7 +8465,7 @@ function main() {
   Object.keys(MATS).forEach(k => { const m = MATS[k]; if (Array.isArray(m)) m.forEach(x => KEEP_MATS.add(x)); else KEEP_MATS.add(m); });
 
   const saved = readSave();
-  const seed = (saved && validSave(saved)) ? (saved.seed >>> 0) : (hashStr('coastal' + Math.floor(Math.random() * 1e9)) >>> 0);
+  const seed = MAF_CITY_SEED;
 
   scene.add(generateWorld(seed));
   _mark('city');
@@ -8506,14 +8508,16 @@ function main() {
   bindInput();
   mpInit();
   _mark('minimapInput');
-  if (saved && validSave(saved)) applySave(saved, { allowRebuild: false });
+  if (saved && validSave(saved) && (saved.seed >>> 0) === MAF_CITY_SEED) applySave(saved, { allowRebuild: false });
   else { setQuality('auto', true); toast('Welcome to the coast — press M for your first delivery'); }
   setQuality(QUAL.mode, true);
   applyLevel(QUAL.level);
 
   // menu wiring
   ui.btnExport.onclick = exportSave;
-  ui.btnImport.onclick = () => ui.fileIn.click();
+  ui.btnImport.hidden = true; ui.btnImport.disabled = true;
+  ui.btnNew.hidden = true; ui.btnNew.disabled = true;
+  ui.btnImport.onclick = null;
   ui.fileIn.onchange = e => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
     const r = new FileReader();
@@ -8523,9 +8527,7 @@ function main() {
     e.target.value = '';
   };
   ui.btnNew.onclick = () => {
-    const s = hashStr('coastal' + Date.now() + Math.random()) >>> 0;
-    rebuildCity(s); mission.cash = 0; mission.runs = 0; mission.streak = 0;
-    saveNow(); toggleMenu(false); banner('NEW CITY', 'seed ' + s);
+    toast('La carte de World est commune à tous les joueurs.', 'bad');
   };
   ui.btnReset.onclick = () => {
     leaveVillaSeat();
@@ -8792,6 +8794,10 @@ function mpSend() {
     .catch(st => {
       MP.fails++; MP.gap = Math.min(5000, 600 * Math.pow(2, MP.fails));
       mpShowOnline(null);
+      if (st === 409) {
+        MP.ready = false;
+        toast("Carte World obsolète : quitte World puis ouvre-le de nouveau.", "bad");
+      }
       if (st === 401) {
         MP.ready = false;
         ui.worldTools.classList.add('hidden');
