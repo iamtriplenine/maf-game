@@ -1441,6 +1441,10 @@ const VILLA_PATH = [-2.2, (BEACH_Z - 0.68 - VILLA.z) / VILLA.scale, 2.2, -11.90,
 // Le modele d'origine reste INTACT : aucun GLB modifie ou redimensionne.
 // MAF-FOOD-ROAD : fastfood rapproche de la route pour etre plus visible et accessible.
 const FASTFOOD = { x: -86, z: -300, y: CURB_H, scale: 0.75 };
+const FASTFOOD_SEAT_DEFS = [
+  [-5, 14, 90], [-5, 15.56, 90], [-5, 17.93, 90], [-5, 20.30, 90],
+  [7.94, 16.12, -90], [7.94, 17.72, -90], [7.94, 20.87, -90], [7.94, 22.46, -90]
+];
 // MAF-FOOD-CARS-LIGHTS-V3 : lumieres sans ombres au restaurant, aucune baisse de qualite globale.
 const fastfoodLights = { sources: [], bulbs: [] };
 const fastfood = { model: null, loading: false, retryAt: 0 };
@@ -1450,12 +1454,24 @@ const foodAt = { x: FASTFOOD.x - 1.5 * FASTFOOD.scale,
   z: FASTFOOD.z + 11.4 * FASTFOOD.scale };
 const FOOD_REACH = 4.4;
 // Places 40-47 sur les fauteuils du restaurant (y du coussin ~0.51).
-const FOOD_SEATS = [
-  [-5, 14, 90], [-5, 15.56, 90], [-5, 17.93, 90], [-5, 20.30, 90],
-  [7.94, 16.12, -90], [7.94, 17.72, -90], [7.94, 20.87, -90], [7.94, 22.46, -90]
-].map(([x,z,yaw],i) => ({ id: 40+i, x: FASTFOOD.x+x*FASTFOOD.scale,
+const FOOD_SEATS = FASTFOOD_SEAT_DEFS.map(([x,z,yaw],i) => ({ id: 40+i, x: FASTFOOD.x+x*FASTFOOD.scale,
   y: FASTFOOD.y+0.51*FASTFOOD.scale, z: FASTFOOD.z+z*FASTFOOD.scale,
   yaw: yaw*Math.PI/180 }));
+function syncFastfoodPlacement(){
+  foodAt.x = FASTFOOD.x - 1.5 * FASTFOOD.scale;
+  foodAt.z = FASTFOOD.z + 11.4 * FASTFOOD.scale;
+  FASTFOOD_SEAT_DEFS.forEach(([x,z,yaw],i) => {
+    const seat = FOOD_SEATS[i]; if(!seat) return;
+    seat.x = FASTFOOD.x + x * FASTFOOD.scale;
+    seat.y = FASTFOOD.y + 0.51 * FASTFOOD.scale;
+    seat.z = FASTFOOD.z + z * FASTFOOD.scale;
+    seat.yaw = yaw * Math.PI / 180;
+  });
+  if (typeof WORLD_MAP_PLACES !== 'undefined') {
+    const place = WORLD_MAP_PLACES.find(p => p.label === 'Fastfood');
+    if (place) { place.x = FASTFOOD.x; place.z = FASTFOOD.z + 8 * FASTFOOD.scale; }
+  }
+}
 VILLA_SEATS.push(...FOOD_SEATS);
 const villa = { model: null, loading: false, retryAt: 0, rocks: [], ray: null, hits: [] };
 const villaLighting = { rig: null, loading: false, retryAt: 0 };
@@ -1469,6 +1485,7 @@ const WORLD_MAP_PLACES = [
   { label: 'Place des défis', icon: '⚔️', x: 0, z: 31 },
   { label: 'Beach Lounge', icon: '🏖️', x: -42, z: BEACH_Z + 16 }
 ];
+syncFastfoodPlacement();
 const villa2 = { model: null, loading: false, retryAt: 0 };
 /* MAF-VILLA2-V2 (etape 2/3) : etage + escaliers. Les hauteurs de sol viennent de villa-modern-floors.json
    (grille 0,25 m : chaque case liste les hauteurs de marche/dalle). On prend la plus haute atteignable depuis les pieds. */
@@ -3305,7 +3322,15 @@ function generateWorld(seed) {
       const cx = l1Removed.reduce((sum, b) => sum + b.x, 0) / l1Removed.length;
       const cz = l1Removed.reduce((sum, b) => sum + b.z, 0) / l1Removed.length;
       const anchor = l1Removed.reduce((best, b) => Math.hypot(b.x-cx,b.z-cz) < Math.hypot(best.x-cx,best.z-cz) ? b : best);
-      G.userData.lotL1 = { id: 'L1', x: anchor.x, z: anchor.z, h: CURB_H - 1, footprints: l1Removed };
+      const minX = Math.min(...l1Removed.map(b=>b.x-b.w/2));
+      const maxX = Math.max(...l1Removed.map(b=>b.x+b.w/2));
+      const minZ = Math.min(...l1Removed.map(b=>b.z-b.d/2));
+      const maxZ = Math.max(...l1Removed.map(b=>b.z+b.d/2));
+      G.userData.lotL1 = { id: 'L1', x: anchor.x, z: anchor.z, h: CURB_H - 1, footprints: l1Removed, bounds: { minX, maxX, minZ, maxZ } };
+      // MAF-FOOD-MOVE-V29 : le fastfood gratuit est deplace sur le lot 1, face au sud (villa + ile tropicale).
+      FASTFOOD.x = (minX + maxX) / 2;
+      FASTFOOD.z = minZ + Math.min(10, Math.max(6, (maxZ - minZ) * 0.24));
+      syncFastfoodPlacement();
     }
     const extraLots = [G.userData.lotL1, G.userData.lotL2].filter(Boolean);
     const labels = extraLots.length ? world.buildings.concat(extraLots) : world.buildings;
