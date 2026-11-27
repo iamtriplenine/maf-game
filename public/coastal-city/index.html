@@ -762,7 +762,7 @@ for(const tab of sheet.querySelectorAll('[data-settings-tab]'))tab.addEventListe
 refresh();
 </script>
 <script type="module">
-import { createLandMarket } from './world-land.js?v=7';
+import { createLandMarket } from './world-land.js?v=8';
 let mafLandMarket;
 function mafLandTick(){
   if(!mafLandMarket) mafLandMarket=createLandMarket({THREE, island:()=>ISL.group, world:islToWorld, local:islToLocal, canvas:()=>ui.gl, closeMenu:()=>toggleMenu(false), free:(x,z)=>!islPropBlocked(x,z)&&islSd(x,z)>6&&!ISL.cells.has(ISL.key(Math.round(x/10),Math.round(z/10))), auth:()=>({api:MP.api,token:MP.token}), player:()=>player, camera:()=>camera, release:()=>{keys.clear(); if(pointerLocked)document.exitPointerLock();}, cash:v=>{WW.world=v;hudDirty=true;wwRender();}, collider:(a,b,c,d)=>addCollider(a,b,c,d,1.1,1), removeCollider:k=>{col.x0[k]=col.z0[k]=col.x1[k]=col.z1[k]=NaN;}, rebuild:buildColliderHash});
