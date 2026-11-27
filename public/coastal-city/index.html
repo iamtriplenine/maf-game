@@ -6491,6 +6491,8 @@ function boardTick() {
   const p = player;
   if (!BOARD.loaded) {
     if (!BOARD.homeSet) { const h = boardHome(); BOARD.x = h.x; BOARD.z = h.z; BOARD.yaw = h.yaw; BOARD.vyaw = h.yaw; BOARD.homeSet = true; }
+    // Use the shared server position before deciding whether to load the model.
+    ridePlace(BOARD, dt);
     if (Math.hypot(p.x - BOARD.x, p.z - BOARD.z) < 220) boardLoad();
     return;
   }
