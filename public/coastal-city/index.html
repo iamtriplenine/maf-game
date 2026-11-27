@@ -10006,7 +10006,7 @@ async function boot() {
     if (typeof MP === 'undefined' || !MP.ready) return [];
     const x = playerX(), z = playerZ(), out = [];
     for (const r of MP.remotes.values()) {
-      if (r.parked) continue;
+      // MAF-WORLD-NEAR-FIX : r.parked = voiture garee du joueur, pas un joueur absent.
       const d = Math.hypot(r.x - x, r.z - z);
       if (d <= NEAR) out.push({ id: r.id, name: String(r.name || 'Joueur'), dist: d });
     }
