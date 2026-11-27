@@ -34,3 +34,16 @@
   line-height: 1;
   cursor: pointer;
 }
+
+/* Guide de bienvenue : uniquement la page avant le lancement du World. */
+.world-start-guide { width: 100%; max-width: 880px; box-sizing: border-box; margin: 12px 0 16px; display: grid; gap: 14px; color: inherit; }
+.world-start-intro, .world-start-grid article, .world-start-note { border: 1px solid rgba(128,128,128,.25); border-radius: 20px; padding: 16px; background: rgba(128,128,128,.08); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); min-width: 0; }
+.world-start-kicker { font-size: 11px; font-weight: 800; letter-spacing: 1.5px; opacity: .75; }
+.world-start-guide h2 { margin: 7px 0 8px; font-size: 24px; line-height: 1.2; }
+.world-start-guide h3 { margin: 6px 0; font-size: 16px; }
+.world-start-guide p { margin: 0; font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.world-start-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.world-start-grid article > span { font-size: 24px; }
+.world-start-grid small { display: inline-block; margin-top: 9px; font-size: 12px; font-weight: 700; opacity: .8; }
+.world-start-note strong { display: block; margin-bottom: 5px; }
+@media (max-width: 540px) { .world-start-grid { grid-template-columns: 1fr; } .world-start-guide h2 { font-size: 22px; } }

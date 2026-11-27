@@ -174,8 +174,24 @@ export default function WorldPage() {
           </h1>
           <p>Une ville 3D a explorer.</p>
         </header>
+        <section className="world-start-guide" aria-labelledby="world-start-title">
+          <div className="world-start-intro">
+            <span className="world-start-kicker">GUIDE DE DÉPART</span>
+            <h2 id="world-start-title">Bienvenue dans World</h2>
+            <p>Une ville vivante où les joueurs explorent, consomment, produisent et commercent. Tu commences comme consommateur, puis tu peux devenir entrepreneur.</p>
+          </div>
+          <div className="world-start-grid">
+            <article><span aria-hidden="true">💵</span><h3>Ton portefeuille</h3><p>Le dollar ($) est la monnaie de World. Tu peux convertir ton solde réel : 100 FCFA = $65 000. Prévois un budget avant de faire tes achats.</p></article>
+            <article><span aria-hidden="true">⚡</span><h3>Ton énergie</h3><p>Surveille ton énergie pendant tes déplacements. Le système alimentaire prévu utilisera des baguettes à $12 000, chacune restaurant 50 % d’énergie. Deux baguettes couvriront une journée au repos.</p><small>Alimentation : à venir</small></article>
+            <article><span aria-hidden="true">🗺️</span><h3>Explore la ville</h3><p>Utilise la carte pour repérer les lieux, les terrains et les commerces. Approche-toi des hologrammes pour découvrir les actions disponibles ; le point d’interrogation explique leur fonctionnement.</p></article>
+            <article><span aria-hidden="true">🌱</span><h3>Deviens agriculteur</h3><p>Achète un terrain et des graines ($100 les 10). Sème du blé sur ton terrain, attends 12 heures, même hors connexion, puis récolte. Vends ton blé aux usines au tarif fixe de $3 500 par unité, selon leurs commandes disponibles.</p></article>
+            <article><span aria-hidden="true">🏭</span><h3>Deviens entrepreneur</h3><p>Les usines coûtent $150 000 ou $200 000. Le propriétaire préfinance ses achats de blé et transforme son stock en farine. La vente de farine à $8 000 aux boulangeries est prévue pour une prochaine étape.</p></article>
+            <article><span aria-hidden="true">🥖</span><h3>Une économie entre joueurs</h3><p>Les agriculteurs alimentent les usines, puis les boulangeries alimenteront les consommateurs. Les prix sont fixés par le jeu. Les revenus dépendent des ventes réellement réalisées.</p></article>
+          </div>
+          <div className="world-start-note"><strong>Avant de commencer</strong><p>Explore à ton rythme. Retrouve les tarifs et les détails des activités dans le menu burger → Paramètres → Guide World.</p></div>
+        </section>
         <button type="button" className="world-enter" onClick={enter}>
-          Acceder au monde
+          Entrer dans le monde
         </button>
       </main>
 
