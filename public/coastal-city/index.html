@@ -826,7 +826,7 @@ refresh();
 </script>
 <script type="module">
 import { createLandMarket } from './world-land.js?v=9';
-import { createMillMarket } from './world-mills.js?v=3';
+import { createMillMarket } from './world-mills.js?v=4';
 let mafMillMarket; const mafMillHeights=[];
 function mafMillTick(){
  if(!mafMillMarket)mafMillMarket=createMillMarket({world:islToWorld,player:()=>player,visible:()=>!!ISL.group&&!menuOpen(),auth:()=>({api:MP.api,token:MP.token}),uuid:wwUuid,release:()=>{keys.clear();if(pointerLocked)document.exitPointerLock();},cash:v=>{WW.world=v;hudDirty=true;wwRender();},height:i=>{if(mafMillHeights[i]!=null)return mafMillHeights[i];const names=['Barn','BigBarn','SmallBarn'],o=ISL.group?.getObjectByName('farm-'+names[i]);return o?(mafMillHeights[i]=new THREE.Box3().setFromObject(o).max.y+.65):5;},project:(x,y,z)=>{const v=new THREE.Vector3(x,y,z),depth=-v.clone().applyMatrix4(camera.matrixWorldInverse).z;if(depth<=camera.near)return null;const p=v.project(camera);return Math.abs(p.x)<1&&Math.abs(p.y)<1&&Math.abs(p.z)<1?{x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2,scale:Math.min(1.5,innerHeight*Math.abs(camera.projectionMatrix.elements[5])/(2*depth)*1.4/50)}:null;}});
