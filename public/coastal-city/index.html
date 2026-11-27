@@ -625,14 +625,33 @@
   </form>
 </dialog>
 
+<style id="mafSettingsStyle">
+#menu.modal{padding:0;overflow:hidden;background:#07151db8;align-items:stretch;justify-content:stretch}
+#menuSheet.sheet{box-sizing:border-box;width:100%;max-width:none;height:100%;max-height:none;border-radius:0;padding:calc(14px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px));overflow:auto;overscroll-behavior:contain;background:#102b37db;touch-action:pan-y;color:#eef8ff}
+#menuSheet .maf-settings-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#menuSheet .maf-settings-tabs{display:flex;gap:8px;margin:12px 0 16px;position:sticky;top:0;z-index:2;background:#18313be8;padding:6px;border-radius:14px}
+#menuSheet .maf-settings-tabs button{flex:1;min-height:44px;border:1px solid #ffffff35;background:#ffffff10;color:inherit;border-radius:10px;font:600 14px system-ui;cursor:pointer}
+#menuSheet .maf-settings-tabs button[aria-pressed=true]{background:#a5f3d133;border-color:#a5f3d1;color:#c8ffe6}
+#menuSheet section[hidden]{display:none!important}
+#mafSettingsGeneral{max-width:920px;margin:auto}
+#menuSheet .maf-guide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,255px),1fr));gap:12px;align-items:start}
+#menuSheet .maf-guide-grid article{padding:14px;border:1px solid #ffffff28;border-radius:16px;background:#091c278c;min-width:0}
+#menuSheet .maf-guide-grid h3{margin:0 0 8px;color:#eafff6;opacity:1;letter-spacing:0;text-transform:none;font-size:17px}
+#menuSheet .maf-guide-grid p,#menuSheet .maf-guide-grid ol{font-size:13px;line-height:1.55;color:#d5e4ea}
+#menuSheet .maf-guide-grid dl{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:13px;margin:14px 0}
+#menuSheet .maf-guide-grid dd{margin:0;text-align:right;font-weight:700;color:#e8fff2}#menuSheet .maf-guide-grid dt{color:#bcd0d8}
+#menuSheet .maf-guide-state,#menuSheet .maf-guide-future{display:inline-block;font-size:11px;border-radius:7px;padding:4px 7px;background:#204c3e;color:#b8f8d2}#menuSheet .maf-guide-future{background:#51452b;color:#ffe3a0}
+#menuSheet .maf-guide-intro{max-width:900px;color:#d7e8f1}
+</style>
 <div id="menu" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
   <div class="sheet" id="menuSheet">
-    <h2 id="menuTitle">Coastal City Sandbox</h2>
-    <p class="small">A procedural sunny city. Walk, drive, deliver. Everything is generated in code and saved in this browser.</p>
+    <header class="maf-settings-head"><h2 id="menuTitle">Paramètres World</h2><button class="btn primary" id="btnClose" type="button">Retour au jeu</button></header>
+    <nav class="maf-settings-tabs" aria-label="Sections des paramètres"><button type="button" data-settings-tab="general" aria-pressed="true">⚙ Réglages</button><button type="button" data-settings-tab="info" aria-pressed="false">ⓘ Guide World</button></nav>
+    <section id="mafSettingsGeneral">
 
     <details class="help" id="kbHelp">
-      <summary>⌨️ Keyboard &amp; mouse controls</summary>
-      <h3>On foot</h3>
+      <summary>⌨️ Commandes clavier et souris</summary>
+      <h3>À pied</h3>
       <div class="kv">
         <b>W A S D</b><span>Move</span>
         <b>Shift</b><span>Run</span>
@@ -641,7 +660,7 @@
         <b>Mouse</b><span>Look (drag, or click canvas to lock)</span>
       </div>
 
-      <h3>Driving</h3>
+      <h3>Conduite</h3>
       <div class="kv">
         <b>W / S</b><span>Throttle / brake &amp; reverse</span>
         <b>A / D</b><span>Steer</span>
@@ -650,7 +669,7 @@
         <b>F</b><span>Exit vehicle</span>
       </div>
 
-      <h3>General</h3>
+      <h3>Général</h3>
       <div class="kv">
         <b>M</b><span>Start / cancel a delivery run</span>
         <b>C</b><span>Cycle camera distance</span>
@@ -660,31 +679,42 @@
       </div>
     </details>
 
-    <h3>Graphics</h3>
+    <h3>Graphismes</h3>
     <div class="seg" id="qualitySeg" role="group" aria-label="Graphics quality">
-      <button data-q="low" aria-pressed="false">Low</button>
-      <button data-q="med" aria-pressed="false">Medium</button>
-      <button data-q="high" aria-pressed="false">High</button>
+      <button data-q="low" aria-pressed="false">Faible</button>
+      <button data-q="med" aria-pressed="false">Moyen</button>
+      <button data-q="high" aria-pressed="false">Élevé</button>
       <button data-q="auto" aria-pressed="true">Auto</button>
     </div>
-    <div class="field"><span>Show performance readout</span>
+    <div class="field"><span>Afficher les performances</span>
       <button class="btn ghost" id="btnPerf" aria-pressed="false">Off</button></div>
 
-    <h3>Your city</h3>
+    <h3>Gestion de la ville</h3>
     <div class="rowbtns">
-      <button class="btn" id="btnExport">⬇ Export JSON</button>
-      <button class="btn" id="btnImport">⬆ Import JSON</button>
-      <button class="btn warn" id="btnNew">🌱 New city</button>
-      <button class="btn warn" id="btnReset">↺ Reset progress</button>
+      <button class="btn" id="btnExport">⬇ Exporter JSON</button>
+      <button class="btn" id="btnImport">⬆ Importer JSON</button>
+      <button class="btn warn" id="btnNew">🌱 Nouvelle ville</button>
+      <button class="btn warn" id="btnReset">↺ Réinitialiser la progression</button>
     </div>
     <input type="file" id="fileIn" accept="application/json,.json" class="hidden">
     <p class="small" id="seedLine" style="margin-top:12px"></p>
     <p class="small">Villa 3D adaptée du <a href="https://sketchfab.com/3d-models/interior-15-minimalist-panoramic-viem-5d25be96aca842f18b9cda266e20716b" target="_blank" rel="noopener noreferrer" style="color:inherit">modèle de dasy444</a> sous <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style="color:inherit">CC BY 4.0</a>.</p>
     <p class="small">Luminaires adaptés des modèles CC BY 4.0 de <a href="https://sketchfab.com/3d-models/floor-lamp-7a48d5515ceb415eae5a0c8fd6f517d3" target="_blank" rel="noopener noreferrer" style="color:inherit">CheBe</a>, <a href="https://sketchfab.com/3d-models/light-fixture-ceiling-recessed-269fd427629548a8a0949a6493c5b223" target="_blank" rel="noopener noreferrer" style="color:inherit">MozillaHubs</a> et <a href="https://sketchfab.com/3d-models/led-strip-982dc1e68e874d36a0dc09745d184bc6" target="_blank" rel="noopener noreferrer" style="color:inherit">BlackCube</a>.</p>
 
-    <div class="rowbtns" style="margin-top:16px">
-      <button class="btn primary" id="btnClose" style="flex:1">Back to the city</button>
-    </div>
+    </section>
+    <section id="mafSettingsInfo" hidden aria-label="Guide économique de World">
+      <p class="maf-guide-intro">Découvre les activités de World, les coûts et les étapes pour développer ton exploitation. W = monnaie World.</p>
+      <div class="maf-guide-grid">
+        <article><h3>🌱 Marché des graines</h3><span class="maf-guide-state">Disponible</span><dl><dt>🌾 Blé</dt><dd>100 W / 10 graines</dd><dt>🌽 Maïs</dt><dd>100 W / 10 graines</dd><dt>🍅 Tomate</dt><dd>100 W / 10 graines</dd></dl><p>10 W par graine. Achète les semences au jardin de l’île. Seul le blé peut actuellement être cultivé.</p></article>
+        <article><h3>🏡 Terrains agricoles</h3><span class="maf-guide-state">Disponible</span><dl><dt>Prix de référence</dt><dd>1 000 W / m²</dd><dt>Exemple : 100 m²</dt><dd>100 000 W</dd><dt>Case cultivable</dt><dd>1 × 2 m</dd></dl><p>Le prix réel est fixé lors du lotissement. Clique sur le panneau À VENDRE. Après achat, la propriété est repérable sur ta carte personnelle.</p></article>
+        <article><h3>🌾 Semer et récolter</h3><span class="maf-guide-state">Disponible</span><dl><dt>Semences par case</dt><dd>1 graine de blé</dd><dt>Rendement</dt><dd>1 unité de blé</dd><dt>Durée</dt><dd>12 h réelles</dd></dl><p>Entre sur ton terrain, ouvre Mon terrain puis le mode culture. Sélectionne une case libre. Récolte après 12 h ; le blé rejoint tes possessions.</p><ol><li>0 h : semis</li><li>1 h : jeune pousse</li><li>3 h : croissance</li><li>8 h : maturation</li><li>12 h : récolte</li></ol><p>La croissance continue hors connexion.</p></article>
+        <article><h3>💰 Rentabilité agricole</h3><span class="maf-guide-future">Simulation · vente à venir</span><dl><dt>Terrain de 10 × 10 m</dt><dd>50 cases</dd><dt>50 graines</dt><dd>500 W</dd><dt>50 blés à 700 W</dt><dd>35 000 W</dd><dt>Marge brute par cycle</dt><dd>34 500 W</dd></dl><p>Hors achat du terrain et autres frais. Suppose que toute la récolte trouve un acheteur. Aucun bénéfice ni rachat automatique garanti.</p></article>
+        <article><h3>🏭 Usine de farine</h3><span class="maf-guide-future">À venir · tarifs indicatifs</span><dl><dt>Achat de 1 blé</dt><dd>700 W</dd><dt>Vente de 1 farine</dt><dd>1 200 W</dd><dt>Marge brute</dt><dd>500 W</dd></dl><p>Le meunier achètera le blé des agriculteurs, le transformera et vendra la farine aux boulangers. Petite usine : 250 000 W ; grande : 750 000 W (propositions).</p></article>
+        <article><h3>🥖 Boulangerie</h3><span class="maf-guide-future">À venir · tarifs indicatifs</span><dl><dt>Achat de 1 farine</dt><dd>1 200 W</dd><dt>Vente de 1 baguette</dt><dd>2 000 W</dd><dt>Marge brute</dt><dd>800 W</dd></dl><p>Petite boulangerie : 150 000 W ; grande : 450 000 W (propositions). La nourriture pourra être stockée et consommée plus tard.</p></article>
+        <article><h3>⚡ Énergie</h3><span class="maf-guide-state">Règle actuelle de base</span><dl><dt>Autonomie à 100 %, sans effort</dt><dd>24 h</dd><dt>Baguette (prévu)</dt><dd>+25 %</dd></dl><p>Les effets de la marche, de la course et des transports restent à définir. La consommation de baguettes et la livraison alimentaire ne sont pas encore disponibles.</p></article>
+        <article><h3>🔄 Circuit économique</h3><span class="maf-guide-future">Objectif de World</span><p>🌱 Semences → 🌾 Agriculteur → 🏭 Meunier → 🥖 Boulanger → 👤 Consommateur.</p><p>Prix indicatifs par unité : 10 W → 700 W → 1 200 W → 2 000 W. Marges brutes : agriculteur 690 W, meunier 500 W, boulanger 800 W. Les prix futurs pourront varier. La circulation de monnaie ne garantit pas un revenu réel.</p><p>Conversion de référence : 100 FCFA = 65 000 W, avant éventuels frais.</p></article>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -719,6 +749,18 @@
 </script>
 
 <script type="module" src="./world-liquid-glass.js"></script>
+<script type="module" id="mafSettingsModule">
+import LiquidGlassApple from './liquid-glass-apple.js';
+const menu=document.getElementById('menu'), sheet=document.getElementById('menuSheet'), settings=document.getElementById('btnSettings');
+const base={surface:'convex_squircle',glassThickness:30,refractiveIndex:1.55,bezelWidth:12,specularOpacity:.30,tintColor:'#183b48',tintOpacity:.48,fallbackBlur:10,interactive:false};
+const mounted=new WeakSet();
+function glass(el,options){if(!el||mounted.has(el)||!el.getClientRects().length||!el.clientWidth||!el.clientHeight)return;try{LiquidGlassApple.apply(el,{...base,...options});mounted.add(el);}catch(e){console.warn('Settings glass',e);}}
+function refresh(){if(!menu.classList.contains('hidden'))glass(sheet,{radius:0});glass(settings,{radius:999,surface:'convex_circle',tintColor:'#ffffff',tintOpacity:.03,interactive:true});}
+new MutationObserver(refresh).observe(menu,{attributes:true,attributeFilter:['class']});
+new MutationObserver(refresh).observe(document.getElementById('topBtns'),{attributes:true,attributeFilter:['class']});
+for(const tab of sheet.querySelectorAll('[data-settings-tab]'))tab.addEventListener('click',()=>{const info=tab.dataset.settingsTab==='info';document.getElementById('mafSettingsInfo').hidden=!info;document.getElementById('mafSettingsGeneral').hidden=info;for(const b of sheet.querySelectorAll('[data-settings-tab]'))b.setAttribute('aria-pressed',String(b===tab));sheet.scrollTop=0;});
+refresh();
+</script>
 <script type="module">
 import { createLandMarket } from './world-land.js?v=7';
 let mafLandMarket;
