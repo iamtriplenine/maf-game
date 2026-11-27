@@ -3053,7 +3053,9 @@ function generateWorld(seed) {
   // MAF-LOT-L1: conserver la sequence originale des batiments et du PRNG.
   let originalBuildingNumber = 0;
   const l1Removed = [];
+  const l2Removed = [];
   G.userData.lotL1 = null;
+  G.userData.lotL2 = null;
 
   for (let bi = 0; bi < BLOCKS_X; bi++) for (let bj = 0; bj < BLOCKS_Z; bj++) {
     const x0 = roadX(bi) + HALF_ROAD + WALK_W, x1 = roadX(bi + 1) - HALF_ROAD - WALK_W;
@@ -3126,6 +3128,10 @@ function generateWorld(seed) {
       const pd = Math.floor(R() * MATS.podiums.length);
       const originalNumber = ++originalBuildingNumber;
       const ac = R() < 0.55 ? { x: mx + (R() - .5) * w * .4, z: mz + (R() - .5) * d * .4, y: h + 0.8, s: 1 + R() } : null;
+      if (originalNumber >= 64 && originalNumber <= 67) {
+        l2Removed.push({ x: mx, z: mz, w: w, d: d });
+        continue; // Aucun mesh, toit, climatiseur, collider ou entree minimap.
+      }
       if (originalNumber >= 76 && originalNumber <= 80) {
         l1Removed.push({ x: mx, z: mz, w: w, d: d });
         continue; // Aucun mesh, toit, climatiseur, collider ou entree minimap.
@@ -3289,13 +3295,20 @@ function generateWorld(seed) {
   const SHOW_BUILDING_LABELS = true;
   if (SHOW_BUILDING_LABELS) {
     // Un seul repere L1, sur l'emprise libre la plus proche du centre des cinq emprises.
+    if (l2Removed.length) {
+      const cx = l2Removed.reduce((sum, b) => sum + b.x, 0) / l2Removed.length;
+      const cz = l2Removed.reduce((sum, b) => sum + b.z, 0) / l2Removed.length;
+      const anchor = l2Removed.reduce((best, b) => Math.hypot(b.x-cx,b.z-cz) < Math.hypot(best.x-cx,best.z-cz) ? b : best);
+      G.userData.lotL2 = { id: 'L2', x: anchor.x, z: anchor.z, h: CURB_H - 1, footprints: l2Removed };
+    }
     if (l1Removed.length) {
       const cx = l1Removed.reduce((sum, b) => sum + b.x, 0) / l1Removed.length;
       const cz = l1Removed.reduce((sum, b) => sum + b.z, 0) / l1Removed.length;
       const anchor = l1Removed.reduce((best, b) => Math.hypot(b.x-cx,b.z-cz) < Math.hypot(best.x-cx,best.z-cz) ? b : best);
       G.userData.lotL1 = { id: 'L1', x: anchor.x, z: anchor.z, h: CURB_H - 1, footprints: l1Removed };
     }
-    const labels = G.userData.lotL1 ? world.buildings.concat(G.userData.lotL1) : world.buildings;
+    const extraLots = [G.userData.lotL1, G.userData.lotL2].filter(Boolean);
+    const labels = extraLots.length ? world.buildings.concat(extraLots) : world.buildings;
     labels.forEach(b => {
       const c = document.createElement('canvas'); c.width = 192; c.height = 96;
       const g2 = c.getContext('2d');
