@@ -3050,6 +3050,10 @@ function generateWorld(seed) {
   for (let s = 0; s < MATS.facades.length; s++) bStyle.push([]);
   for (let s = 0; s < MATS.podiums.length; s++) bMat.push([]);
   const roofs = [], acs = [], palms = [], benches = [], bins = [], hydrants = [], parked = [], lotPatches = [], parkPatches = [];
+  // MAF-LOT-L1: conserver la sequence originale des batiments et du PRNG.
+  let originalBuildingNumber = 0;
+  const l1Removed = [];
+  G.userData.lotL1 = null;
 
   for (let bi = 0; bi < BLOCKS_X; bi++) for (let bj = 0; bj < BLOCKS_Z; bj++) {
     const x0 = roadX(bi) + HALF_ROAD + WALK_W, x1 = roadX(bi + 1) - HALF_ROAD - WALK_W;
@@ -3120,11 +3124,17 @@ function generateWorld(seed) {
       const h = PODIUM_H + storeys * STOREY;
       const st = Math.floor(R() * MATS.facades.length);
       const pd = Math.floor(R() * MATS.podiums.length);
-      world.buildings.push({ x: mx, z: mz, w: w, d: d, h: h, st: st });
+      const originalNumber = ++originalBuildingNumber;
+      const ac = R() < 0.55 ? { x: mx + (R() - .5) * w * .4, z: mz + (R() - .5) * d * .4, y: h + 0.8, s: 1 + R() } : null;
+      if (originalNumber >= 76 && originalNumber <= 80) {
+        l1Removed.push({ x: mx, z: mz, w: w, d: d });
+        continue; // Aucun mesh, toit, climatiseur, collider ou entree minimap.
+      }
+      world.buildings.push({ id: 'B' + originalNumber, x: mx, z: mz, w: w, d: d, h: h, st: st });
       bStyle[st].push({ x: mx, z: mz, w: w, d: d, h: h });
       bMat[pd].push({ x: mx, z: mz, w: w + 0.7, d: d + 0.7 });
       roofs.push({ x: mx, z: mz, w: w + 0.9, d: d + 0.9, y: h });
-      if (R() < 0.55) acs.push({ x: mx + (R() - .5) * w * .4, z: mz + (R() - .5) * d * .4, y: h + 0.8, s: 1 + R() });
+      if (ac) acs.push(ac);
       addCollider(mx - (w + 0.7) / 2, mz - (d + 0.7) / 2, mx + (w + 0.7) / 2, mz + (d + 0.7) / 2, h, 1);
     }
   }
@@ -3278,8 +3288,15 @@ function generateWorld(seed) {
   // MAF-BUILDING-LABELS : numeros B1, B2... au-dessus des toits (batiments proceduraux uniquement)
   const SHOW_BUILDING_LABELS = true;
   if (SHOW_BUILDING_LABELS) {
-    world.buildings.forEach((b, k) => {
-      b.id = 'B' + (k + 1);
+    // Un seul repere L1, sur l'emprise libre la plus proche du centre des cinq emprises.
+    if (l1Removed.length) {
+      const cx = l1Removed.reduce((sum, b) => sum + b.x, 0) / l1Removed.length;
+      const cz = l1Removed.reduce((sum, b) => sum + b.z, 0) / l1Removed.length;
+      const anchor = l1Removed.reduce((best, b) => Math.hypot(b.x-cx,b.z-cz) < Math.hypot(best.x-cx,best.z-cz) ? b : best);
+      G.userData.lotL1 = { id: 'L1', x: anchor.x, z: anchor.z, h: CURB_H - 1, footprints: l1Removed };
+    }
+    const labels = G.userData.lotL1 ? world.buildings.concat(G.userData.lotL1) : world.buildings;
+    labels.forEach(b => {
       const c = document.createElement('canvas'); c.width = 192; c.height = 96;
       const g2 = c.getContext('2d');
       g2.fillStyle = 'rgba(0,0,0,0.72)'; g2.strokeStyle = '#ffd166'; g2.lineWidth = 6;
